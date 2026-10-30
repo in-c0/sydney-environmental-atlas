@@ -509,6 +509,31 @@
       .map-shell .maplibregl-ctrl-bottom-right,.leaflet-bottom.leaflet-right{bottom:calc(31dvh + env(safe-area-inset-bottom,0px) + 73px)!important}
     }
     @media(prefers-reduced-motion:reduce){.atlas-fieldcard{transition:none}}
+    /* Wave fill and reflected-light loading are tied to verified source states. */
+    .overlay-toggle{position:relative;overflow:hidden;isolation:isolate;transition:color .18s,background-color .18s,border-color .18s}
+    .overlay-toggle[data-state=ready][aria-pressed=true]{background:#1f6254;color:white}
+    .overlay-toggle[data-state=loading][aria-pressed=true]{background:#f4f7ed;color:#32675c;border:1px solid #b7d0bf}
+    .overlay-toggle[data-state=loading][aria-pressed=true]::before{content:'';position:absolute;pointer-events:none;left:-8%;right:-8%;height:78%;bottom:-55%;border-radius:48% 56% 0 0;background:linear-gradient(180deg,#7ebaa795,#287763a8);transform:rotate(-4deg);animation:atlas-wave-fill 2.4s ease-in-out infinite alternate}
+    .overlay-toggle[data-state=loading][aria-pressed=true]::after{content:'';position:absolute;pointer-events:none;inset:-75% auto -75% -45%;width:35%;background:linear-gradient(90deg,transparent,#ffffffbd,transparent);transform:rotate(18deg);animation:atlas-reflection 1.7s linear infinite}
+    .overlay-toggle[data-state=error][aria-pressed=true]{background:#fff9ed;border:1px dashed #b78970;color:#8a5b49}
+    .overlay-toggle[data-state=error][aria-pressed=true]::before,.overlay-toggle[data-state=error][aria-pressed=true]::after{content:none}
+    @keyframes atlas-wave-fill{0%{bottom:-57%;border-radius:44% 54% 0 0;transform:rotate(-5deg)}55%{bottom:-28%;border-radius:56% 46% 0 0;transform:rotate(4deg)}100%{bottom:-40%;border-radius:48% 56% 0 0;transform:rotate(-2deg)}}
+    @keyframes atlas-reflection{0%{left:-55%}100%{left:130%}}
+    .sound-source-list{margin:13px 0 10px;border:1px solid #d7e5db;border-radius:13px;overflow:hidden;background:#fffefa}
+    .sound-source-list>p{padding:11px 13px;font-size:10px;color:#6f8175;line-height:1.6}
+    .sound-source-row{display:grid;grid-template-columns:75px 1fr auto;align-items:center;gap:6px;padding:9px 10px;border-bottom:1px solid #e7eee7;font-size:10px;color:#496457}
+    .sound-source-row span{overflow-wrap:anywhere}.sound-source-row strong{white-space:nowrap;color:#316b5e}
+    .sound-type{border-radius:6px;padding:4px 5px;text-transform:capitalize;font-size:9px;text-align:center;background:#e3ece7}
+    .sound-type.construction{background:#f4e6d0;color:#a2693c}.sound-type.rail{background:#e0eaf3;color:#476a91}.sound-type.venue{background:#f1e1e9;color:#a05e83}
+    .sound-official-sources{margin-top:13px;border:1px solid #e5e7d9;border-radius:13px;padding:12px;background:#f5f5ed}
+    .sound-official-sources strong{display:block;margin-top:10px;font-size:12px;color:#315b4f}.sound-official-sources strong:first-child{margin-top:0}
+    .sound-official-sources p,.sound-limits{font-size:10px;line-height:1.6;color:#71867a;margin:6px 0}
+    .sound-official-sources a{display:inline-block;font-size:10px;color:#286d59;font-weight:800;text-decoration:underline;text-underline-offset:2px;margin:3px 0 6px}
+    .rating-hero{background:#183f39}
+    .rating-stars{font-size:27px;letter-spacing:1px}
+    .rating-components[hidden]{display:none}
+    @media(max-width:760px){.overlay-picker{gap:2px;padding:3px;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}.overlay-picker::-webkit-scrollbar{display:none}.overlay-toggle{font-size:9px;padding:7px 5px;gap:3px;flex:none}.overlay-toggle .layer-icon{font-size:11px}.sound-source-row{grid-template-columns:70px 1fr auto;gap:4px;padding:8px 7px}}
+    @media(prefers-reduced-motion:reduce){.overlay-toggle::before,.overlay-toggle::after{animation:none!important}.overlay-toggle[data-state=loading][aria-pressed=true]{border-style:dotted}}
   </style>
 </head>
 <body>
@@ -530,17 +555,15 @@
       <section class="inspector" aria-live="polite">
         <div class="inspector-head"><b id="inspectorLabel">LOOKING AT</b><span class="tiny-badge" id="sourceBadge">ROAD DATA · NOT dB</span></div>
         <div class="inspector-location" id="inspectName">Kensington, Sydney</div>
-        <div class="evidence-overview" id="ratingHero" aria-label="Environmental observations; not a property rating">
-          <div class="evidence-overview-head"><strong>What the records show</strong><span>Not a home rating</span></div>
-          <div class="evidence-observations">
-            <div><span>Nearest mapped road</span><strong id="evidenceRoad">Checking…</strong><small>Centreline distance · not noise</small></div>
-            <div><span>Tree canopy</span><strong id="evidenceCanopy">Checking…</strong><small>NSW 2024–25 mapped cell</small></div>
-            <div><span>EPA notifications</span><strong id="evidenceLand">Checking…</strong><small>Listed sites within 1 km</small></div>
-          </div>
-          <p class="evidence-overview-copy" id="ratingSummary">These are separate public records, not a combined safety or livability score.</p>
-          <details class="evidence-overview-method"><summary>Coverage, limits &amp; why there is no rating</summary>
-            <p id="ratingUncertainty">Road geometry does not measure sound. Tree cover is not temperature. EPA notifications do not establish contamination at the selected point.</p>
-            <p id="ratingLandNote">Open the evidence guide for source methods, dates and coverage.</p>
+        <div class="rating-hero" id="ratingHero" aria-label="Overall environmental rating not available; evidence is incomplete">
+          <div class="rating-topline" id="ratingTopline">OVERALL LIVABILITY · NOT YET RATED</div>
+          <div class="rating-primary"><strong id="ratingNumber">Not rated</strong><div class="rating-stars" id="ratingStars" role="img" aria-label="Zero stars assigned; no defensible overall rating">☆☆☆☆☆</div></div>
+          <p class="rating-one-line" id="ratingSummary">The map can show observations, but it does not yet have the evidence needed to rate a home.</p>
+          <div class="rating-uncertainty" id="ratingUncertainty">Measured sound and dwelling conditions are not available here.</div>
+          <details id="ratingMethod"><summary>What would be needed for a rating?</summary>
+            <div class="rating-components" id="ratingCanopyRow" hidden><div><span>Tree canopy (mapped cell)</span><b><i id="ratingTreeBar"></i></b></div></div>
+            <p id="ratingExplanation">A reliable overall rating would require validated local sound measurements or exposure modelling, dwelling conditions and other relevant factors. Road distance, flight paths, construction reports and canopy cannot simply be converted into five stars.</p>
+            <p id="ratingLandNote">EPA notifications and planning applications are records to investigate, not proof of site-level risk or current construction.</p>
           </details>
         </div>
         <div class="place-actions"><button type="button" class="coordinate-action" id="centerOnPin" title="Recenter the map on the selected point">⌖ <span id="selectedCoords">—</span></button><button type="button" class="share-action" id="copyMapLink" title="Copy a link to this location">Copy link</button></div>
@@ -563,6 +586,20 @@
         <div class="meaning-status"><span class="meaning-symbol">?</span><div><strong>Is it quiet here? We don't know yet.</strong><p>We have road shapes, but no measured noise, traffic levels, or indoor-nighttime conditions.</p></div></div>
         <details class="geometry-details"><summary>More about the 200 m circle</summary><p>There are <strong id="roadLengthDetail">—</strong> of mapped road centrelines inside the teal circle. This is a sum of line lengths—not the length of one road or a measure of loudness.</p></details>
         </div></details>
+        </div>
+        <div class="env-probe" id="soundContent" role="region" aria-label="Potential sound sources and official aviation or planning references" hidden>
+          <h2 class="proximity-title" id="soundTitle">Looking for potential noise sources…</h2>
+          <p class="proximity-copy" id="soundCopy">Map records are contextual leads, not measurements or predicted sound levels at this location.</p>
+          <div class="sound-source-list" id="soundList" role="status"><p>Choose Noise to search mapped construction, rail infrastructure and some late-night venues nearby.</p></div>
+          <div class="sound-official-sources">
+            <strong>Aircraft routes · time matters</strong>
+            <p>Airservices WebTrak provides official flight-path history, runway use and nearby noise-monitor information. Wind, route and hour change exposure. This atlas does not copy or redistribute WebTrak tracks.</p>
+            <a href="https://www.airservicesaustralia.com/community/environment/aircraft-noise/webtrak/" target="_blank" rel="noopener noreferrer">Explore Sydney's flights and time periods in WebTrak ↗</a>
+            <strong>Planned construction</strong>
+            <p>Mapped construction below is not a verified council approval, construction schedule or evidence that work is currently noisy. The NSW Planning Portal records development applications; connecting the full feed needs approved API access.</p>
+            <a href="https://www.planningportal.nsw.gov.au/opendata/dataset/online-da-data-api" target="_blank" rel="noopener noreferrer">NSW development applications · source and access ↗</a>
+          </div>
+          <p class="sound-limits">Missing OSM tags, unmapped works, traffic, neighbours and flight movements are not evidence of quietness. No address-level dB or time-of-day forecast is claimed.</p>
         </div>
         <div class="env-probe" id="heatContent" role="region" aria-label="Tree canopy and sunlight details" hidden>
           <h2 class="proximity-title" id="heatTitle">Reading tree cover near this point…</h2>
@@ -612,6 +649,14 @@
       <details class="disclosure"><summary>How the colourful direction model works</summary><p>Road segments within 250 m of the selected point are sampled at regular intervals. Each sample contributes to a compass direction, weighted down with distance. Twelve relative directional wedges are drawn at different heights. Tall, warm-coloured sectors have more nearby mapped road geometry in this particular circle; they do not indicate actual acoustic direction or decibels. At close zoom the diagram shrinks in screen-space, so its visible radius is not a geographic boundary. The direction diagram is off by default, can be enabled in the Roads panel and hides automatically at street-level zoom. Its pulse is decorative, not live traffic.</p><p>The optional imagery basemap comes from NSW Spatial Services' public aerial and satellite imagery mosaic. Photography dates vary by neighbourhood. Imagery © NSW Department of Customer Service; mosaic includes third-party imagery © AAM, Jacobs Group Ausimage and LANDSAT.</p></details>
       <details class="disclosure"><summary>Can I use this to choose an apartment?</summary><p>Use it only to shortlist areas to investigate. Window glazing, floor height, apartment orientation, neighbours, ventilation, construction, and late-night businesses can dominate indoor noise. Visit candidate homes during the hours you care about and check bedroom-side sound conditions.</p></details>
       </div>
+      <div data-method="sound" hidden>
+        <div class="evidence-tier"><span class="tier-mark observed">●</span><div><strong>Public map tags</strong><p>OpenStreetMap objects tagged as construction, rail infrastructure or selected late-night venues near the pin. Objects and position are volunteer-maintained and incomplete. They indicate places worth investigating, not sound readings.</p></div></div>
+        <div class="evidence-tier"><span class="tier-mark derived">◐</span><div><strong>Derived here</strong><p>Approximate straight-line distance from the pin to a mapped object's reported point or centre. Polygon centroids and line centroids are not necessarily the nearest noisy part of an activity.</p></div></div>
+        <div class="evidence-tier"><span class="tier-mark absent">○</span><div><strong>Not yet available</strong><p>Licensed historical aircraft tracks, confirmed noise-monitor readings at the pin, council development approvals with planned work dates, verified active construction hours and measurements for other local sources. Do not infer a rating.</p></div></div>
+        <p class="source-link"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors · ODbL ↗</a></p>
+        <p class="source-link"><a href="https://www.airservicesaustralia.com/community/environment/aircraft-noise/webtrak/" target="_blank" rel="noopener noreferrer">Airservices WebTrak official aircraft and time exploration ↗</a></p>
+        <p class="source-link"><a href="https://www.planningportal.nsw.gov.au/opendata/dataset/online-da-data-api" target="_blank" rel="noopener noreferrer">NSW Planning Portal public development data ↗</a></p>
+      </div>
       <div data-method="heat" hidden><div class="evidence-tier"><span class="tier-mark observed">●</span><div><strong>NSW 2024–25 canopy access</strong><p>NSW Government's hexagonal canopy dataset from aerial imagery acquired between 12 Dec 2024 and 5 Apr 2025. Trees taller than 3 m count as canopy. Each small hexagon reports its own canopy proportion, not a suburb average.</p></div></div><div class="evidence-tier"><span class="tier-mark derived">◐</span><div><strong>Mapped here</strong><p>The actual hexagons around the selected point are coloured by their recorded canopy proportion. The ring displays the proportion of the selected hexagon, not a temperature estimate.</p></div></div><div class="evidence-tier"><span class="tier-mark observed">●</span><div><strong>Individual trees and terrain</strong><p>In 3D, a subset of registered park and street trees within the City of Sydney LGA uses City of Sydney's published locations, heights and north–south canopy spreads. The foliage and trunk shapes are schematic: they are not surveyed crowns or branch structures. Other council areas, including Kensington, have no equivalent individual tree layer yet. 3D ground relief uses Mapterhorn terrain tiles from various publicly documented elevation datasets (resolution differs by area), separately from the NSW Spatial Services 5 m DEM height queried at the selected point. Neither model captures rooftop or garden contours; tree heights are from the council asset register, not remeasured here.</p></div></div><div class="evidence-tier"><span class="tier-mark derived">☀</span><div><strong>Sun position and modelled building shadows</strong><p>Solar azimuth and elevation are calculated from Sydney local date/time and selected coordinates using NOAA-style solar geometry. In 3D, shadow polygons are projected onto an assumed level ground plane from OpenStreetMap-derived building footprints and render heights when available. Sun-facing extrusion lighting changes with time. Shadows are not terrain-aware; trees, missing buildings and overhangs are omitted. This is a neighbourhood illustration, not a property-level shadow study.</p></div></div><div class="evidence-tier"><span class="tier-mark absent">○</span><div><strong>Not measured here</strong><p>Air temperature, land surface temperature, heat exposure indoors, the number of extreme-heat days and real-time conditions are not included. Missing cells remain uncoloured.</p></div></div><p class="source-link"><a href="https://gml.noaa.gov/grad/solcalc/" target="_blank" rel="noopener noreferrer">NOAA solar geometry calculator ↗</a></p><p class="source-link"><a href="https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/UHGC/GSR_2024_VegStrata_H3Z11/MapServer/0" target="_blank" rel="noopener noreferrer">NSW Government canopy source ↗</a></p><p class="source-link"><a href="https://services1.arcgis.com/cNVyNtjGVZybOQWZ/ArcGIS/rest/services/Trees/FeatureServer/0" target="_blank" rel="noopener noreferrer">City of Sydney tree register ↗</a></p><p class="source-link"><a href="https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_5M_Elevation/ImageServer" target="_blank" rel="noopener noreferrer">NSW Spatial Services DEM ↗</a></p><p class="source-link"><a href="https://mapterhorn.com/attribution/" target="_blank" rel="noopener noreferrer">Mapterhorn terrain attribution ↗</a></p><p class="small-print">NSW canopy © State of New South Wales and Department of Planning, Housing and Infrastructure. <a href="https://data.nsw.gov.au/data/dataset/greater-sydney-region-tree-canopy-access-202425" target="_blank" rel="noopener noreferrer">Canopy source licence</a>. Tree asset records © City of Sydney. Relief © Mapterhorn and its attributed source datasets.</p></div>
       <div data-method="land" hidden><div class="evidence-tier"><span class="tier-mark observed">●</span><div><strong>NSW EPA notifications</strong><p>Sites notified as potentially contaminated under the Contaminated Land Management Act. Records have names, addresses, activities and management classes, which can differ substantially.</p></div></div><div class="evidence-tier"><span class="tier-mark derived">◐</span><div><strong>Mapped here</strong><p>We count point records up to 1 km from your chosen location, calculate approximate straight-line distances and show the nearest record's published management class. A point is not the actual affected parcel boundary.</p></div></div><div class="evidence-tier"><span class="tier-mark absent">○</span><div><strong>Not established</strong><p>Soil testing at your address, contamination extent, current exposure pathways, site safety and completeness of the register. A zero result does not mean a verified clean site.</p></div></div><p class="source-link"><a href="https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/FeatureServer/0" target="_blank" rel="noopener noreferrer">Inspect the NSW EPA source ↗</a></p><p class="small-print">NSW EPA data © State of NSW, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Check the <a href="https://www.epa.nsw.gov.au/Your-environment/Contaminated-land/notified-and-regulated-contaminated-land/list-of-notified-sites" target="_blank" rel="noopener noreferrer">official record guidance</a> before making property decisions.</p></div>
       <div class="method-status" id="modelStatus">Coverage and source status appear here.</div>
@@ -636,7 +681,8 @@
       </div>
     </div>
     <div class="overlay-picker" role="group" aria-label="Environmental map overlays (select any combination)">
-      <button class="overlay-toggle" type="button" data-overlay="noise" aria-pressed="true" title="Mapped roads and relative directions, not measured noise"><span class="layer-icon" aria-hidden="true">〰</span>Roads</button>
+      <button class="overlay-toggle" type="button" data-overlay="noise" aria-pressed="true" data-state="loading" title="Road geometry only; not a noise measurement"><span class="layer-icon" aria-hidden="true">〰</span>Roads</button>
+      <button class="overlay-toggle" type="button" data-overlay="sound" aria-pressed="false" data-state="off" title="Potential noise sources and official aviation or planning references; not measured dB"><span class="layer-icon" aria-hidden="true">◉</span>Noise</button>
       <button class="overlay-toggle" type="button" data-overlay="heat" aria-pressed="false" title="Canopy-based heat context, not a temperature reading"><span class="layer-icon" aria-hidden="true">☀</span>Heat</button>
       <button class="overlay-toggle" type="button" data-overlay="land" aria-pressed="false" title="NSW EPA notified land records"><span class="layer-icon" aria-hidden="true">◇</span>Records</button>
       <button class="overlay-toggle" type="button" data-overlay="trees" aria-pressed="false" title="Official tree canopy map; registered tree models in supported 3D areas"><span class="layer-icon" aria-hidden="true">♣</span>Trees</button>
@@ -668,7 +714,7 @@
     if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -34.5||lat> -33||lng<150.5||lng>152)return null;
     const zoom=Number.isFinite(z)&&z>=10&&z<=19?z:15;
     const candidate=params.get('lens');
-    return {lat,lng,zoom,lens:['noise','heat','land'].includes(candidate)?candidate:'noise'};
+    return {lat,lng,zoom,lens:['noise','sound','heat','land'].includes(candidate)?candidate:'noise'};
   })();
   function setMobileSheet(expanded){
     const card=document.querySelector('.atlas-fieldcard'),button=$('sheetToggle');
@@ -702,7 +748,7 @@
   const COLORS={motorway:'#ef685f',trunk:'#f17862',primary:'#ed906d',secondary:'#e5ba72',tertiary:'#c6cd78',residential:'#89d4ac',living_street:'#89d4ac',unclassified:'#a3d5ab'};
   let roads=[],loadedBounds=null,roadCache=[],loading=false,roadFailure=false,lastRequest=0,current={lat:places.Kensington[0],lng:places.Kensington[1],name:'Kensington, Sydney'},selected={a:null,b:null},compareMode=false,roadLayerVisible=true,abort=null;
   let map,glowLayer,pointMarker,buildingOutline=null,markers={a:null,b:null};
-  const overlays={noise:true,heat:false,land:false,trees:false};
+  const overlays={noise:true,sound:false,heat:false,land:false,trees:false};
   let precisionMode=false,selectionRequest=0,buildingAbort=null,buildingCache=new Map();
   let map3d=null,map3dReady=false,map3dPreferred=true,map3dUnsupported=false,map3dSyncing=false,map3dCanopyFeatures=[],lastShadowKey='';
   let basemap='aerial',baseMap2d=null,imagery2d=null,directional2d=null,directionalProfile=null,noisePulseTimer=null,showRoadRose=false;
@@ -904,6 +950,8 @@
         map3d.addSource('atlas-noise-wedges',{type:'geojson',data:emptyGeoJSON()});
         map3d.addLayer({id:'atlas-noise-rose',type:'fill-extrusion',source:'atlas-noise-wedges',paint:{'fill-extrusion-color':['interpolate',['linear'],['get','level'],0,'#43c8bb',.3,'#ffde70',.62,'#ffa34e',1,'#fb4756'],'fill-extrusion-opacity':['interpolate',['linear'],['zoom'],14,.32,16,.24,17,.12,18.5,0],'fill-extrusion-base':0,'fill-extrusion-height':['get','height']}},labels);
         map3d.addLayer({id:'atlas-noise-rose-edge',type:'line',source:'atlas-noise-wedges',paint:{'line-color':'#fff3d2','line-opacity':['interpolate',['linear'],['zoom'],14,.45,18.5,.1],'line-width':1}},labels);
+        map3d.addSource('atlas-sound-candidates',{type:'geojson',data:emptyGeoJSON()});
+        map3d.addLayer({id:'atlas-sound-candidate-markers',type:'circle',source:'atlas-sound-candidates',paint:{'circle-color':['match',['get','kind'],'construction','#d58d50','rail','#587ba5','venue','#b36c8f','#7c9788'],'circle-radius':7,'circle-stroke-color':'#fff9ec','circle-stroke-width':2}},labels);
         map3d.addSource('atlas-noise-nearest',{type:'geojson',data:emptyGeoJSON()});
         map3d.addLayer({id:'atlas-noise-road-connector',type:'line',source:'atlas-noise-nearest',filter:['==',['geometry-type'],'LineString'],paint:{'line-color':'#ea775b','line-opacity':1,'line-width':4,'line-dasharray':[1.6,1]}},labels);
         map3d.addLayer({id:'atlas-noise-road-endpoint',type:'circle',source:'atlas-noise-nearest',filter:['==',['geometry-type'],'Point'],paint:{'circle-color':'#e86e54','circle-radius':5,'circle-stroke-color':'#fffaf3','circle-stroke-width':2}},labels);
@@ -914,9 +962,9 @@
         map3d.addSource('atlas-selected-point',{type:'geojson',data:emptyGeoJSON()});
         map3d.addLayer({id:'atlas-selected-halo',type:'circle',source:'atlas-selected-point',paint:{'circle-radius':21,'circle-color':'#df8b69','circle-opacity':.3,'circle-stroke-width':1,'circle-stroke-color':'#ffdfc7'}});
         map3d.addLayer({id:'atlas-selected-dot',type:'circle',source:'atlas-selected-point',paint:{'circle-radius':7,'circle-color':'#e9805f','circle-stroke-color':'#fffaf0','circle-stroke-width':3}});
-        map3dReady=true;sync3dLocation();sync3dRoads();sync3dNoiseContext();sync3dCanopy();sync3dLand();sync3dSun();apply3dMode();updateBasemap();animateNoise();
+        map3dReady=true;sync3dLocation();sync3dRoads();sync3dNoiseContext();sync3dCanopy();sync3dLand();sync3dSound();sync3dSun();apply3dMode();updateBasemap();animateNoise();
       });
-      map3d.on('click',event=>{if(!map3dReady)return;const trees=overlays.trees?map3d.queryRenderedFeatures(event.point,{layers:['atlas-tree-extrusions']}):[];if(trees.length){const p=trees[0].properties;new maplibregl.Popup({closeButton:true,maxWidth:'260px'}).setLngLat(event.lngLat).setHTML(`<strong>${safe(p.name||p.species||'Registered tree')}</strong><p>Recorded height ${Number(p.height).toFixed(1)} m · north–south canopy ${Number(p.canopy).toFixed(1)} m</p><small>City of Sydney register · 3D shape is schematic</small>`).addTo(map3d);return}chooseMapLocation(event.lngLat.lat,event.lngLat.lng)});
+      map3d.on('click',event=>{if(!map3dReady)return;const soundHits=overlays.sound?map3d.queryRenderedFeatures(event.point,{layers:['atlas-sound-candidate-markers']}):[];if(soundHits.length){const feature=soundHits[0];new maplibregl.Popup({closeButton:true,maxWidth:'260px'}).setLngLat(event.lngLat).setHTML('<strong>'+safe(feature.properties.name||'Mapped sound-source lead')+'</strong><p>'+safe(feature.properties.kind)+' · not measured noise</p>').addTo(map3d);return}const trees=overlays.trees?map3d.queryRenderedFeatures(event.point,{layers:['atlas-tree-extrusions']}):[];if(trees.length){const p=trees[0].properties;new maplibregl.Popup({closeButton:true,maxWidth:'260px'}).setLngLat(event.lngLat).setHTML(`<strong>${safe(p.name||p.species||'Registered tree')}</strong><p>Recorded height ${Number(p.height).toFixed(1)} m · north–south canopy ${Number(p.canopy).toFixed(1)} m</p><small>City of Sydney register · 3D shape is schematic</small>`).addTo(map3d);return}chooseMapLocation(event.lngLat.lat,event.lngLat.lng)});
       map3d.on('mouseenter','atlas-tree-extrusions',()=>{map3d.getCanvas().style.cursor='pointer'});
       map3d.on('mouseleave','atlas-tree-extrusions',()=>{map3d.getCanvas().style.cursor=''});
       map3d.on('moveend',()=>{if(!map3dReady||!map||!$('mapShell').classList.contains('is-3d'))return;const c=map3d.getCenter(),z=Math.max(10,Math.min(19,map3d.getZoom()));map3dSyncing=true;map.setView([c.lat,c.lng],z,{animate:false});map3dSyncing=false;scheduleRoads();schedule3dTrees();if(lens==='heat')sync3dShadows()});
@@ -930,14 +978,15 @@
   const fmt=v=>typeof v==='number'?`${Math.round(v)} /100`:'—';
   const status=t=>{$('dataStatus').textContent=t};
   const alert=t=>{const e=$('dataAlert');e.textContent=t;e.classList.toggle('visible',!!t)};
-  const roadStatus=t=>{if(lens==='noise')status(t);refreshGlances()};
+  const roadStatus=t=>{if(lens==='noise')status(t);refreshGlances();refreshOverlayButtons()};
   const roadAlert=t=>{if(lens==='noise')alert(t)};
   const meter=$('meter');for(let i=0;i<40;i++){const x=document.createElement('i');meter.appendChild(x)}
   function scoreAt(lat,lng){const set=roadCache.slice().reverse().find(x=>x.bounds.contains([lat,lng]));if(!set)return null;let total=0;const cx=111320*Math.cos(lat*Math.PI/180),cy=111320;for(const r of set.roads){const w=importance[r.type]||0;if(!w)continue;const p=r.points;let min2=Infinity;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i];const ax=(a[1]-lng)*cx,ay=(a[0]-lat)*cy,bx=(b[1]-lng)*cx,by=(b[0]-lat)*cy;const vx=bx-ax,vy=by-ay;const t=Math.max(0,Math.min(1,-(ax*vx+ay*vy)/(vx*vx+vy*vy||1)));const d2=(ax+t*vx)**2+(ay+t*vy)**2;if(d2<min2)min2=d2;if(min2<100)break}if(min2<500*500){const d=Math.sqrt(min2);total+=w*Math.exp(-d/60)}}return Math.min(100,100*(1-Math.exp(-.64*total)))}
   let studyCircle=null,nearestLine=null,nearestEndpoint=null,sourceMeta=null,sunReferenceLayers=null;
   const DATA_APIS={heat:'https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/UHGC/GSR_2024_VegStrata_H3Z11/MapServer/0/query',land:'https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/FeatureServer/0/query'};
   let lens='noise',heatLayer=null,treeLayer=null,landLayer=null,landRing=null,environmentRequest=0;
-  const heatResults=new Map(),landResults=new Map(),trafficResults=new Map();
+  const heatResults=new Map(),landResults=new Map(),trafficResults=new Map(),soundResults=new Map();
+  let soundLayer=null;
   let openRecordKey=null;
   const keyOf=p=>p.lat.toFixed(6)+','+p.lng.toFixed(6);
   const samePoint=(p,q)=>!!p&&!!q&&keyOf(p)===keyOf(q);
@@ -977,38 +1026,144 @@
   function heatProbe(point){
     const key=keyOf(point);if(heatResults.has(key))return heatResults.get(key);
     const entry={state:'loading',feature:null,error:null};heatResults.set(key,entry);
-    environmentQuery('heat',{geometry:point.lng+','+point.lat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'h3_index,Canopy_pc,All_veg_pc,Suburb',resultRecordCount:'2'}).then(features=>{entry.feature=features[0]||null;entry.state='done'}).catch(error=>{entry.state='error';entry.error=error.message}).finally(()=>{if(samePoint(current,point)){refreshGlances();if(lens==='heat')renderEnvironmentInspector();if(overlays.heat||overlays.trees)paintSelectedHeat()}updateCompare()});return entry;
+    environmentQuery('heat',{geometry:point.lng+','+point.lat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'h3_index,Canopy_pc,All_veg_pc,Suburb',resultRecordCount:'2'}).then(features=>{entry.feature=features[0]||null;entry.state='done'}).catch(error=>{entry.state='error';entry.error=error.message}).finally(()=>{if(samePoint(current,point)){refreshGlances();if(lens==='heat')renderEnvironmentInspector();if(overlays.heat||overlays.trees)paintSelectedHeat()}refreshOverlayButtons();updateCompare()});return entry;
   }
   function landProbe(point){
     const key=keyOf(point);if(landResults.has(key))return landResults.get(key);
     const entry={state:'loading',records:[],error:null};landResults.set(key,entry);
     const dLat=1500/111320,dLng=1500/(111320*Math.cos(point.lat*Math.PI/180));
-    environmentQuery('land',{geometry:[point.lng-dLng,point.lat-dLat,point.lng+dLng,point.lat+dLat].join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType,VerDate',resultRecordCount:'1000'}).then(features=>{if(features.length>=1000)throw Error('Too many records to verify full coverage');entry.records=features.filter(f=>f.geometry?.type==='Point').map(f=>({...f,metres:distanceMetres(point,{lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0]})})).filter(f=>f.metres<=1000).sort((a,b)=>a.metres-b.metres);entry.state='done'}).catch(error=>{entry.state='error';entry.error=error.message}).finally(()=>{if(samePoint(current,point)){refreshGlances();if(lens==='land')renderEnvironmentInspector();if(overlays.land)paintLand();sync3dLand()}updateCompare()});return entry;
+    environmentQuery('land',{geometry:[point.lng-dLng,point.lat-dLat,point.lng+dLng,point.lat+dLat].join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType,VerDate',resultRecordCount:'1000'}).then(features=>{if(features.length>=1000)throw Error('Too many records to verify full coverage');entry.records=features.filter(f=>f.geometry?.type==='Point').map(f=>({...f,metres:distanceMetres(point,{lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0]})})).filter(f=>f.metres<=1000).sort((a,b)=>a.metres-b.metres);entry.state='done'}).catch(error=>{entry.state='error';entry.error=error.message}).finally(()=>{if(samePoint(current,point)){refreshGlances();if(lens==='land')renderEnvironmentInspector();if(overlays.land)paintLand();sync3dLand()}refreshOverlayButtons();updateCompare()});return entry;
+  }
+  // Potential noise-source leads from OSM. No acoustical estimate or claim that
+  // an approved development is under construction. Airservices tracks are NOT copied.
+  function sourceKind(tags={}){
+    if(tags.landuse==='construction'||tags.building==='construction'||tags.highway==='construction')return 'construction';
+    if(['rail','tram','station','tram_stop'].includes(tags.railway))return 'rail';
+    if(['nightclub','pub','bar'].includes(tags.amenity)||tags.leisure==='stadium')return 'venue';
+    return null;
+  }
+  function soundProbe(point){
+    const key=keyOf(point);
+    const cached=soundResults.get(key);
+    if(cached&&!(cached.state==='error'&&Date.now()-(cached.failedAt||0)>30000)){paintSound();return cached}
+    if(cached)soundResults.delete(key);
+    const entry={state:'loading',items:[],error:null,checkedAt:null};soundResults.set(key,entry);
+    paintSound();refreshOverlayButtons();
+    const query='[out:json][timeout:12];('+
+      'nwr["landuse"="construction"](around:1200,'+point.lat+','+point.lng+');'+
+      'nwr["building"="construction"](around:1200,'+point.lat+','+point.lng+');'+
+      'nwr["highway"="construction"](around:1200,'+point.lat+','+point.lng+');'+
+      'nwr["railway"~"^(rail|tram|station|tram_stop)$"](around:1200,'+point.lat+','+point.lng+');'+
+      'nwr["amenity"~"^(nightclub|bar|pub)$"](around:1200,'+point.lat+','+point.lng+');'+
+      'nwr["leisure"="stadium"](around:1200,'+point.lat+','+point.lng+');'+
+      ');out center;';
+    (async()=>{
+      let lastError;
+      for(const endpoint of ['https://overpass.private.coffee/api/interpreter','https://overpass-api.de/api/interpreter']){
+        try{
+          const signal=AbortSignal.timeout(13000);
+          const response=await fetch(endpoint+'?data='+encodeURIComponent(query),{signal});
+          if(!response.ok)throw Error('OSM map search returned HTTP '+response.status);
+          const result=await response.json();
+          if(!Array.isArray(result.elements))throw Error(result.remark||'OSM response has no objects');
+          const unique=new Set();
+          entry.items=result.elements.map(e=>{
+            const tags=e.tags||{},lat=Number(e.lat??e.center?.lat),lng=Number(e.lon??e.center?.lon),kind=sourceKind(tags);
+            const id=String(e.type)+'/'+String(e.id);
+            if(!kind||!Number.isFinite(lat)||!Number.isFinite(lng)||unique.has(id))return null;
+            unique.add(id);
+            return {id,name:String(tags.name||({construction:'Construction-tagged area',rail:'Mapped rail infrastructure',venue:'Mapped venue'}[kind])),kind,lat,lng,metres:distanceMetres(point,{lat,lng})};
+          }).filter(Boolean).filter(item=>item.metres<=1700).sort((a,b)=>a.metres-b.metres).slice(0,100);
+          entry.state='done';entry.checkedAt=new Date().toISOString();break;
+        }catch(error){lastError=error}
+      }
+      if(entry.state!=='done'){entry.state='error';entry.failedAt=Date.now();entry.error=lastError?.message||'Source temporarily unavailable'}
+      if(samePoint(point,current)){paintSound();if(lens==='sound')renderSoundInspector();refreshGlances()}
+      refreshOverlayButtons();
+    })();
+    return entry;
+  }
+  function paintSound(){
+    if(soundLayer){soundLayer.remove();soundLayer=null}
+    if(!overlays.sound||!map){sync3dSound();return}
+    const entry=soundResults.get(keyOf(current));
+    if(entry?.state!=='done'){sync3dSound();return}
+    soundLayer=L.layerGroup().addTo(map);
+    const colors={construction:'#d58d50',rail:'#587ba5',venue:'#b36c8f'};
+    for(const item of entry.items){
+      const dot=L.circleMarker([item.lat,item.lng],{radius:7,color:'#fffaf1',weight:2,fillColor:colors[item.kind],fillOpacity:.94}).addTo(soundLayer);
+      dot.bindPopup('<strong>'+safe(item.name)+'</strong><br><small>'+safe(item.kind)+' · mapped point/centre · approx. '+Math.round(item.metres)+' m</small><br><small>Not measured noise; verify dates and activity.</small><br><a target="_blank" rel="noopener noreferrer" href="https://www.openstreetmap.org/'+encodeURIComponent(item.id.split('/')[0])+'/'+encodeURIComponent(item.id.split('/')[1])+'">Inspect OSM record ↗</a>');
+    }
+    sync3dSound();
+  }
+  function renderSoundInspector(){
+    $('inspectName').textContent=current.name.replace(/, Sydney$/,'');
+    const entry=soundResults.get(keyOf(current)),list=$('soundList');
+    if(!entry||entry.state==='loading'){
+      $('soundTitle').textContent='Searching mapped potential noise sources…';
+      $('soundCopy').textContent='Checking nearby tagged objects, not acoustic readings or current construction permits.';
+      list.textContent='Loading OpenStreetMap features around the selected point…';
+    }else if(entry.state==='error'){
+      $('soundTitle').textContent='Noise-source map search unavailable';
+      $('soundCopy').textContent='The source could not be reached. This does not mean the area is quiet.';
+      list.textContent=entry.error||'Please try another location or retry later.';
+    }else{
+      const totals={construction:0,rail:0,venue:0};entry.items.forEach(e=>totals[e.kind]++);
+      $('soundTitle').textContent='Potential sources mapped nearby';
+      $('soundCopy').textContent=totals.construction+' construction-tagged · '+totals.rail+' rail objects · '+totals.venue+' selected venues. Counted map features, not sound events.';
+      list.innerHTML=entry.items.length?entry.items.slice(0,12).map(x=>'<div class="sound-source-row"><b class="sound-type '+x.kind+'">'+safe(x.kind)+'</b><span>'+safe(x.name)+'</span><strong>≈ '+Math.round(x.metres)+' m</strong></div>').join(''):'<p>No objects matched these OSM tags nearby. Unmapped works and sound sources may still exist.</p>';
+      list.insertAdjacentHTML('beforeend','<p class="sound-list-caption">Up to 12 nearest shown. Straight-line distance to an OSM point or geometric centre; rail and construction activity are not verified.</p>');
+    }
+    $('modelStatus').textContent=entry?.state==='done'?'Potential-source location data: © OpenStreetMap contributors, retrieved '+new Date(entry.checkedAt).toLocaleDateString('en-AU')+'. No aircraft tracks or measured sound imported.':'Potential-source data are loading or unavailable; no noise prediction can be made.';
+    updateCompare();
+  }
+  function sync3dSound(){
+    const source=map3dReady&&map3d?.getSource('atlas-sound-candidates');if(!source)return;
+    const entry=soundResults.get(keyOf(current));
+    source.setData(overlays.sound&&entry?.state==='done'?{type:'FeatureCollection',features:entry.items.map(x=>({type:'Feature',geometry:{type:'Point',coordinates:[x.lng,x.lat]},properties:{kind:x.kind,name:x.name}}))}:emptyGeoJSON());
+  }
+  let heatMapState='idle';
+  function refreshOverlayButtons(){
+    const heat=heatResults.get(keyOf(current)),land=landResults.get(keyOf(current)),sound=soundResults.get(keyOf(current));
+    const states={
+      noise:roadFailure?'error':loading||!roads.length?'loading':'ready',
+      sound:!sound?'loading':sound.state==='done'?'ready':sound.state==='error'?'error':'loading',
+      heat:heatMapState==='error'?'error':heatMapState==='ready'&&heat?.state==='done'?'ready':'loading',
+      trees:heatMapState==='error'?'error':heatMapState==='ready'&&heat?.state==='done'?'ready':'loading',
+      land:!land?'loading':land.state==='done'?'ready':land.state==='error'?'error':'loading'
+    };
+    document.querySelectorAll('button[data-overlay]').forEach(button=>{
+      const key=button.dataset.overlay,on=!!overlays[key],state=on?states[key]||'loading':'off';
+      button.dataset.state=state;button.setAttribute('aria-pressed',String(on));
+      button.setAttribute('aria-busy',String(state==='loading'));
+      button.title=state==='loading'?'Loading '+button.textContent.trim()+' source data…':state==='error'?'Source unavailable; click to turn off or revisit later':key==='noise'?'Mapped roads, not measured noise':key==='sound'?'Potential sources, not measured dB':'Toggle map layer';
+    });
   }
   function showLensData(){
     if(lens==='heat'||overlays.heat||overlays.trees){heatProbe(current);if(selected.a)heatProbe(selected.a);if(selected.b)heatProbe(selected.b)}
     if(lens==='land'||overlays.land){landProbe(current);if(selected.a)landProbe(selected.a);if(selected.b)landProbe(selected.b)}
+    if(lens==='sound'||overlays.sound){soundProbe(current);if(selected.a)soundProbe(selected.a);if(selected.b)soundProbe(selected.b)}
     if(overlays.heat||overlays.trees)loadHeatWindow();
     if(overlays.land)paintLand();
   }
-  function clearEnvironmentalLayers(){if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}if(landLayer){landLayer.remove();landLayer=null}if(landRing){landRing.remove();landRing=null}map3dCanopyFeatures=[];sync3dCanopy();sync3dLand()}
+  function clearEnvironmentalLayers(){if(soundLayer){soundLayer.remove();soundLayer=null}sync3dSound();if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}if(landLayer){landLayer.remove();landLayer=null}if(landRing){landRing.remove();landRing=null}map3dCanopyFeatures=[];sync3dCanopy();sync3dLand()}
   function paintSelectedHeat(){if(!(overlays.heat||overlays.trees)||!map)return;const feature=heatResults.get(keyOf(current))?.feature;if(!feature||!(heatLayer||treeLayer)){return} // The selected cell is outlined by the clicked-point marker; the whole grid remains readable.
   }
   function canopyColor(value){return value<.1?'#eaa786':value<.2?'#dbbd81':value<.3?'#b8c495':value<.4?'#8bb79a':value<.5?'#5f9d82':'#307f61'}
   async function loadHeatWindow(){
-    if(!(overlays.heat||overlays.trees)||!map)return;const sequence=++environmentRequest,p={...current};if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}
+    if(!(overlays.heat||overlays.trees)||!map)return;heatMapState='loading';refreshOverlayButtons();const sequence=++environmentRequest,p={...current};if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}
     const latPad=.0028,lngPad=.0037;
     try{
       status('Loading NSW tree-canopy hexagons…');
       const features=await environmentQuery('heat',{geometry:[p.lng-lngPad,p.lat-latPad,p.lng+lngPad,p.lat+latPad].join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'Canopy_pc,h3_index',resultRecordCount:'900'});
       if(sequence!==environmentRequest||!(overlays.heat||overlays.trees)||!samePoint(current,p))return;
       if(features.length>=900)throw Error('Partial canopy area returned. Zoom or choose another point.');
-      if(!features.length){status('No canopy hexagons returned for this area');return}
+      if(!features.length){heatMapState='error';refreshOverlayButtons();status('No canopy hexagons returned for this area');return}
       if(overlays.heat)heatLayer=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:f=>({color:'#f1f8e9',weight:.55,opacity:.6,fillColor:canopyColor(Math.max(0,Math.min(1,Number(f.properties?.Canopy_pc)||0))),fillOpacity:.54})}).addTo(map);
       if(overlays.trees)treeLayer=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:{color:'#16845f',weight:1.3,opacity:.8,fillColor:'#279e70',fillOpacity:overlays.heat?.09:.26}}).addTo(map);
       map3dCanopyFeatures=features;sync3dCanopy();
-      status('NSW canopy · '+features.length+' source hexagons around the point');paintSelectedHeat();
-    }catch(err){if(sequence===environmentRequest&&(overlays.heat||overlays.trees))status('Canopy map unavailable: '+err.message)}
+      heatMapState='ready';refreshOverlayButtons();status('NSW canopy · '+features.length+' source hexagons around the point');paintSelectedHeat();
+    }catch(err){if(sequence===environmentRequest&&(overlays.heat||overlays.trees)){heatMapState='error';refreshOverlayButtons();status('Canopy map unavailable: '+err.message)}}
   }
   function paintLand(){
     if(!overlays.land||!map)return;if(landLayer)landLayer.remove();if(landRing)landRing.remove();
@@ -1023,6 +1178,7 @@
   }
   function renderEnvironmentInspector(){
     if(lens==='noise')return;
+    if(lens==='sound'){renderSoundInspector();return}
     $('inspectName').textContent=current.name.replace(/, Sydney$/,'');
     if(lens==='heat'){
       const e=heatResults.get(keyOf(current));$('heatGraphic').hidden=true;
@@ -1045,17 +1201,17 @@
     updateCompare();
   }
   function setLens(next){
-    if(!['noise','heat','land'].includes(next))return;
+    if(!['noise','sound','heat','land'].includes(next))return;
     if(next===lens)return;
     const previous=lens,previously3d=map3dPreferred&&map3dReady;
     const previousCamera=previously3d?{lat:map3d.getCenter().lat,lng:map3d.getCenter().lng,zoom:map3d.getZoom()}:{lat:map.getCenter().lat,lng:map.getCenter().lng,zoom:map.getZoom()};
     lens=next;document.querySelector('.atlas-fieldcard').dataset.lens=next;
-    for(const id of ['noise','heat','land']){$(id+'Content').hidden=id!==next;$(id+'Content').classList.toggle('active',id===next)}
+    for(const id of ['noise','sound','heat','land']){$(id+'Content').hidden=id!==next;$(id+'Content').classList.toggle('active',id===next)}
     document.querySelectorAll('[data-method]').forEach(el=>el.hidden=el.dataset.method!==next);
-    const context={noise:['01 / NOISE CONTEXT','ROAD DATA · NOT dB','Road proximity is not a sound measurement.','ROAD ORIENTATION · 250 M','Not measured sound','Coral lines = mapped roads; direction diagram is optional','Teal sectors = fewer mapped roads · NOT sound levels','Road data © NSW Spatial Services · CC BY 4.0'],heat:['02 / NEIGHBOURHOOD HEAT','CANOPY · NOT °C','More trees can help with shade. This is not a temperature reading.','TREE COVER','2024–25 aerial imagery','Green areas have more tree canopy','Peach areas have less tree canopy','© NSW Government · canopy access 2024–25'],land:['03 / REPORTED LAND SITES','EPA · NOT SOIL TEST','These are government-notified sites, not contamination maps or proof of exposure.','REPORTED SITES','NSW EPA public notifications','Tan / rust dots = listed EPA sites','Dashed rust ring = 1 km from pin','NSW EPA · CC BY 4.0']}[next];
+    const context={noise:['01 / ROAD GEOMETRY','ROAD DATA · NOT dB','Road proximity is not a sound measurement.','ROAD ORIENTATION · 250 M','Not measured sound','Coral lines = mapped roads; direction diagram is optional','Teal sectors = fewer mapped roads · NOT sound levels','Road data © NSW Spatial Services · CC BY 4.0'],sound:['02 / NOISE-SOURCE CONTEXT','SOURCES · NOT dB','A mapped source or official flight record is not a sound measurement.','POTENTIAL SOUND SOURCES','Time and availability matter','Dots = OSM-mapped source locations','Aircraft and plans require official source review','© OpenStreetMap contributors · ODbL'],heat:['03 / NEIGHBOURHOOD HEAT','CANOPY · NOT °C','More trees can help with shade. This is not a temperature reading.','TREE COVER','2024–25 aerial imagery','Green areas have more tree canopy','Peach areas have less tree canopy','© NSW Government · canopy access 2024–25'],land:['04 / REPORTED LAND SITES','EPA · NOT SOIL TEST','These are government-notified sites, not contamination maps or proof of exposure.','REPORTED SITES','NSW EPA public notifications','Tan / rust dots = listed EPA sites','Dashed rust ring = 1 km from pin','NSW EPA · CC BY 4.0']}[next];
     $('inspectorLabel').textContent=context[0];$('sourceBadge').textContent=context[1];$('lensNote').textContent=context[2];$('legendTitle').textContent=context[3];$('legendSub').textContent=context[4];$('legendStrong').textContent=context[5];$('legendSmall').textContent=context[6];$('legendAttribution').textContent=context[7];
-    $('legendSwatch').className='map-legend-swatch '+(next==='noise'?'road-swatch':next);
-    $('compareIntroText').textContent={noise:'Distance to the nearest mapped road centreline',heat:'Tree canopy share in each selected hexagon',land:'NSW EPA-notified site records within 1 km'}[next];
+    $('legendSwatch').className='map-legend-swatch '+(next==='noise'?'road-swatch':next==='sound'?'land':next);
+    $('compareIntroText').textContent={noise:'Distance to the nearest mapped road centreline',sound:'Potential OSM-mapped sound-source locations; no dB',heat:'Tree canopy share in each selected hexagon',land:'NSW EPA-notified site records within 1 km'}[next];
     alert('');drawGlow();
     if(next==='heat'){updateSolar();lookupGroundElevation()}else{++elevationRequest;$('groundElevation').hidden=true;if(sunReferenceLayers){sunReferenceLayers.remove();sunReferenceLayers=null}}
     if(next==='noise'){loadRoads();updateInspector()}else{renderEnvironmentInspector();showLensData()}
@@ -1069,13 +1225,14 @@
     if(!active.length)return;
     const text=active.length>1?['MULTIPLE MAP LAYERS','Independently toggled','Each colour comes from a separate source','Not a combined risk or noise score','Check each layer’s source in information']:
       active[0]==='noise'?['ROAD GEOMETRY','Not measured noise','Coral lines = mapped roads; diagram is optional','No decibels or sound predictions','NSW road centrelines']:
+      active[0]==='sound'?['POTENTIAL NOISE SOURCES','Not measured at this pin','Points = mapped activities to investigate','No estimated dB or construction timetable','OpenStreetMap + official source links']:
       active[0]==='heat'?['CANOPY & SHADE','Not temperature','Colour = mapped canopy proportion','Not outdoor or indoor heat','NSW 2024–25 canopy data']:
       active[0]==='land'?['EPA NOTIFICATIONS','Not contamination boundaries','Dots = notified sites near the pin','Not a soil safety finding','NSW EPA public records']:
       ['TREE CANOPY','Tree locations are limited','Green polygons = mapped tree cover','3D registered trees: City of Sydney only','NSW canopy and City of Sydney trees'];
     $('legendTitle').textContent=text[0];$('legendSub').textContent=text[1];$('legendStrong').textContent=text[2];$('legendSmall').textContent=text[3];$('legendAttribution').textContent=text[4];
-    $('legendSwatch').className='map-legend-swatch '+(active.length>1?'heat':active[0]==='noise'?'road-swatch':active[0]==='land'?'land':'heat');
+    $('legendSwatch').className='map-legend-swatch '+(active.length>1?'heat':active[0]==='noise'?'road-swatch':active[0]==='sound'?'land':active[0]==='land'?'land':'heat');
   }
-  const overlayLens={noise:'noise',heat:'heat',land:'land',trees:'heat'};
+  const overlayLens={noise:'noise',sound:'sound',heat:'heat',land:'land',trees:'heat'};
   let overlayFocusOrder=['noise'];
   function syncInspectorToOverlays(){
     const active=overlayFocusOrder.filter(k=>overlays[k]);
@@ -1084,7 +1241,7 @@
     const clear=!focused,card=document.querySelector('.atlas-fieldcard');
     card.classList.toggle('no-active-layer',clear);
     $('allLayersOff').hidden=!clear;
-    for(const id of ['noise','heat','land']){
+    for(const id of ['noise','sound','heat','land']){
       const visible=!clear&&id===lens;
       $(id+'Content').hidden=!visible;
       $(id+'Content').classList.toggle('active',visible);
@@ -1098,14 +1255,16 @@
     if(!overlays.noise){if(studyCircle){studyCircle.remove();studyCircle=null}if(nearestLine){nearestLine.remove();nearestLine=null}if(nearestEndpoint){nearestEndpoint.remove();nearestEndpoint=null}}
     drawGlow();renderDirectional();
     if(overlays.noise)drawStudyArea(metricsAt(current.lat,current.lng));
-    if(overlays.heat||overlays.trees)loadHeatWindow();else{++environmentRequest;if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}map3dCanopyFeatures=[];sync3dCanopy()}
+    if(overlays.heat||overlays.trees)loadHeatWindow();else{heatMapState='idle';++environmentRequest;if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}map3dCanopyFeatures=[];sync3dCanopy()}
+    if(overlays.sound)soundProbe(current);else{if(soundLayer){soundLayer.remove();soundLayer=null}sync3dSound()}
     if(overlays.land){landProbe(current);paintLand()}else{if(landLayer){landLayer.remove();landLayer=null}if(landRing){landRing.remove();landRing=null}sync3dLand()}
-    sync3dRoads();sync3dNoiseContext();sync3dCanopy();sync3dLand();schedule3dTrees();
+    sync3dRoads();sync3dNoiseContext();sync3dCanopy();sync3dLand();sync3dSound();schedule3dTrees();
+    refreshOverlayButtons();
   }
   function lensZoomLimit(mode){
     const mobile=window.matchMedia('(max-width:760px)').matches;
     // Make the sampled area visible rather than leaving its entire boundary offscreen.
-    return mode==='land'?(mobile?13.65:14.35):mode==='noise'?(mobile?15.8:16.7):(mobile?15.7:16.8);
+    return mode==='land'||mode==='sound'?(mobile?13.65:14.35):mode==='noise'?(mobile?15.8:16.7):(mobile?15.7:16.8);
   }
   function transitionLensCamera(mode,camera,forceOverview=false){
     if(!map)return;
@@ -1124,22 +1283,26 @@
   function clipSegmentToCircle(ax,ay,bx,by,radius){const dx=bx-ax,dy=by-ay,A=dx*dx+dy*dy;if(A<1e-9)return 0;const B=2*(ax*dx+ay*dy),C=ax*ax+ay*ay-radius*radius,D=B*B-4*A*C;if(D<=0)return C<=0?Math.sqrt(A):0;const root=Math.sqrt(D),t0=(-B-root)/(2*A),t1=(-B+root)/(2*A);return Math.max(0,Math.min(1,t1)-Math.max(0,t0))*Math.sqrt(A)}
   function metricsAt(lat,lng){const hit=roadCache.slice().reverse().find(x=>x.bounds.contains([lat,lng]));if(!hit)return null;const cx=111320*Math.cos(lat*Math.PI/180),cy=111320;let nearest=Infinity,nearestCoord=null,length200=0;for(const road of hit.roads){const p=road.points;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],ax=(a[1]-lng)*cx,ay=(a[0]-lat)*cy,bx=(b[1]-lng)*cx,by=(b[0]-lat)*cy,dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;if(l2<1e-9)continue;const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/l2));const nx=ax+t*dx,ny=ay+t*dy,dist=Math.hypot(nx,ny);if(dist<nearest){nearest=dist;nearestCoord=[lat+ny/cy,lng+nx/cx]}length200+=clipSegmentToCircle(ax,ay,bx,by,200)}}if(!Number.isFinite(nearest))return null;const b=sourceMeta?.bounds,latMargin=200/cy,lngMargin=200/cx;const edge=hit.source==='NSW open-data snapshot'&&b?b:{south:hit.bounds.getSouth(),north:hit.bounds.getNorth(),west:hit.bounds.getWest(),east:hit.bounds.getEast()};const complete=lat-edge.south>latMargin&&edge.north-lat>latMargin&&lng-edge.west>lngMargin&&edge.east-lng>lngMargin;return {distance:nearest,length200,nearestCoord,source:hit.source,complete}}
   function updateLivability(){
-    const road=metricsAt(current.lat,current.lng),heat=heatResults.get(keyOf(current)),land=landResults.get(keyOf(current));
-    const raw=heat?.state==='done'?heat.feature?.properties?.Canopy_pc:null;
+    const road=metricsAt(current.lat,current.lng),heat=heatResults.get(keyOf(current)),land=landResults.get(keyOf(current)),sound=soundResults.get(keyOf(current));
+    const canopyOn=overlays.heat||overlays.trees;
+    const raw=canopyOn&&heat?.state==='done'?heat.feature?.properties?.Canopy_pc:null;
     const canopy=raw===null||raw===undefined||raw===''?NaN:Number(raw);
     const mapped=Number.isFinite(canopy)&&canopy>=0&&canopy<=1;
-    $('evidenceRoad').textContent=road?Math.round(road.distance).toLocaleString()+' m':roadFailure?'Unavailable':'Checking…';
-    $('evidenceCanopy').textContent=mapped?Math.round(canopy*100)+'%':heat?.state==='error'?'Unavailable':heat?.state==='done'?'No mapped cell':'Checking…';
-    $('evidenceLand').textContent=land?.state==='done'?String(land.records.length):land?.state==='error'?'Unavailable':'Checking…';
-    const ready=[!!road,mapped,land?.state==='done'].filter(Boolean).length;
-    $('ratingSummary').textContent='Three independent observations. '+ready+' of 3 have a usable result here. Missing data are not zero, and these figures are not a property rating.';
-    $('ratingUncertainty').textContent=(road?'Road line geometry: '+road.source+(road.complete?' (local coverage checked).':' (near a coverage boundary).'):'Road geometry: unavailable or still loading.')+' Tree cover: '+(mapped?'2024–25 NSW mapped hexagon.':'not available at this point.')+' EPA: '+(land?.state==='done'?'public notified-point records, not parcel boundaries.':'lookup incomplete or unavailable.');
-    $('ratingHero').setAttribute('aria-label','Environmental evidence summary. '+ready+' of 3 observations available; no overall home rating.');
-    $('ratingLandNote').textContent='No measured sound, indoor heat, dwelling condition or soil sample is included. Open “How do we know?” for each source and its limitations.';
+    $('ratingNumber').textContent='Not rated';
+    $('ratingStars').textContent='☆☆☆☆☆';
+    $('ratingTopline').textContent='OVERALL LIVABILITY · NOT YET RATED';
+    $('ratingCanopyRow').hidden=!canopyOn;
+    $('ratingTreeBar').style.setProperty('--progress',mapped?(canopy*100).toFixed(1)+'%':'0%');
+    const independent=[road?'Road geometry available':'Roads unknown',sound?.state==='done'?'Noise-source map leads available':'Noise-source lookup incomplete',land?.state==='done'?'EPA records checked':'EPA records not yet checked'];
+    if(canopyOn)independent.push(mapped?'Canopy '+Math.round(canopy*100)+'% in mapped cell':'Canopy unavailable');
+    $('ratingSummary').textContent='A home rating remains withheld. '+independent.join(' · ')+'.';
+    $('ratingUncertainty').textContent='No measured sound or validated dwelling data for this pin. '+(canopyOn?'Tree cover is a separate observation, not a property score.':'Enable Heat or Trees to inspect canopy.');
+    $('ratingHero').setAttribute('aria-label','Overall home rating not available; five empty stars because required evidence is missing.');
+    $('ratingLandNote').textContent='Nearby records may flag topics to investigate, but neither absence nor presence proves safety, noise or current construction.';
   }
   function refreshGlances(){updateLivability()}
   let glanceTimer;
-  function primeGlances(point){refreshGlances();renderTrafficContext();clearTimeout(glanceTimer);glanceTimer=setTimeout(()=>{if(samePoint(current,point)){heatProbe(point);landProbe(point);trafficProbe(point);refreshGlances()}},220)}
+  function primeGlances(point){refreshGlances();renderTrafficContext();clearTimeout(glanceTimer);glanceTimer=setTimeout(()=>{if(samePoint(current,point)){if(overlays.heat||overlays.trees)heatProbe(point);if(overlays.land)landProbe(point);if(overlays.sound)soundProbe(point);trafficProbe(point);refreshGlances();refreshOverlayButtons()}},220)}
   function drawStudyArea(m){if(!map)return;if(studyCircle){studyCircle.remove();studyCircle=null}if(nearestLine){nearestLine.remove();nearestLine=null}if(nearestEndpoint){nearestEndpoint.remove();nearestEndpoint=null}if(!overlays.noise)return;const hasRose=!!directionalProfile&&directionalProfile.peak!==null,close=map.getZoom()>=17.5;studyCircle=L.circle([current.lat,current.lng],{radius:200,color:'#087b7a',opacity:close?.12:hasRose?.27:.9,weight:close?1:hasRose?1.5:2.5,dashArray:'8 7',fillColor:'#62b6a6',fillOpacity:close?.008:hasRose?.025:.12,interactive:false}).addTo(map);if(m&&m.distance>1&&m.distance<800&&m.nearestCoord){nearestLine=L.polyline([[current.lat,current.lng],m.nearestCoord],{color:'#df684c',weight:close?2:3.5,opacity:close?.4:.75,interactive:false}).addTo(map);nearestEndpoint=L.circleMarker(m.nearestCoord,{radius:close?3:5,color:'#fff9ed',weight:2,fillColor:'#da5f44',fillOpacity:close?.6:1,interactive:false}).addTo(map)}}
   const radians=degrees=>degrees*Math.PI/180;
   const degrees=rads=>rads*180/Math.PI;
@@ -1217,6 +1380,7 @@
   function comparisonMetric(p){
     if(!p)return '—';
     if(lens==='noise'){const m=metricsAt(p.lat,p.lng);return m?Math.round(m.distance)+' m':'—'}
+    if(lens==='sound'){const e=soundResults.get(keyOf(p));return e?.state==='done'?e.items.length+' map leads':e?.state==='error'?'Unavailable':'Loading…'}
     if(lens==='heat'){const e=heatResults.get(keyOf(p));if(!e||e.state==='loading')return 'Loading…';if(e.state!=='done'||!e.feature)return 'No data';const v=Number(e.feature.properties?.Canopy_pc);return Number.isFinite(v)?Math.round(v*100)+'% canopy':'No data'}
     const e=landResults.get(keyOf(p));if(!e||e.state==='loading')return 'Loading…';return e.state==='done'?e.records.length+' '+(e.records.length===1?'record':'records'):'No data';
   }
@@ -1225,7 +1389,7 @@
     $('comparisonIntro').hidden=!comparing;$('compareHint').hidden=!compareMode;
     $('setA').innerHTML=comparing?'Compare two other places <span aria-hidden="true">↗</span>':'Compare with another place <span aria-hidden="true">↗</span>';
     for(const k of ['a','b']){const p=selected[k],u=k.toUpperCase();$('comp'+u+'Name').textContent=p?.name||(k==='b'&&compareMode?'Choose another point':'Choose location');$('comp'+u+'Value').textContent=comparisonMetric(p)}
-    const disclaimers={noise:'Distances to mapped road lines; not a comparison of noise or sleep quality.',heat:'Each percentage comes from the small hexagon containing that point. Not air or indoor temperature.',land:'Counts of EPA notifications within 1 km. More records does not measure contamination or health exposure.'};
+    const disclaimers={noise:'Distances to mapped road lines; not a comparison of noise or sleep quality.',sound:'OSM-tagged locations only; no measured decibels, operating hours or current building approvals.',heat:'Each percentage comes from the small hexagon containing that point. Not air or indoor temperature.',land:'Counts of EPA notifications within 1 km. More records does not measure contamination or health exposure.'};
     $('compFoot').textContent=selected.b?disclaimers[lens]:compareMode?'Select another point on the map or from the suburb shortcuts.':disclaimers[lens];
     $('resetCompare').hidden=!selected.a;$('compareHint').textContent=compareMode?'Point A saved. Choose another location to compare.':selected.a&&selected.b?'Compare another pair, or close to inspect the selected point.':'Select a point on the map to inspect it.';
     const step=$('mapStep');if(step)step.innerHTML=compareMode?'First place saved <em> / Choose another</em>':'Tap the map <em> / Move the pin</em>';
