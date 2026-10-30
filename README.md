@@ -2,7 +2,7 @@
 
 An interactive, evidence-aware map for exploring environmental context around buildings and places in Sydney, NSW.
 
-**[Try the live atlas](https://sydney-sound-atlas-ava.wldud5192.chatgpt.site/)**
+**[Try the live atlas](https://map.lifeos.studio/)**
 
 ## Explore
 
