@@ -513,11 +513,11 @@
     .overlay-toggle{position:relative;overflow:hidden;isolation:isolate;transition:color .18s,background-color .18s,border-color .18s}
     .overlay-toggle[data-state=ready][aria-pressed=true]{background:#1f6254;color:white}
     .overlay-toggle[data-state=loading][aria-pressed=true]{background:#f4f7ed;color:#32675c;border:1px solid #b7d0bf}
-    .overlay-toggle[data-state=loading][aria-pressed=true]::before{content:'';position:absolute;pointer-events:none;left:-8%;right:-8%;height:78%;bottom:-55%;border-radius:48% 56% 0 0;background:linear-gradient(180deg,#7ebaa795,#287763a8);transform:rotate(-4deg);animation:atlas-wave-fill 2.4s ease-in-out infinite alternate}
+    .overlay-toggle[data-state=loading][aria-pressed=true]::before{content:'';position:absolute;pointer-events:none;left:-8%;width:116%;height:125%;top:52%;background:linear-gradient(180deg,#9ccdb49a,#327b6994);clip-path:polygon(0.0% 12.0%,3.1% 14.3%,6.3% 16.2%,9.4% 17.5%,12.5% 18.0%,15.6% 17.5%,18.8% 16.2%,21.9% 14.3%,25.0% 12.0%,28.1% 9.7%,31.3% 7.8%,34.4% 6.5%,37.5% 6.0%,40.6% 6.5%,43.8% 7.8%,46.9% 9.7%,50.0% 12.0%,53.1% 14.3%,56.3% 16.2%,59.4% 17.5%,62.5% 18.0%,65.6% 17.5%,68.8% 16.2%,71.9% 14.3%,75.0% 12.0%,78.1% 9.7%,81.3% 7.8%,84.4% 6.5%,87.5% 6.0%,90.6% 6.5%,93.8% 7.8%,96.9% 9.7%,100.0% 12.0%,100% 100%,0% 100%);animation:atlas-wave-fill 3.1s ease-in-out infinite alternate}
     .overlay-toggle[data-state=loading][aria-pressed=true]::after{content:'';position:absolute;pointer-events:none;inset:-75% auto -75% -45%;width:35%;background:linear-gradient(90deg,transparent,#ffffffbd,transparent);transform:rotate(18deg);animation:atlas-reflection 1.7s linear infinite}
     .overlay-toggle[data-state=error][aria-pressed=true]{background:#fff9ed;border:1px dashed #b78970;color:#8a5b49}
     .overlay-toggle[data-state=error][aria-pressed=true]::before,.overlay-toggle[data-state=error][aria-pressed=true]::after{content:none}
-    @keyframes atlas-wave-fill{0%{bottom:-57%;border-radius:44% 54% 0 0;transform:rotate(-5deg)}55%{bottom:-28%;border-radius:56% 46% 0 0;transform:rotate(4deg)}100%{bottom:-40%;border-radius:48% 56% 0 0;transform:rotate(-2deg)}}
+    @keyframes atlas-wave-fill{0%{top:57%;transform:translateX(-4%)}55%{top:33%;transform:translateX(3%)}100%{top:44%;transform:translateX(-2%)}}
     @keyframes atlas-reflection{0%{left:-55%}100%{left:130%}}
     .sound-source-list{margin:13px 0 10px;border:1px solid #d7e5db;border-radius:13px;overflow:hidden;background:#fffefa}
     .sound-source-list>p{padding:11px 13px;font-size:10px;color:#6f8175;line-height:1.6}
@@ -573,7 +573,7 @@
         <div class="env-probe active" id="noiseContent" role="region" aria-label="Road context details">
         <h2 class="proximity-title" id="proximityTitle">Checking the nearest road…</h2>
         <p class="proximity-copy" id="proximityCopy">Select any place to see how mapped roads relate to it.</p>
-        <div class="direction-banner" id="directionBanner"><div class="direction-swatch" aria-hidden="true"></div><div><strong id="directionTitle">Checking road directions…</strong><span>The optional direction diagram reflects road shapes, not sound.</span></div><button type="button" id="roseToggle" aria-pressed="false">Show diagram</button></div>
+        <div class="direction-banner" id="directionBanner"><div class="direction-swatch" aria-hidden="true"></div><div><strong id="directionTitle">Checking road directions…</strong><span>The optional direction diagram reflects road shapes, not sound.</span></div><button type="button" id="roseToggle" aria-pressed="true">Hide diagram</button></div>
         <div class="traffic-context" id="trafficContext" aria-live="polite"><strong id="trafficHeadline">Checking official traffic count stations…</strong><p id="trafficCaveat">A nearby counter is not a sound meter at your address.</p><details><summary>Observation, distance and limitations</summary><p id="trafficDetail">Looking for a measured station near this point.</p><a href="https://spatial.infrastructure.gov.au/server/rest/services/Hosted/Harmonised_Traffic_Counts/FeatureServer" target="_blank" rel="noopener noreferrer">National Harmonised Traffic Counts · official source ↗</a></details></div>
         <details class="reading-details"><summary>See road distance &amp; geometry</summary><div class="reading-inner">
         <div class="distance-graphic" id="distanceGraphic" data-empty="true" role="img" aria-label="Schematic from selected spot to nearest mapped road; not to scale"><div class="distance-track"></div><div class="distance-road"></div><span class="spot-label">Your point</span><span class="road-label">Mapped road</span><span class="distance-readout" id="inspectScore">—</span></div>
@@ -751,7 +751,7 @@
   const overlays={noise:true,sound:false,heat:false,land:false,trees:false};
   let precisionMode=false,selectionRequest=0,buildingAbort=null,buildingCache=new Map();
   let map3d=null,map3dReady=false,map3dPreferred=true,map3dUnsupported=false,map3dSyncing=false,map3dCanopyFeatures=[],lastShadowKey='';
-  let basemap='aerial',baseMap2d=null,imagery2d=null,directional2d=null,directionalProfile=null,noisePulseTimer=null,showRoadRose=false;
+  let basemap='aerial',baseMap2d=null,imagery2d=null,directional2d=null,directionalProfile=null,noisePulseTimer=null,showRoadRose=true;
   try{const saved=localStorage.getItem('atlas-basemap-style');if(['map','aerial','hybrid'].includes(saved))basemap=saved}catch{}
   let treeTimer=null,treeAbort=null,treeRequest=0,elevationRequest=0;
   const emptyGeoJSON=()=>({type:'FeatureCollection',features:[]});
@@ -772,24 +772,39 @@
       map3d.setPaintProperty('atlas-imagery','raster-opacity',basemap==='hybrid'?0.65:0.97);
     }
   }
+  function provisionalRoadCones(p){
+    // An immediate shape preview with NO invented road-orientation or acoustic values.
+    const ly=111320,lx=ly*Math.max(.2,Math.cos(p.lat*Math.PI/180)),features=[];
+    for(let k=0;k<12;k++){
+      const lo=(k*30+2)*Math.PI/180,hi=((k+1)*30-2)*Math.PI/180;
+      const arc=(r,rev)=>Array.from({length:7},(_,i)=>{const t=(rev?6-i:i)/6,angle=lo+(hi-lo)*t;return [p.lng+Math.cos(angle)*r/lx,p.lat+Math.sin(angle)*r/ly]});
+      const ring=[...arc(190,false),...arc(36,true)];ring.push(ring[0].slice());
+      features.push({type:'Feature',geometry:{type:'Polygon',coordinates:[ring]},properties:{level:.25,preview:true}});
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function roadSectorGeometry(zoom){
+    if(!overlays.noise||!showRoadRose||zoom>=17)return emptyGeoJSON();
+    return directionalProfile&&directionModel?directionModel.toGeoJSON(directionalProfile,current.lat,current.lng,0,directionModel.visualScale(zoom,current.lat)):provisionalRoadCones(current);
+  }
   function renderDirectional(){
     if(directional2d){directional2d.remove();directional2d=null}
+    if(!map)return;
     const hit=roadCache.slice().reverse().find(x=>x.bounds.contains([current.lat,current.lng]));
     const m=metricsAt(current.lat,current.lng);
     directionalProfile=overlays.noise&&hit&&m?.complete&&directionModel?directionModel.profile(hit.roads,current.lat,current.lng):null;
-    if(overlays.noise&&directionalProfile?.peak!==null&&directionalProfile){
-      const heading=Math.round(directionalProfile.peak*30);
-      $('directionTitle').textContent=`Most nearby mapped road geometry · ${compass8(heading)}`;
+    if(overlays.noise){
+      const ready=directionalProfile?.peak!==null&&!!directionalProfile;
+      $('directionTitle').textContent=ready?'Most nearby mapped road geometry · '+compass8(Math.round(directionalProfile.peak*30)):'Neutral cone preview · waiting for mapped roads';
       if(showRoadRose&&map.getZoom()<17){
-        const scale=directionModel.visualScale(map.getZoom(),current.lat);
-        const data=directionModel.toGeoJSON(directionalProfile,current.lat,current.lng,0,scale);
-        directional2d=L.geoJSON(data,{interactive:false,style:f=>{
+        const scale=directionModel?.visualScale?.(map.getZoom(),current.lat)??1;
+        directional2d=L.geoJSON(roadSectorGeometry(map.getZoom()),{interactive:false,style:f=>{
+          if(f.properties.preview)return {color:'#78a69a',weight:.85,opacity:.5,dashArray:'3 5',fillColor:'#93bcb0',fillOpacity:.07};
           const level=f.properties.level;
-          return {color:'#fff5da',weight:.7,opacity:.12+.1*scale,fillColor:directionColor(level),fillOpacity:(.07+.17*level)*(.5+.5*scale)};
-        }}).addTo(map);
-        directional2d.bringToBack();
+          return {color:'#fff5da',weight:.7,opacity:.12+.1*scale,fillColor:directionColor(level),fillOpacity:(.12+.25*level)*(.5+.5*scale)};
+        }}).addTo(map);directional2d.bringToBack();
       }
-    }else $('directionTitle').textContent='Direction profile not available yet';
+    }else $('directionTitle').textContent='Road direction overlay off';
     sync3dNoiseContext(m);
   }
   function directionColor(level){return level>=.75?'#f34d57':level>=.5?'#f9904f':level>=.25?'#f4cc65':'#45bbaa'}
@@ -808,7 +823,7 @@
     const area=map3d.getSource('atlas-noise-area'),link=map3d.getSource('atlas-noise-nearest'),label=map3d.getSource('atlas-noise-label'),wedges=map3d.getSource('atlas-noise-wedges');
     if(!area||!link||!label||!wedges)return;
     if(!overlays.noise) {area.setData(emptyGeoJSON());link.setData(emptyGeoJSON());label.setData(emptyGeoJSON());wedges.setData(emptyGeoJSON());return}
-    wedges.setData(showRoadRose&&map3d.getZoom()<17&&directionalProfile?directionModel.toGeoJSON(directionalProfile,current.lat,current.lng,0,directionModel.visualScale(map3d.getZoom(),current.lat)):emptyGeoJSON());
+    wedges.setData(roadSectorGeometry(map3d.getZoom()));
     const centre=[current.lng,current.lat],latScale=111320,lonScale=latScale*Math.cos(current.lat*Math.PI/180);
     const circle=Array.from({length:97},(_,i)=>{const angle=i*Math.PI*2/96;return [current.lng+200*Math.cos(angle)/lonScale,current.lat+200*Math.sin(angle)/latScale]});
     area.setData({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Polygon',coordinates:[circle]},properties:{}}]});
@@ -820,12 +835,15 @@
     label.setData({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:mid},properties:{text:Math.round(m.distance)+' m to road'}}]});
   }
   function sync3dCanopy(){const source=map3dReady&&map3d?.getSource('atlas-canopy');if(!source)return;source.setData(overlays.heat||overlays.trees?{type:'FeatureCollection',features:map3dCanopyFeatures}:emptyGeoJSON());for(const [id,on] of [['atlas-canopy-cells',overlays.heat],['atlas-tree-canopy',overlays.trees]])if(map3d.getLayer(id))map3d.setLayoutProperty(id,'visibility',on?'visible':'none')}
+  let lastVerifiedLand3d=emptyGeoJSON();
   function sync3dLand(){
     const source=map3dReady&&map3d?.getSource('atlas-epa-points');if(!source)return;
+    if(!overlays.land){source.setData(emptyGeoJSON());return}
     const entry=landResults.get(keyOf(current));
-    source.setData(overlays.land&&entry?.state==='done'?{type:'FeatureCollection',features:entry.records.map(r=>({type:'Feature',geometry:r.geometry,properties:r.properties||{}}))}:emptyGeoJSON());
+    if(entry?.state==='done')lastVerifiedLand3d={type:'FeatureCollection',features:entry.records.map(r=>({type:'Feature',geometry:r.geometry,properties:r.properties||{}}))};
+    source.setData(lastVerifiedLand3d);
   }
-  function schedule3dTrees(){
+    function schedule3dTrees(){
     if(treeTimer)clearTimeout(treeTimer);
     if(!map3dReady||!window.AtlasTreeGeometry)return;
     if(map3d.getLayer('atlas-tree-extrusions'))map3d.setLayoutProperty('atlas-tree-extrusions','visibility',overlays.trees?'visible':'none');
@@ -1084,10 +1102,10 @@
     return entry;
   }
   function paintSound(){
-    if(soundLayer){soundLayer.remove();soundLayer=null}
-    if(!overlays.sound||!map){sync3dSound();return}
+    if(!overlays.sound||!map){if(soundLayer){soundLayer.remove();soundLayer=null}sync3dSound();return}
     const entry=soundResults.get(keyOf(current));
-    if(entry?.state!=='done'){sync3dSound();return}
+    if(entry?.state!=='done'){sync3dSound();return} // Show last successful markers while fetching.
+    if(soundLayer){soundLayer.remove();soundLayer=null}
     soundLayer=L.layerGroup().addTo(map);
     const colors={construction:'#d58d50',rail:'#587ba5',venue:'#b36c8f'};
     for(const item of entry.items){
@@ -1117,16 +1135,19 @@
     $('modelStatus').textContent=entry?.state==='done'?'Potential-source location data: © OpenStreetMap contributors, retrieved '+new Date(entry.checkedAt).toLocaleDateString('en-AU')+'. No aircraft tracks or measured sound imported.':'Potential-source data are loading or unavailable; no noise prediction can be made.';
     updateCompare();
   }
+  let lastVerifiedSound3d=emptyGeoJSON();
   function sync3dSound(){
     const source=map3dReady&&map3d?.getSource('atlas-sound-candidates');if(!source)return;
+    if(!overlays.sound){source.setData(emptyGeoJSON());return}
     const entry=soundResults.get(keyOf(current));
-    source.setData(overlays.sound&&entry?.state==='done'?{type:'FeatureCollection',features:entry.items.map(x=>({type:'Feature',geometry:{type:'Point',coordinates:[x.lng,x.lat]},properties:{kind:x.kind,name:x.name}}))}:emptyGeoJSON());
+    if(entry?.state==='done')lastVerifiedSound3d={type:'FeatureCollection',features:entry.items.map(x=>({type:'Feature',geometry:{type:'Point',coordinates:[x.lng,x.lat]},properties:{kind:x.kind,name:x.name}}))};
+    source.setData(lastVerifiedSound3d);
   }
-  let heatMapState='idle';
+    let heatMapState='idle';
   function refreshOverlayButtons(){
     const heat=heatResults.get(keyOf(current)),land=landResults.get(keyOf(current)),sound=soundResults.get(keyOf(current));
     const states={
-      noise:roadFailure?'error':loading||!roads.length?'loading':'ready',
+      noise:roadFailure?'error':roads.length?'ready':'loading',
       sound:!sound?'loading':sound.state==='done'?'ready':sound.state==='error'?'error':'loading',
       heat:heatMapState==='error'?'error':heatMapState==='ready'&&heat?.state==='done'?'ready':'loading',
       trees:heatMapState==='error'?'error':heatMapState==='ready'&&heat?.state==='done'?'ready':'loading',
@@ -1146,29 +1167,43 @@
     if(overlays.heat||overlays.trees)loadHeatWindow();
     if(overlays.land)paintLand();
   }
-  function clearEnvironmentalLayers(){if(soundLayer){soundLayer.remove();soundLayer=null}sync3dSound();if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}if(landLayer){landLayer.remove();landLayer=null}if(landRing){landRing.remove();landRing=null}map3dCanopyFeatures=[];sync3dCanopy();sync3dLand()}
+  function clearEnvironmentalLayers(){/* Keep verified layers while new sources are loading. */if(landRing){landRing.remove();landRing=null}sync3dSound();sync3dCanopy();sync3dLand()}
   function paintSelectedHeat(){if(!(overlays.heat||overlays.trees)||!map)return;const feature=heatResults.get(keyOf(current))?.feature;if(!feature||!(heatLayer||treeLayer)){return} // The selected cell is outlined by the clicked-point marker; the whole grid remains readable.
   }
   function canopyColor(value){return value<.1?'#eaa786':value<.2?'#dbbd81':value<.3?'#b8c495':value<.4?'#8bb79a':value<.5?'#5f9d82':'#307f61'}
+  function paintCanopyFeatures(features){
+    if(overlays.heat){
+      const next=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:f=>({color:'#f1f8e9',weight:.55,opacity:.6,fillColor:canopyColor(Math.max(0,Math.min(1,Number(f.properties?.Canopy_pc)||0))),fillOpacity:.54})}).addTo(map);
+      if(heatLayer)heatLayer.remove();heatLayer=next;
+    }else if(heatLayer){heatLayer.remove();heatLayer=null}
+    if(overlays.trees){
+      const next=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:{color:'#16845f',weight:1.3,opacity:.8,fillColor:'#279e70',fillOpacity:overlays.heat?.09:.26}}).addTo(map);
+      if(treeLayer)treeLayer.remove();treeLayer=next;
+    }else if(treeLayer){treeLayer.remove();treeLayer=null}
+    map3dCanopyFeatures=features;sync3dCanopy();
+  }
   async function loadHeatWindow(){
-    if(!(overlays.heat||overlays.trees)||!map)return;heatMapState='loading';refreshOverlayButtons();const sequence=++environmentRequest,p={...current};if(heatLayer){heatLayer.remove();heatLayer=null}if(treeLayer){treeLayer.remove();treeLayer=null}
-    const latPad=.0028,lngPad=.0037;
+    if(!(overlays.heat||overlays.trees)||!map)return;
+    if(!overlays.heat&&heatLayer){heatLayer.remove();heatLayer=null}
+    if(!overlays.trees&&treeLayer){treeLayer.remove();treeLayer=null}
+    heatMapState='loading';refreshOverlayButtons();
+    const sequence=++environmentRequest,p={...current},latPad=.0028,lngPad=.0037;
     try{
-      status('Loading NSW tree-canopy hexagons…');
+      status('Refreshing NSW tree-canopy hexagons in background…');
       const features=await environmentQuery('heat',{geometry:[p.lng-lngPad,p.lat-latPad,p.lng+lngPad,p.lat+latPad].join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'Canopy_pc,h3_index',resultRecordCount:'900'});
       if(sequence!==environmentRequest||!(overlays.heat||overlays.trees)||!samePoint(current,p))return;
       if(features.length>=900)throw Error('Partial canopy area returned. Zoom or choose another point.');
-      if(!features.length){heatMapState='error';refreshOverlayButtons();status('No canopy hexagons returned for this area');return}
-      if(overlays.heat)heatLayer=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:f=>({color:'#f1f8e9',weight:.55,opacity:.6,fillColor:canopyColor(Math.max(0,Math.min(1,Number(f.properties?.Canopy_pc)||0))),fillOpacity:.54})}).addTo(map);
-      if(overlays.trees)treeLayer=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:{color:'#16845f',weight:1.3,opacity:.8,fillColor:'#279e70',fillOpacity:overlays.heat?.09:.26}}).addTo(map);
-      map3dCanopyFeatures=features;sync3dCanopy();
-      heatMapState='ready';refreshOverlayButtons();status('NSW canopy · '+features.length+' source hexagons around the point');paintSelectedHeat();
-    }catch(err){if(sequence===environmentRequest&&(overlays.heat||overlays.trees)){heatMapState='error';refreshOverlayButtons();status('Canopy map unavailable: '+err.message)}}
+      if(!features.length)throw Error('No canopy hexagons returned for this area');
+      paintCanopyFeatures(features);heatMapState='ready';
+      refreshOverlayButtons();status('NSW canopy · '+features.length+' source hexagons around the point');paintSelectedHeat();
+    }catch(err){if(sequence===environmentRequest&&(overlays.heat||overlays.trees)){heatMapState='error';refreshOverlayButtons();status('Canopy update unavailable; keeping previously mapped trees. '+err.message)}}
   }
-  function paintLand(){
-    if(!overlays.land||!map)return;if(landLayer)landLayer.remove();if(landRing)landRing.remove();
+    function paintLand(){
+    if(!overlays.land||!map)return;const entry=landResults.get(keyOf(current));
+    if(entry?.state!=='done')return;
+    if(landLayer)landLayer.remove();if(landRing)landRing.remove();
     landRing=L.circle([current.lat,current.lng],{radius:1000,color:'#a95640',opacity:1,weight:3,dashArray:'8 7',fillColor:'#eeb79e',fillOpacity:.12,interactive:false}).addTo(map);
-    landLayer=L.layerGroup().addTo(map);const entry=landResults.get(keyOf(current));if(entry?.state!=='done')return;
+    landLayer=L.layerGroup().addTo(map);
     for(const record of entry.records){const f=record.properties||{},loc=[record.geometry.coordinates[1],record.geometry.coordinates[0]];
       const isRegulated=/currently regulated/i.test(f.ManagementClass||'');const mark=L.circleMarker(loc,{radius:9,weight:3,color:'#fffef4',fillColor:isRegulated?'#a94f37':'#c99676',fillOpacity:.98}).addTo(landLayer);
       mark.bindPopup('<strong>'+safe(f.SiteName||'EPA-notified site')+'</strong><br>'+safe([f.SiteStreet,f.Suburb].filter(Boolean).join(', '))+'<br><small>'+safe(f.ManagementClass||'Management status not supplied')+'</small><br><small>'+Math.round(record.metres)+' m from selected point · straight-line</small>');
@@ -1526,45 +1561,54 @@
   async function queryNSW(bounds,signal){const bbox=[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()].map(x=>x.toFixed(6)).join(',');const params=new URLSearchParams({where:'1=1',geometry:bbox,geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'roadnamelabel',returnGeometry:'true',outSR:'4326',resultRecordCount:'2000',f:'geojson'});const url='https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Land_Parcel_Property_Theme/FeatureServer/1/query?'+params;const response=await fetch(url,{signal});if(!response.ok)throw Error('NSW roads '+response.status);const geo=await response.json();if(geo.error)throw Error('NSW roads: '+geo.error.message);if((geo.features?.length||0)>=1950)throw Error('Too many road segments: zoom in');return parseNSW(geo)}
   async function loadRoads(){
     if(!map||map.getZoom()<14){roadStatus('Zoom in for road data');roadAlert('Zoom in to neighbourhood level to explore road proximity.');return}
-    const need=currentRequestBounds();
-    if(containsBounds(loadedBounds,need))return;
+    const need=currentRequestBounds();if(containsBounds(loadedBounds,need))return;
     const cached=roadCache.slice().reverse().find(x=>containsBounds(x.bounds,need));
-    if(cached){roads=cached.roads;loadedBounds=cached.bounds;roadStatus(roads.length.toLocaleString()+' mapped roads · '+cached.source);roadAlert('');drawGlow();updateInspector();return}
+    if(cached){roads=cached.roads;loadedBounds=cached.bounds;roadStatus(roads.length.toLocaleString()+' mapped roads · '+cached.source);roadAlert('');drawGlow();updateInspector();refreshOverlayButtons();return}
     if(loading&&abort)abort.abort();
-    loading=true;roadFailure=false;const requestId=++lastRequest;abort=new AbortController();const signal=abort.signal;
-    roads=[];loadedBounds=null;drawGlow();updateInspector();
-    roadStatus('Loading NSW road geometry…');roadAlert('Loading NSW road centrelines. Data are geometry-based, not noise measurements.');
-    let result=null,error=null,source='NSW Spatial Services';
+    loading=true;roadFailure=false;const requestId=++lastRequest;
+    abort=new AbortController();const signal=abort.signal;
+    // Keep the last working layer and immediate neutral radial cones during refresh.
+    roadStatus(roads.length?'Refreshing roads in background…':'Loading NSW road geometry…');
+    roadAlert('Loading new road geometry in background; no sound measurements are implied.');
+    renderDirectional();refreshOverlayButtons();
+    let baseline=null,result=null,error=null,source='NSW Spatial Services';
     try{
-      const snapshot=await queryStaticTiles(need,signal);
-      if(snapshot&&snapshot.roads.length&&requestId===lastRequest){
-        roads=snapshot.roads;loadedBounds=snapshot.bounds;roadCache.push({roads,bounds:loadedBounds,source:snapshot.source});
-        if(roadCache.length>8)roadCache.shift();loading=false;roadStatus(roads.length.toLocaleString()+' mapped roads · NSW snapshot');
-        roadAlert('');drawGlow();updateInspector();return;
+      baseline=await queryStaticTiles(need,signal);
+      if(baseline?.roads?.length&&requestId===lastRequest&&!signal.aborted){
+        roads=baseline.roads;loadedBounds=baseline.bounds;
+        roadCache.push({roads,bounds:loadedBounds,source:baseline.source});if(roadCache.length>8)roadCache.shift();
+        roadStatus(roads.length.toLocaleString()+' mapped roads · cached NSW snapshot');roadAlert('');
+        drawGlow();updateInspector();refreshOverlayButtons();
       }
     }catch(err){error=err}
+    if(requestId!==lastRequest||signal.aborted)return;
     try{result=await queryNSW(need,signal)}catch(err){error=err}
-    if((!result||!result.length)&&!signal.aborted){
+    const minimum=baseline?.roads?.length?Math.min(30,Math.ceil(baseline.roads.length*.5)):1;
+    if((!result||result.length<minimum)&&!baseline&&!signal.aborted){
       source='OpenStreetMap';
       const bbox=[need.getSouth().toFixed(5),need.getWest().toFixed(5),need.getNorth().toFixed(5),need.getEast().toFixed(5)].join(',');
-      const highway='motorway|trunk|primary|secondary|tertiary|residential|living_street';
-      const query='[out:json][timeout:15];way["highway"~"^('+highway+')$"]('+bbox+');out geom;';
+      const query='[out:json][timeout:15];way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|living_street)$"]('+bbox+');out geom;';
       for(const endpoint of ['https://overpass.kumi.systems/api/interpreter','https://overpass-api.de/api/interpreter']){
         try{result=await queryOverpass(endpoint,query,signal);if(result.length)break}catch(err){error=err;if(signal.aborted)break}
       }
     }
-    if(requestId!==lastRequest)return;
+    if(requestId!==lastRequest||signal.aborted)return;
     loading=false;
-    if(result&&result.length){
+    if(result?.length>=minimum){
       roads=result;loadedBounds=need;roadCache.push({roads:result,bounds:need,source});if(roadCache.length>8)roadCache.shift();
       roadStatus(roads.length.toLocaleString()+' mapped roads · '+source);roadAlert('');drawGlow();updateInspector();
+    }else if(baseline?.roads?.length){
+      roadStatus(roads.length.toLocaleString()+' mapped roads · cached NSW snapshot');
+      roadAlert('Live update unavailable; preserving verified cached road shapes.');
+      updateInspector();
     }else{
-      roads=[];loadedBounds=null;roadFailure=true;roadStatus('Road source unavailable');
-      roadAlert('Road geometry could not be loaded right now. The basemap remains usable, but geometry measurements are deliberately unavailable. Move the map or try later.');
-      updateInspector();console.warn('Road geometry unavailable',error)
+      roadFailure=true;roadStatus('Road source unavailable');
+      roadAlert('Road update unavailable; previous mapped geometry remains visible where available.');
+      updateInspector();console.warn('Road geometry unavailable',error);
     }
+    refreshOverlayButtons();
   }
-  let loadTimer;function scheduleRoads(){clearTimeout(loadTimer);loadTimer=setTimeout(loadRoads,520)}
+    let loadTimer;function scheduleRoads(){clearTimeout(loadTimer);loadTimer=setTimeout(loadRoads,520)}
   function init(){if(!window.L){status('Map library unavailable');alert('The interactive map library could not be loaded. Please refresh when connected to the internet.');return}map=L.map('map',{zoomControl:false,preferCanvas:true,worldCopyJump:true,minZoom:10,maxZoom:19}).setView(sharedView?[sharedView.lat,sharedView.lng]:places.Kensington,sharedView?.zoom||15);map.createPane('solarPane');map.getPane('solarPane').style.zIndex='485';map.getPane('solarPane').style.pointerEvents='none';
     // GA advertises more LODs, but real Sydney tile requests return 404 at z17+.
     // Overzoom the last existing tiles instead of exposing empty/broken tiles.
