@@ -8,5 +8,10 @@
   "observability": { "enabled": true },
   "main": "src/worker.js",
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": true },
-  "previews": {}
+  "previews": {},
+  // showhaus.app (zone in this account) is attached as a Workers Custom Domain on deploy; worker.js redirects www → apex.
+  "routes": [
+    { "pattern": "showhaus.app", "custom_domain": true },
+    { "pattern": "www.showhaus.app", "custom_domain": true }
+  ]
 }
