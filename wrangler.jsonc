@@ -9,6 +9,8 @@
   "main": "src/worker.js",
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": true },
   "previews": {},
+  // Public Stripe Payment Link for the SHOWHAUS Studio founding-pilot deposit (AUD 1,250, max 4). Not a secret.
+  "vars": { "STUDIO_PAYMENT_LINK": "https://buy.stripe.com/aFacN5aRla7jcClaUW1kA00" },
   // showhaus.app (zone in this account) is attached as a Workers Custom Domain on deploy; worker.js redirects www → apex.
   "routes": [
     { "pattern": "showhaus.app", "custom_domain": true },
