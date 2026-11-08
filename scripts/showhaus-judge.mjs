@@ -1,0 +1,145 @@
+// Outside judge for SHOWHAUS (living-data-hud step 5). Serves dist/ locally, drives headless Chromium.
+// Usage: node scripts/showhaus-judge.mjs [--shots dir]
+// Needs: npm i --no-save playwright && npx playwright install chromium
+import { createServer } from 'node:http';
+import { readFile, mkdir } from 'node:fs/promises';
+import { extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
+const shotsDir = process.argv.includes('--shots') ? process.argv[process.argv.indexOf('--shots') + 1] : null;
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png' };
+const server = createServer(async (req, res) => {
+  try {
+    let p = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+    if (p.endsWith('/')) p += 'index.html';
+    const body = await readFile(join(ROOT, p));
+    res.writeHead(200, { 'content-type': TYPES[extname(p)] || 'application/octet-stream' }); res.end(body);
+  } catch { res.writeHead(404); res.end('not found'); }
+}).listen(0);
+const base = `http://127.0.0.1:${server.address().port}/showhaus/`;
+const rents = JSON.parse(await readFile(join(ROOT, 'showhaus/data/rents.json'), 'utf8'));
+const places = JSON.parse(await readFile(join(ROOT, 'showhaus/data/places.json'), 'utf8'));
+
+// Independent recount from the raw file (not from the app's code).
+function recount({ postcode = null, maxRent = null, beds = null } = {}) {
+  const pi = postcode == null ? null : rents.postcodes.indexOf(Number(postcode));
+  let n = 0;
+  for (let i = 0; i < rents.w.length; i++) {
+    if (pi != null && rents.pc[i] !== pi) continue;
+    if (maxRent != null && rents.w[i] > maxRent) continue;
+    if (beds != null && !beds.includes(rents.b[i] >= 4 ? 4 : rents.b[i])) continue;
+    n++;
+  }
+  return n;
+}
+function median(post, beds, maxRent) {
+  const pi = rents.postcodes.indexOf(Number(post)); const v = [];
+  for (let i = 0; i < rents.w.length; i++) if (rents.pc[i] === pi && (!beds || beds.includes(rents.b[i] >= 4 ? 4 : rents.b[i])) && (maxRent == null || rents.w[i] <= maxRent)) v.push(rents.w[i]);
+  v.sort((a, b) => a - b); const pos = (v.length - 1) / 2; return Math.round(v[Math.floor(pos)] + (v[Math.ceil(pos)] - v[Math.floor(pos)]) * (pos - Math.floor(pos)));
+}
+
+const { chromium } = await import('playwright');
+const browser = await chromium.launch();
+const results = [];
+const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
+const VIEWPORTS = [[1440, 900], [1280, 720], [390, 844]];
+// A suburb whose name is unique, in the busiest postcode.
+const perPc = new Map(); rents.pc.forEach(i => perPc.set(i, (perPc.get(i) || 0) + 1));
+const names = new Map(); places.suburbs.forEach(s => names.set(s[0], (names.get(s[0]) || 0) + 1));
+const cand = places.suburbs.filter(s => names.get(s[0]) === 1 && rents.postcodes.includes(Number(s[1]))).sort((a, b) => (perPc.get(rents.postcodes.indexOf(Number(b[1]))) || 0) - (perPc.get(rents.postcodes.indexOf(Number(a[1]))) || 0));
+const [busiest, busiestPc] = cand[0];
+
+async function noOverflow(page, label) {
+  const r = await page.evaluate(() => {
+    const doc = document.scrollingElement;
+    const scroll = doc.scrollHeight > innerHeight + 1 || doc.scrollWidth > innerWidth + 1;
+    const out = [];
+    for (const el of document.querySelectorAll('.act, .card, .lenses, .bar > *, .selection .tok')) {
+      const cs = getComputedStyle(el); if (cs.opacity === '0' || cs.display === 'none' || el.offsetParent === null && cs.position !== 'fixed') continue;
+      const b = el.getBoundingClientRect(); if (!b.width) continue;
+      if (b.left < -1 || b.top < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1) out.push(el.className || el.id);
+    }
+    return { scroll, out };
+  });
+  check(`${label}: no page scroll, nothing outside the viewport`, !r.scroll && !r.out.length, r.out.join(', '));
+}
+
+for (const [w, h] of VIEWPORTS) {
+  const page = await browser.newPage({ viewport: { width: w, height: h } });
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error' && !/tiles\.openfreemap|net::ERR|Failed to load resource/.test(m.text())) errors.push(m.text()); });
+  await page.goto(base, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.SHOWHAUS?.rents, null, { timeout: 30000 });
+  const tag = `${w}×${h}`;
+  await noOverflow(page, `${tag} act 1`);
+
+  // Act 1: counter = recount for the whole window, then per-keystroke.
+  const total = await page.locator('#c1').innerText();
+  check(`${tag} act 1 total counter equals recount`, total.replace(/,/g, '') === String(recount()), `${total} vs ${recount()}`);
+  await page.fill('#where', 'k');
+  check(`${tag} 1-letter query refuses to search`, (await page.locator('#whereHint').innerText()).includes('Keep typing'));
+  // Reaction time measured inside the page: keystroke → counter updated (synchronous handler).
+  const ms = await page.evaluate(q => { const el = document.getElementById('where'); const t = performance.now(); el.value = q; el.dispatchEvent(new Event('input')); const ok = document.getElementById('c1label').textContent.includes('new leases in'); return ok ? performance.now() - t : 9999; }, busiest.slice(0, 5));
+  check(`${tag} first counter reacts < 300 ms`, ms < 300, `${Math.round(ms)} ms`);
+  await page.fill('#where', busiest);
+  const c1 = (await page.locator('#c1').innerText()).replace(/,/g, '');
+  check(`${tag} suburb counter equals recount (postcode ${busiestPc})`, c1 === String(recount({ postcode: busiestPc })), `${c1} vs ${recount({ postcode: busiestPc })}`);
+  await page.fill('#where', busiest.slice(0, 3) + 'x' + busiest.slice(4));
+  const typo = await page.locator('#whereHint').innerText();
+  check(`${tag} typo gets an honest no-match + suggestion`, /Did you mean|No recorded/.test(typo), typo.slice(0, 80));
+  await page.fill('#where', '$1.2m');
+  check(`${tag} a price in the place field is recognised`, (await page.locator('#whereHint').innerText()).includes('budget'));
+  await page.fill('#where', busiest); await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.body.dataset.act === '2');
+  await noOverflow(page, `${tag} act 2`);
+
+  // Act 2: budget slider + bedrooms recount, median.
+  await page.locator('#budget').fill('30'); // index 30 → $1,000/wk
+  await page.locator('#budget').dispatchEvent('input');
+  await page.click('[data-bed="2"]');
+  const c2 = (await page.locator('#c2').innerText()).replace(/,/g, '');
+  const want = recount({ postcode: busiestPc, maxRent: 1000, beds: [2] });
+  check(`${tag} budget+bedroom counter equals recount`, c2 === String(want), `${c2} vs ${want}`);
+  const m2 = (await page.locator('#m2').innerText()).replace(/[$,/wk]/g, '');
+  check(`${tag} median equals recount`, m2 === String(median(busiestPc, [2], 1000)), `${m2} vs ${median(busiestPc, [2], 1000)}`);
+  await page.click('[data-mode="buy"]');
+  check(`${tag} buying says sold prices are not available, not zero`, (await page.locator('#m2').innerText()).includes('licence') && !(await page.locator('#rentHint').isHidden()));
+  await page.click('[data-mode="rent"]');
+  const sel = await page.locator('#selection').innerText();
+  const full = w >= 760 ? sel.includes('$1,000/wk') && sel.includes('2 bed') : /\+3 filters/.test(sel); // phones fold extra filters into one token
+  check(`${tag} selection line states place, budget and beds`, sel.includes(busiest) && full, sel.replace(/\s+/g, ' ').slice(0, 90));
+
+  await page.click('[data-go="3"]'); await page.waitForFunction(() => document.body.dataset.act === '3');
+  await noOverflow(page, `${tag} act 3`);
+  await page.click('[data-want="quiet"]');
+  check(`${tag} hidden act 2 does not capture clicks`, await page.evaluate(() => getComputedStyle(document.getElementById('act2')).pointerEvents === 'none'));
+  await page.click('[data-go="4"]'); await page.waitForFunction(() => document.body.dataset.act === '4');
+  await page.waitForTimeout(4000);
+  await noOverflow(page, `${tag} act 4`);
+  const hero = await page.evaluate(() => window.SHOWHAUS.pc.features.filter(f => f.properties.n > 0).length);
+  check(`${tag} hero colours real postcodes`, hero > 100, `${hero} postcodes with leases`);
+  await page.click('[data-tab="rent"]');
+  const rentFact = await page.locator('#pane .fact b').first().innerText();
+  check(`${tag} place card leads with a counted median`, /^\$[\d,]+\/wk$/.test(rentFact), rentFact);
+  for (const t of ['road', 'sun', 'trees', 'land', 'plan']) { await page.click(`[data-tab="${t}"]`); }
+  await page.waitForTimeout(3000);
+  const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });
+  check(`${tag} every evidence lens resolved (ok/none/err, never stuck)`, Object.values(statuses).every(s => s !== 'load'), JSON.stringify(statuses));
+
+  // presets survive reload and delete with ×
+  await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForFunction(() => window.SHOWHAUS?.rents);
+  const pre = await page.locator('#presets button.go').allInnerTexts();
+  check(`${tag} preset survives reload`, pre.includes(busiest), pre.join(','));
+  if (pre.length) { await page.locator('#presets li').first().hover(); await page.locator('#presets button.x').first().click(); }
+  check(`${tag} preset deletes with ×`, !(await page.locator('#presets button.go').allInnerTexts()).includes(busiest));
+
+  if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.fill('#where', busiest); await page.keyboard.press('Enter'); await page.click('[data-go="3"]'); await page.click('[data-go="4"]'); await page.waitForTimeout(5000); await page.screenshot({ path: `${shotsDir}/act4-${w}x${h}.png` }); }
+  check(`${tag} zero console errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
+  await page.close();
+}
+await browser.close(); server.close();
+const failed = results.filter(r => !r.ok);
+console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
+process.exit(failed.length ? 1 : 0);

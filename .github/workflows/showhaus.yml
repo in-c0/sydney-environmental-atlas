@@ -1,0 +1,27 @@
+name: showhaus
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: ['dist/showhaus/**', 'scripts/showhaus*', '.github/workflows/showhaus*.yml']
+permissions:
+  contents: read
+jobs:
+  test-and-judge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - name: Unit tests (SHOWHAUS core + the shared shadow module)
+        # scripts/lens-behavior.test.cjs already fails on main (atlas index.html drifted from it); not run here.
+        run: node --test scripts/showhaus-core.test.cjs scripts/shadow-geometry.test.cjs
+      - name: Outside judge (Playwright, 3 viewports, recount from raw data)
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/showhaus-judge.mjs --shots judge-shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: showhaus-judge-shots, path: judge-shots, if-no-files-found: ignore }

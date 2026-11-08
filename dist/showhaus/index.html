@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS · Sydney, before you sign</title>
+<meta name="description" content="Every new Sydney lease on one map, with the road, the sun, the trees, the land records and the planning overlays around each home — from public records, with sources.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body data-act="1">
+<div id="map" aria-label="Map of Sydney rents by postcode"></div>
+<canvas id="overlay" aria-hidden="true"></canvas>
+
+<header class="bar">
+  <a class="brand" href="./" aria-label="SHOWHAUS home">SHOWHAUS<span>Sydney, before you sign</span></a>
+  <ol class="cuts" aria-label="Steps">
+    <li data-cut="1"><button type="button">01<span> Where</span></button></li>
+    <li data-cut="2"><button type="button">02<span> Budget</span></button></li>
+    <li data-cut="3"><button type="button">03<span> Matters</span></button></li>
+    <li data-cut="4"><button type="button">04<span> Place</span></button></li>
+  </ol>
+  <div class="live" id="live" title="When the sales records were built">records —</div>
+</header>
+
+<section class="act" id="act1" aria-labelledby="q1">
+  <h1 id="q1">Where do you want to live?</h1>
+  <div class="field">
+    <input id="where" autocomplete="off" spellcheck="false" placeholder="Suburb or postcode" aria-describedby="whereHint">
+    <span class="count"><b id="c1">—</b> <em id="c1label">new leases lodged, last 12 months</em></span>
+  </div>
+  <p class="hint" id="whereHint"></p>
+  <ul class="suggest" id="suggest" role="listbox"></ul>
+  <ul class="presets" id="presets" aria-label="Recent searches"></ul>
+</section>
+
+<section class="act" id="act2" aria-labelledby="q2">
+  <h1 id="q2">Buying, renting, or just looking?</h1>
+  <div class="modes" role="radiogroup">
+    <button type="button" role="radio" data-mode="rent" aria-checked="true">Renting</button>
+    <button type="button" role="radio" data-mode="buy" aria-checked="false">Buying</button>
+    <button type="button" role="radio" data-mode="look" aria-checked="false">Just looking</button>
+  </div>
+  <label class="budget"><span id="budgetLabel">Up to</span> <b id="budgetValue">no limit</b>
+    <input id="budget" type="range" min="0" max="60" step="1" value="60" aria-label="Budget">
+  </label>
+  <div class="facets"><div class="chips small" id="beds" aria-label="Bedrooms"></div><div class="chips small" id="types" aria-label="Dwelling type"></div></div>
+  <p class="readout"><b id="c2">—</b> new leases fit · median <b id="m2">—</b></p>
+  <p class="hint" id="rentHint" hidden></p>
+  <button class="next" type="button" data-go="3">Next</button>
+</section>
+
+<section class="act" id="act3" aria-labelledby="q3">
+  <h1 id="q3">What matters at home?</h1>
+  <div class="chips" id="wants"></div>
+  <p class="hint">Each choice turns on its evidence on the map. Nothing here is a score.</p>
+  <button class="next" type="button" data-go="4">Show the place</button>
+</section>
+
+<aside class="card" id="card" aria-live="polite">
+  <div class="card-head">
+    <p class="kicker" id="cardKicker">Tap a sale or anywhere on the map</p>
+    <h2 id="cardTitle">—</h2>
+    <p class="sub" id="cardSub"></p>
+  </div>
+  <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="rent" aria-selected="true">Rent</button>
+    <button role="tab" data-tab="road">Road</button>
+    <button role="tab" data-tab="sun">Sun</button>
+    <button role="tab" data-tab="trees">Trees</button>
+    <button role="tab" data-tab="land">Land</button>
+    <button role="tab" data-tab="plan">Plan</button>
+  </div>
+  <div class="pane" id="pane"></div>
+  <div class="card-foot">
+    <button type="button" id="pinA" title="Keep this place to compare">Keep as A</button>
+    <span id="compare"></span>
+  </div>
+</aside>
+
+<nav class="lenses" id="lenses" aria-label="Lens">
+  <button type="button" data-lens="map" aria-pressed="true">Map</button>
+  <button type="button" data-lens="3d" aria-pressed="false">3D</button>
+  <button type="button" data-lens="strata" aria-pressed="false">Strata</button>
+  <button type="button" data-lens="time" aria-pressed="false">Time</button>
+</nav>
+
+<footer class="selection" id="selection" aria-label="Your selection"></footer>
+
+<div class="legend" id="legend"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="./lib/shadow-geometry.js"></script>
+<script src="./lib/core.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

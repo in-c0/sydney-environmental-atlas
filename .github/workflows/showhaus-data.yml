@@ -1,0 +1,27 @@
+name: showhaus data refresh
+# NSW Fair Trading publishes each month's rental bond lodgements around the middle of the next month.
+on:
+  schedule:
+    - cron: '17 3 18 * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install openpyxl
+      - run: python3 scripts/showhaus_build_data.py
+      - name: Open a PR when the records changed
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          git diff --quiet -- dist/showhaus/data && { echo "no change"; exit 0; }
+          b="data/showhaus-$(date -u +%Y-%m-%d)"
+          git config user.name "showhaus-data"; git config user.email "showhaus@users.noreply.github.com"
+          git checkout -b "$b" && git add dist/showhaus/data && git commit -m "data: refresh SHOWHAUS rental bond records" && git push origin "$b"
+          gh pr create --title "data: refresh SHOWHAUS rental bond records" --body "Monthly rebuild from NSW Fair Trading rental bond lodgements (CC BY 4.0) and ABS ASGS 2021. Judge runs on this PR." --head "$b" --base main
