@@ -122,6 +122,7 @@ test('Stripe webhook: 503 without secret; signed, deduped, PII-free with it', as
 test('a redirect to Stripe Checkout is recorded as checkout_started (server-side)', async () => {
   const env = makeEnv();
   env.ASSETS = { fetch: async () => Response.redirect('https://buy.stripe.com/test_123', 302) };
+  env.STUDIO_PAYMENT_LINK = 'https://buy.stripe.com/test_123'; // /pay/studio-pilot is served by src/studio.js
   const c = ctx();
   const r = await worker.fetch(new Request('https://map.lifeos.studio/pay/studio-pilot', { headers: { cookie: 'sh_a=b9', 'user-agent': 'Mozilla/5.0' } }), env, c);
   assert.equal(r.status, 302);
