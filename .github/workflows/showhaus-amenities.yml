@@ -2,6 +2,8 @@ name: showhaus amenities build
 # Runs where OpenStreetMap's Overpass API is reachable; commits dist/showhaus/data/amenities.json to the branch it ran on.
 on:
   workflow_dispatch:
+  push:
+    paths: ['scripts/showhaus_build_amenities.py', '.github/workflows/showhaus-amenities.yml']
   schedule:
     - cron: '41 4 1 */3 *'
 permissions:
