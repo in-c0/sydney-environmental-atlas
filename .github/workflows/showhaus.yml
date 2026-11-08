@@ -16,12 +16,14 @@ jobs:
         with: { node-version: 22 }
       - name: Unit tests (SHOWHAUS core + the shared shadow module)
         # scripts/lens-behavior.test.cjs already fails on main (atlas index.html drifted from it); not run here.
-        run: node --test scripts/showhaus-core.test.cjs scripts/shadow-geometry.test.cjs scripts/showhaus-worker.test.mjs scripts/showhaus-ops.test.mjs scripts/showhaus-studio.test.mjs
+        run: node --test scripts/showhaus-core.test.cjs scripts/shadow-geometry.test.cjs scripts/showhaus-worker.test.mjs scripts/showhaus-ops.test.mjs scripts/showhaus-kit.test.cjs scripts/showhaus-studio.test.mjs
       - name: Outside judge (Playwright, 3 viewports, recount from raw data)
         run: |
           npm i --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
           node scripts/showhaus-judge.mjs --shots judge-shots
+      - name: Listing-kit judge (every property page + GIF, recount from source files)
+        run: node scripts/showhaus-kit-judge.mjs --shots judge-shots/kits
       - name: Studio judge (walkthrough, embed on host pages, pilot page, email kit; massing vs planning documents)
         run: node scripts/showhaus-studio-judge.mjs --shots judge-shots/studio
       - uses: actions/upload-artifact@v4

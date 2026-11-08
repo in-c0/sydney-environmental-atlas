@@ -192,3 +192,15 @@ test('Resend route is used when RESEND_API_KEY exists', async () => {
   assert.deepEqual(calls[0][1].to, ['a@example.com']);
   assert.match(calls[0][1].subject, /^123456 /);
 });
+
+test('listing-kit beacons: kit slug and src kept, no actor without an id, bad slugs dropped', async () => {
+  const env = makeEnv(), c = ctx();
+  const send = body => worker.fetch(post('https://showhaus.app/api/e', body, { 'user-agent': 'Mozilla/5.0' }), env, c);
+  assert.equal((await send({ name: 'view', path: '/p/', props: { kit: '4-17-flood-st-clovelly', utm_source: 'agent-4-17-flood-st-clovelly' } })).status, 204);
+  assert.equal((await send({ name: 'cta', path: '/p/', props: { kit: '../etc', cta: 'explore' } })).status, 204);
+  await c.done();
+  const [a, b] = rows(env);
+  assert.equal(a.actor, null);
+  assert.deepEqual(JSON.parse(a.props), { utm_source: 'agent-4-17-flood-st-clovelly', kit: '4-17-flood-st-clovelly' });
+  assert.deepEqual(JSON.parse(b.props), { cta: 'explore' });
+});
