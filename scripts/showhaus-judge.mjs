@@ -20,6 +20,12 @@ const server = createServer(async (req, res) => {
 const base = `http://127.0.0.1:${server.address().port}/showhaus/`;
 const rents = JSON.parse(await readFile(join(ROOT, 'showhaus/data/rents.json'), 'utf8'));
 const places = JSON.parse(await readFile(join(ROOT, 'showhaus/data/places.json'), 'utf8'));
+const amen = await readFile(join(ROOT, 'showhaus/data/amenities.json'), 'utf8').then(JSON.parse).catch(() => null);
+function monthsWithLeases(pci, beds, maxRent) {
+  const seen = new Set();
+  for (let i = 0; i < rents.w.length; i++) if (rents.pc[i] === pci && (!beds || beds.includes(rents.b[i] >= 4 ? 4 : rents.b[i])) && (maxRent == null || rents.w[i] <= maxRent)) seen.add(rents.m[i]);
+  return seen.size;
+}
 
 // Independent recount from the raw file (not from the app's code).
 function recount({ postcode = null, maxRent = null, beds = null } = {}) {
@@ -32,6 +38,10 @@ function recount({ postcode = null, maxRent = null, beds = null } = {}) {
     n++;
   }
   return n;
+}
+function recountArea(name) {
+  const a = places.areas.find(x => x.name === name); const set = new Set(a.pcs.map(pc => rents.postcodes.indexOf(pc)).filter(i => i >= 0));
+  let n = 0; for (let i = 0; i < rents.w.length; i++) if (set.has(rents.pc[i])) n++; return n;
 }
 function median(post, beds, maxRent) {
   const pi = rents.postcodes.indexOf(Number(post)); const v = [];
@@ -89,6 +99,14 @@ for (const [w, h] of VIEWPORTS) {
   await page.fill('#where', busiest.slice(0, 3) + 'x' + busiest.slice(4));
   const typo = await page.locator('#whereHint').innerText();
   check(`${tag} typo gets an honest no-match + suggestion`, /Did you mean|No recorded/.test(typo), typo.slice(0, 80));
+  for (const [q, name] of [['sydney', 'Greater Sydney'], ['CBD', 'Sydney CBD'], ['nsw', 'New South Wales'], ['eastern suburbs', 'Eastern Suburbs'], ['randwick council', 'Randwick Council']]) {
+    await page.fill('#where', q);
+    const first = await page.locator('#suggest button').first().innerText();
+    const cnt = (await page.locator('#c1').innerText()).replace(/,/g, '');
+    check(`${tag} "${q}" → ${name}, counter equals recount`, first.startsWith(name) && cnt === String(recountArea(name)), `${first.split('\n')[0]} · ${cnt} vs ${recountArea(name)}`);
+  }
+  await page.fill('#where', 'melbourne');
+  check(`${tag} another state is named honestly, not "no match"`, (await page.locator('#whereHint').innerText()).includes('New South Wales'));
   await page.fill('#where', '$1.2m');
   check(`${tag} a price in the place field is recognised`, (await page.locator('#whereHint').innerText()).includes('budget'));
   await page.fill('#where', busiest); await page.keyboard.press('Enter');
@@ -113,6 +131,20 @@ for (const [w, h] of VIEWPORTS) {
 
   await page.click('[data-go="3"]'); await page.waitForFunction(() => document.body.dataset.act === '3');
   await noOverflow(page, `${tag} act 3`);
+  const c3before = (await page.locator('#c3').innerText()).replace(/,/g, '');
+  check(`${tag} act 3 count starts equal to act 2`, c3before === c2, `${c3before} vs ${c2}`);
+  await page.click('[data-want="quiet"]');
+  const c3 = (await page.locator('#c3').innerText()).replace(/,/g, '');
+  if (amen) {
+    const q = amen.postcodes[busiestPc]?.quiet ?? amen.postcodes[Number(busiestPc)]?.quiet;
+    const wantQ = q != null && q >= 0.5 ? want : 0;
+    check(`${tag} "quiet street" recounts leases from measured postcodes`, c3 === String(wantQ), `${c3} vs ${wantQ} (quiet share ${q})`);
+  } else {
+    check(`${tag} without measures, area wants say so and do not change the count`, c3 === c2 && (await page.locator('[data-want="quiet"]').innerText()).includes('not measured'), c3);
+  }
+  await page.click('[data-want="commute"]');
+  check(`${tag} commute want opens a place input`, await page.locator('#commuteWhere').isVisible());
+  await page.click('[data-want="commute"]');
   await page.click('[data-want="quiet"]');
   check(`${tag} hidden act 2 does not capture clicks`, await page.evaluate(() => getComputedStyle(document.getElementById('act2')).pointerEvents === 'none'));
   await page.click('[data-go="4"]'); await page.waitForFunction(() => document.body.dataset.act === '4');
@@ -123,7 +155,23 @@ for (const [w, h] of VIEWPORTS) {
   await page.click('[data-tab="rent"]');
   const rentFact = await page.locator('#pane .fact b').first().innerText();
   check(`${tag} place card leads with a counted median`, /^\$[\d,]+\/wk$/.test(rentFact), rentFact);
-  for (const t of ['road', 'sun', 'trees', 'land', 'plan']) { await page.click(`[data-tab="${t}"]`); }
+  const pts = await page.locator('#pane .timeline circle.pt').count();
+  const pci = await page.evaluate(() => window.SHOWHAUS.state.point.pci);
+  const wantPts = monthsWithLeases(pci, [2], 1000);
+  check(`${tag} rent history timeline has one point per month with leases`, pts === wantPts && pts > 0, `${pts} vs ${wantPts}`);
+  await page.click('[data-tab="adv"]');
+  check(`${tag} Advanced is behind the Pro lock (blurred, labelled coming soon)`, await page.locator('#pane .pro-lock').isVisible() && await page.locator('#pane .pro-body.locked').count() === 1);
+  await page.click('#pinA');
+  check(`${tag} compare says what it does`, (await page.locator('#pinA').innerText()) === 'Stop comparing' && (await page.locator('#compare').innerText()).includes('pinned'));
+  await page.click('#pinA');
+  await page.click('[data-lens="3d"]');
+  check(`${tag} 3D lens is a Pro preview`, await page.locator('#proLens').isVisible());
+  await page.click('#proClose');
+  check(`${tag} closing the Pro preview returns to the map`, await page.locator('#proLens').isHidden() && await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
+  await page.evaluate(() => { const S = window.SHOWHAUS, p = S.state.point; S.map.jumpTo({ center: [p.lng, p.lat], zoom: 13.5 }); });
+  await page.waitForFunction(() => window.SHOWHAUS.dots.drawn > 0, null, { timeout: 8000 }).catch(() => {});
+  const dots = await page.evaluate(() => window.SHOWHAUS.dots);
+  check(`${tag} leases appear as dots when zoomed in, with an honest legend`, dots.drawn > 0 && (await page.locator('#legend').innerText()).includes('not at the home'), JSON.stringify(dots));
   // Every live request has a 15 s timeout, so each lens must leave 'load' within ~20 s (ok, none or err).
   await page.waitForFunction(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return e && Object.values(e).every(v => v.s !== 'load'); }, null, { timeout: 22000 }).catch(() => {});
   const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });

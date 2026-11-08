@@ -23,27 +23,38 @@
   const TYPES = [[0, 'Unit'], [1, 'House'], [2, 'Townhouse']];
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
-  const state = { act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, lens: 'map', point: null, tab: 'rent', A: null };
-  let R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
+  const state = { act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
+  const PRO = false; // no Pro subscription exists yet: advanced evidence and lenses are previewed blurred
+  let A = null, centroids = {}, R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
   const evidence = new Map();
 
   // ---------- data ----------
   async function loadData() {
-    const [pr, rr] = await Promise.all([fetch('./data/places.json'), fetch('./data/rents.json')]);
+    const [pr, rr, ar] = await Promise.all([fetch('./data/places.json'), fetch('./data/rents.json'), fetch('./data/amenities.json').catch(() => null)]);
     if (!pr.ok || !rr.ok) throw new Error('records unavailable (' + (pr.ok ? rr.status : pr.status) + ')');
     [P, R] = await Promise.all([pr.json(), rr.json()]);
+    A = ar && ar.ok ? await ar.json() : null; // per-postcode measures; without them, area wants say "not measured yet"
+    centroids = Object.fromEntries(P.postcodes.map(p => [p.pc, p.c]));
     R.postcodes.forEach((pc, i) => pcIndexOf.set(pc, i));
     const perPc = new Array(R.postcodes.length).fill(0);
     for (let i = 0; i < R.pc.length; i++) perPc[R.pc[i]]++;
     R.perPc = perPc;
     R.start = new Array(R.postcodes.length).fill(-1); R.end = new Array(R.postcodes.length).fill(-1);
     for (let i = 0; i < R.pc.length; i++) { if (R.start[R.pc[i]] < 0) R.start[R.pc[i]] = i; R.end[R.pc[i]] = i + 1; }
-    suburbs = P.suburbs.map(([name, postcode, lat, lng], i) => ({ i, name, postcode, lat, lng, pci: pcIndexOf.get(Number(postcode)), n: perPc[pcIndexOf.get(Number(postcode))] || 0 }))
-      .filter(s => s.pci != null);
+    const subs = P.suburbs.map(([name, postcode, lat, lng]) => ({ kind: 'suburb', name, postcode, lat, lng, pcis: [pcIndexOf.get(Number(postcode))] }))
+      .filter(s => s.pcis[0] != null);
+    const cent = new Map(P.postcodes.map(p => [p.pc, p.c]));
+    const areas = P.areas.map(a => {
+      const pcis = a.pcs.map(pc => pcIndexOf.get(pc)).filter(x => x != null);
+      const pts = a.pcs.map(pc => cent.get(pc)).filter(Boolean);
+      const bbox = pts.length ? [Math.min(...pts.map(c => c[0])), Math.min(...pts.map(c => c[1])), Math.max(...pts.map(c => c[0])), Math.max(...pts.map(c => c[1]))] : null;
+      return { kind: a.kind, name: a.name, aliases: a.aliases, pcis, bbox, lat: bbox ? (bbox[1] + bbox[3]) / 2 : null, lng: bbox ? (bbox[0] + bbox[2]) / 2 : null };
+    }).filter(a => a.pcis.length && a.bbox);
+    suburbs = [...areas, ...subs].map((x, i) => ({ ...x, i, pci: x.pcis[0], n: x.pcis.reduce((t, k) => t + (perPc[k] || 0), 0) }));
     pcFC = { type: 'FeatureCollection', features: P.postcodes.filter(p => pcIndexOf.has(p.pc)).map(p => ({ type: 'Feature', id: p.pc, geometry: p.g, properties: { pc: p.pc, pci: pcIndexOf.get(p.pc), med: 0, n: 0, h: 0, sel: 0 } })) };
     const last = R.months.at(-1), first = R.months[0];
     $('live').textContent = `${R.w.length.toLocaleString('en-AU')} leases · ${fmtYm(first)}–${fmtYm(last)}`;
-    $('live').title = 'Every NSW rental bond lodged in Greater Sydney postcodes. Built ' + R.generatedAt.slice(0, 10) + '. ' + R.sources.map(s => s.name + ' (' + s.licence + ')').join(' · ');
+    $('live').title = 'Every rental bond lodged with NSW Fair Trading. Built ' + R.generatedAt.slice(0, 10) + '. ' + R.sources.map(s => s.name + ' (' + s.licence + ')').join(' · ');
   }
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -51,7 +62,7 @@
   function initMap() {
     map = new maplibregl.Map({
       container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
-      attributionControl: { compact: true }, maxBounds: [[149.6, -35.0], [152.6, -32.8]],
+      attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
     });
     map.on('load', () => {
       tintBasemap();
@@ -64,6 +75,12 @@
       map.addLayer({ id: 'pc-3d', type: 'fill-extrusion', source: 'pc', layout: { visibility: 'none' }, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
+      map.addSource('leases', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({ id: 'lease-dots', type: 'circle', source: 'leases', minzoom: DOT_ZOOM, paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 1.8, 14, 3.4, 17, 6],
+        'circle-color': ['interpolate', ['linear'], ['get', 'w'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
+        'circle-stroke-color': 'rgba(255,255,255,.85)', 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 0, 14, .6],
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .55, 14, .9] } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'pick-ring', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'ring'], paint: { 'line-color': '#7d5fc7', 'line-width': 1.2, 'line-opacity': .7 } });
@@ -73,6 +90,14 @@
       mapReady = true;
       applyFilter();
     });
+    map.on('moveend', () => { drawLeases(); renderLegend(); });
+    const dotPop = new maplibregl.Popup({ closeButton: false, closeOnClick: true, offset: 6, className: 'dot-pop' });
+    map.on('click', 'lease-dots', e => {
+      const f = e.features[0]; if (!f) return;
+      const i = f.properties.i, pc = String(R.postcodes[R.pc[i]]).padStart(4, '0');
+      dotPop.setLngLat(f.geometry.coordinates).setHTML(`<b>${C.weekly(R.w[i])}</b> · ${R.b[i] ? R.b[i] + '-bed' : 'studio / unknown beds'} ${esc(R.types[R.t[i]].toLowerCase())}<br>lodged ${fmtYm(R.months[R.m[i]])}<br><small>Placed in a neighbourhood of ${pc}, not at the home's address.</small>`).addTo(map);
+    });
+    map.on('mouseenter', 'lease-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
     const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
     map.on('mousemove', 'pc-fill', e => {
       const f = e.features[0]; if (!f) return;
@@ -104,8 +129,19 @@
   }
 
   // ---------- filter & counters ----------
+  let allowedCache = { key: null, v: { allowed: null, unknown: 0 } };
+  function allowed() {
+    const key = JSON.stringify([state.wants, state.commute, !!A]);
+    if (allowedCache.key !== key) allowedCache = { key, v: C.allowedPostcodes(R.postcodes, A?.postcodes, A ? state.wants : { commute: state.wants.commute }, { commute: state.commute, centroids }) };
+    return allowedCache.v;
+  }
   const filters = (withPlace = true) => ({
-    pcSet: withPlace && state.place ? new Set([state.place.pci]) : null,
+    pcSet: (() => {
+      const al = allowed().allowed;
+      const base = withPlace && state.place ? state.place.pcis : null;
+      if (!al) return base ? new Set(base) : null;
+      return new Set((base || R.postcodes.map((_, i) => i)).filter(i => al.has(i)));
+    })(),
     maxRent: state.mode === 'rent' ? state.maxRent : null,
     beds: state.beds.size ? state.beds : null, types: state.types.size ? state.types : null,
   });
@@ -127,22 +163,25 @@
     if (!R) return [];
     const idx = currentIdx();
     // City-wide colouring uses the same bed/type/budget filter, so the whole map answers "where can I afford this?".
-    const cf = filters(false), key = JSON.stringify([cf.maxRent, cf.beds && [...cf.beds].sort(), cf.types && [...cf.types].sort()]);
+    const cf = filters(false), key = JSON.stringify([cf.maxRent, cf.beds && [...cf.beds].sort(), cf.types && [...cf.types].sort(), allowedCache.key]);
     if (key !== cityKey && pcFC) { // recolour the city only when bed/type/budget change, not on every keystroke
       cityKey = key;
       const per = R.postcodes.map(() => []);
-      for (const i of C.filterRents(R, cf)) per[R.pc[i]].push(R.w[i]);
+      for (const i of C.filterRents(R, cf)) per[R.pc[i]].push(R.w[i]); // postcodes failing a want get no leases → unpainted
       for (const f of pcFC.features) {
         const v = per[f.properties.pci].sort((a, b) => a - b);
         f.properties.n = v.length; f.properties.med = C.quantile(v, .5) || 0; f.properties.h = v.length ? (f.properties.med - 200) * 6 : 0;
       }
     }
-    if (pcFC) for (const f of pcFC.features) f.properties.sel = state.place && state.place.pci === f.properties.pci ? 1 : 0;
+    const selSet = state.place ? new Set(state.place.pcis) : null;
+    if (pcFC) for (const f of pcFC.features) f.properties.sel = selSet && selSet.has(f.properties.pci) ? 1 : 0;
     if (mapReady) map.getSource('pc').setData(pcFC);
     const rents = idx.map(i => R.w[i]).sort((a, b) => a - b);
     $('c1').textContent = idx.length.toLocaleString('en-AU');
     $('c2').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
     $('m2').textContent = state.mode === 'buy' ? 'licence pending' : C.weekly(C.quantile(rents, .5));
+    $('c3').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
+    drawLeases(); renderLegend();
     renderSelection();
     drawOverlay();
     return idx;
@@ -158,28 +197,36 @@
     else renderPresets(false);
     if (q.kind === 'short') hint.textContent = 'Keep typing — 3 letters or a 4-digit postcode.';
     else if (q.kind === 'price') hint.innerHTML = `That looks like a budget (${q.value < 10000 ? C.weekly(q.value) : C.money(q.value)}). It goes in the next step — <kbd>Enter</kbd> to keep it.`;
-    else if (q.kind === 'text' && !sugg.length) hint.innerHTML = suggestion ? `No suburb called “${esc(raw)}”. Did you mean <b>${esc(suggestion.name)}</b>? <kbd>Tab</kbd>` : `No Greater Sydney suburb matches “${esc(raw)}”.`;
-    else if (q.kind === 'postcode' && !sugg.length) hint.textContent = `Postcode ${q.value} isn't in Greater Sydney's records.`;
+    else if (r.scope === 'elsewhere') hint.textContent = 'SHOWHAUS covers New South Wales for now — rental bond records outside NSW are held by other states.';
+    else if (q.kind === 'text' && !sugg.length) hint.innerHTML = suggestion ? `No suburb called “${esc(raw)}”. Did you mean <b>${esc(suggestion.name)}</b>? <kbd>Tab</kbd>` : `No NSW suburb, council or area matches “${esc(raw)}”.`;
+    else if (q.kind === 'postcode' && !sugg.length) hint.textContent = `Postcode ${q.value} has no NSW rental bond records.`;
     else if (sugg.length) hint.textContent = r.scope === 'postcode' ? `Postcode ${q.value}: ${sugg.length} suburb${sugg.length > 1 ? 's' : ''}` : r.scope === 'exact' ? 'Exact match' : 'Close matches';
-    $('suggest').innerHTML = sugg.map((s, k) => `<li><button type="button" role="option" data-i="${s.i}" aria-selected="${k === 0}">${esc(s.name)}<small>${s.postcode}</small></button></li>`).join('');
+    $('suggest').innerHTML = sugg.map((s, k) => `<li><button type="button" role="option" data-i="${s.i}" aria-selected="${k === 0}">${esc(s.name)}<small>${placeTag(s)}</small></button></li>`).join('');
     const top = sugg[0];
     state.place = top || null;
     applyFilter();
-    if (top && mapReady) map.easeTo({ center: [top.lng, top.lat], zoom: 12.6, duration: 500 });
+    if (top && mapReady) flyToPlace(top);
     else if (!top && mapReady && q.kind === 'empty') map.easeTo({ center: SYD, zoom: 9.6, duration: 500 });
-    $('c1label').textContent = top ? `new leases in ${top.postcode}, last 12 months` : 'new leases lodged, last 12 months';
+    $('c1label').textContent = top ? `new leases in ${top.kind === 'suburb' ? top.postcode : top.name}, last 12 months` : 'new leases lodged in NSW, last 12 months';
+  }
+  const KIND = { state: 'state', metro: 'metro area', region: 'ABS region', council: 'council', everyday: 'as commonly used' };
+  const placeTag = s => s.kind === 'suburb' ? s.postcode : `${KIND[s.kind]} · ${s.pcis.length} postcode${s.pcis.length > 1 ? 's' : ''}`;
+  function flyToPlace(s) {
+    if (s.kind === 'suburb' || !s.bbox) return map.easeTo({ center: [s.lng, s.lat], zoom: 12.6, duration: 500 });
+    const [w, so, e, n] = s.bbox, pad = Math.max(0.01, (e - w) * 0.08);
+    map.fitBounds([[w - pad, so - pad], [e + pad, n + pad]], { padding: { top: 90, bottom: 280, left: 40, right: 40 }, maxZoom: 13, duration: 600 });
   }
   function choosePlace(s) {
     state.place = s; $('where').value = s.name; remember(s); applyFilter(); go(2);
   }
   function remember(s) {
     const st = store.get(); const list = (st.recent || []).filter(x => x.name !== s.name);
-    list.unshift({ name: s.name, postcode: s.postcode }); st.recent = list.slice(0, 6); store.set(st);
+    list.unshift({ name: s.name, postcode: s.postcode || null, kind: s.kind }); st.recent = list.slice(0, 6); store.set(st);
   }
-  const byName = (name, pc) => suburbs.find(s => s.name === name && s.postcode === pc);
+  const byName = (name, pc) => suburbs.find(s => s.name === name && (s.postcode || null) === (pc || null));
   function renderPresets(show) {
     const list = show ? (store.get().recent || []).filter(p => byName(p.name, p.postcode)) : [];
-    $('presets').innerHTML = list.map(p => `<li><button class="go" type="button" data-name="${esc(p.name)}" data-pc="${p.postcode}">${esc(p.name)}</button><button class="x" type="button" data-x="${esc(p.name)}" aria-label="Remove ${esc(p.name)}">×</button></li>`).join('');
+    $('presets').innerHTML = list.map(p => `<li><button class="go" type="button" data-name="${esc(p.name)}" data-pc="${p.postcode || ''}">${esc(p.name)}</button><button class="x" type="button" data-x="${esc(p.name)}" aria-label="Remove ${esc(p.name)}">×</button></li>`).join('');
   }
 
   // ---------- act 2 ----------
@@ -208,12 +255,39 @@
 
   // ---------- act 3 ----------
   function renderWants() {
-    $('wants').innerHTML = Object.entries(C.WANTS).map(([k, w]) => `<button type="button" data-want="${k}" aria-pressed="${!!state.wants[k]}">${esc(w.label)}<span class="hair"></span></button>`).join('');
+    $('wants').innerHTML = Object.entries(C.WANTS).map(([k, w]) => {
+      const note = w.scope === 'home' ? `<small>checked at each home${PRO ? '' : ' · Pro'}</small>` : !A && !w.custom ? '<small>not measured yet</small>' : '';
+      return `<button type="button" data-want="${k}" aria-pressed="${!!state.wants[k]}">${esc(w.label)}${note}<span class="hair"></span></button>`;
+    }).join('');
+    $('commuteBox').hidden = !state.wants.commute;
+    const al = allowed();
+    $('wantsHint').textContent = al.allowed
+      ? `${al.allowed.size} of ${R.postcodes.length} postcodes fit${al.unknown ? ` · ${al.unknown} not measured, left out` : ''} — “most neighbourhoods” means over half.`
+      : 'Area choices narrow the map and the count; “at each home” choices are checked on the place card.';
   }
   function toggleWant(k) {
     state.wants[k] = !state.wants[k];
-    renderWants(); cue(); renderSelection();
-    if (state.wants[k]) state.tab = { road: 'road', sun: 'sun', canopy: 'trees', land: 'land', flight: 'plan' }[C.WANTS[k].lens] || state.tab;
+    if (!state.wants[k]) delete state.wants[k];
+    if (k === 'commute' && state.wants[k]) setTimeout(() => $('commuteWhere').focus(), 30);
+    cue(); applyFilter(); renderWants();
+  }
+  let commuteTimer = null;
+  async function geocodeCommute() {
+    const q = $('commuteWhere').value.trim(), km = Number($('commuteKm').value);
+    $('commuteKmLabel').textContent = km + ' km';
+    if (q.length < 3) { state.commute = null; applyFilter(); renderWants(); return; }
+    // A suburb, council or area we already know is resolved locally; anything else asks OpenStreetMap Nominatim (NSW only).
+    const local = C.searchSuburbs(suburbs, q).matches[0];
+    let hit = local && local.kind === 'suburb' ? { lat: local.lat, lng: local.lng, label: local.name } : null;
+    if (!hit) {
+      try {
+        const r = await fetch('https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q: q + ', NSW, Australia', format: 'jsonv2', limit: '1', countrycodes: 'au' }), { headers: { Accept: 'application/json' } });
+        const d = await r.json(); if (d[0]) hit = { lat: Number(d[0].lat), lng: Number(d[0].lon), label: d[0].display_name.split(',')[0] };
+      } catch { /* offline: say so below */ }
+    }
+    state.commute = hit ? { ...hit, km } : null;
+    $('commuteHint').textContent = hit ? `Straight-line distance from each postcode's centre to ${hit.label} — not travel time.` : `Couldn't find “${q}” in NSW.`;
+    applyFilter(); renderWants();
   }
   function demoChip() { const b = $('wants').querySelector('button'); if (!b) return; b.classList.add('demo'); setTimeout(() => b.classList.remove('demo'), 1100); }
 
@@ -232,7 +306,15 @@
       setTimeout(() => $('budget').focus(), 50);
     }
     if (n === 3) { renderWants(); setTimeout(demoChip, 400); }
-    if (n === 4) { if (!state.point && state.place) selectPoint({ lng: state.place.lng, lat: state.place.lat }); else renderCard(); }
+    if (n === 4) {
+      if (!state.point && state.place) {
+        if (state.place.kind === 'suburb') selectPoint({ lng: state.place.lng, lat: state.place.lat });
+        else { // a broad area: start at its busiest postcode's centre
+          const top = state.place.pcis.slice().sort((a, b) => R.perPc[b] - R.perPc[a])[0], c = P.postcodes.find(p => p.pc === R.postcodes[top])?.c;
+          selectPoint(c ? { lng: c[0], lat: c[1] } : { lng: state.place.lng, lat: state.place.lat });
+        }
+      } else renderCard();
+    }
     cue(); renderSelection();
   }
 
@@ -251,7 +333,7 @@
     else if (key === 'maxRent') { $('budget').value = String(RENT_STEPS.length); setBudgetFromSlider(); }
     else if (key.startsWith('beds:')) state.beds.delete(Number(key.slice(5)));
     else if (key.startsWith('type:')) state.types.delete(Number(key.slice(5)));
-    else if (key.startsWith('want:')) { delete state.wants[key.slice(5)]; renderWants(); }
+    else if (key.startsWith('want:')) { const k = key.slice(5); delete state.wants[k]; if (k === 'commute') state.commute = null; renderWants(); }
     renderFacets(); applyFilter();
   }
 
@@ -340,16 +422,40 @@
     const ev = evidence.get(keyOf(p)) || {};
     const pc = p.pci != null ? R.postcodes[p.pci] : null;
     const names = pc ? suburbs.filter(s => s.pci === p.pci).map(s => s.name) : [];
-    $('cardKicker').textContent = pc ? `Postcode ${String(pc).padStart(4, '0')}` : 'Outside Greater Sydney postcodes';
+    $('cardKicker').textContent = pc ? `Postcode ${String(pc).padStart(4, '0')}` : 'Outside NSW postcode records';
     $('cardTitle').textContent = names[0] ? names.slice(0, 2).join(' · ') + (names.length > 2 ? ` +${names.length - 2}` : '') : 'Chosen point';
     $('cardSub').textContent = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} · tap anywhere to move`;
-    const dots = { rent: pc ? 'ok' : 'err', road: ev.road?.s, sun: ev.sun?.s, trees: ev.canopy?.s, land: ev.land?.s, plan: ev.plan?.s };
-    document.querySelectorAll('#tabs button').forEach(b => {
-      const d = dots[b.dataset.tab]; b.setAttribute('aria-selected', String(b.dataset.tab === state.tab));
-      b.innerHTML = b.dataset.label + `<i class="dot ${d === 'ok' ? 'ok' : d === 'err' ? 'err' : d === 'load' ? 'load' : ''}"></i>`;
-    });
-    $('pane').innerHTML = ({ rent: paneRent, road: paneRoad, sun: paneSun, trees: paneTrees, land: paneLand, plan: panePlan }[state.tab])(p, ev);
+    document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
+    if (state.tab === 'rent') $('pane').innerHTML = paneRent(p);
+    else {
+      // Advanced (Pro): the real evidence, previewed under a blur until Pro exists.
+      const sections = [['Road', paneRoad], ['Sun', paneSun], ['Trees', paneTrees], ['Land records', paneLand], ['Planning', panePlan]];
+      $('pane').innerHTML = `<div class="pro-wrap"><div class="pro-body${PRO ? '' : ' locked'}" aria-hidden="${!PRO}">${sections.map(([t, f]) => `<section><h3>${t}</h3>${f(p, ev)}</section>`).join('')}</div>${PRO ? '' : proLock('Road distance, sun hours, tree cover, land records and planning overlays for this exact spot.')}</div>`;
+    }
     renderCompare();
+  }
+  function proLock(what) {
+    return `<div class="pro-lock" role="note"><b>SHOWHAUS Pro</b><p>${what}</p><span class="soon">Coming soon</span></div>`;
+  }
+  function rentChart(byM) {
+    // History timeline: monthly median (line), middle half (band), leases lodged (bars), every month labelled.
+    const W = 320, H = 150, L = 34, Rr = 8, T = 14, B = 34, M = byM.length, xs = k => L + (W - L - Rr) * (M === 1 ? .5 : k / (M - 1));
+    const stats = byM.map(v => ({ n: v.length, med: C.quantile(v, .5), lo: C.quantile(v, .25), hi: C.quantile(v, .75) }));
+    const vals = stats.flatMap(s => s.n ? [s.lo, s.hi] : []); if (!vals.length) return '';
+    const min = Math.min(...vals), max = Math.max(...vals), ys = v => T + (H - T - B) * (1 - (v - min) / (max - min || 1));
+    const nMax = Math.max(...stats.map(s => s.n)), barH = 16;
+    const band = stats.map((s, k) => s.n ? `${xs(k).toFixed(1)},${ys(s.hi).toFixed(1)}` : null).filter(Boolean).join(' ') + ' ' + stats.map((s, k) => s.n ? `${xs(k).toFixed(1)},${ys(s.lo).toFixed(1)}` : null).filter(Boolean).reverse().join(' ');
+    const line = stats.map((s, k) => s.n ? `${xs(k).toFixed(1)},${ys(s.med).toFixed(1)}` : null).filter(Boolean).join(' ');
+    const first = stats.find(s => s.n), last = [...stats].reverse().find(s => s.n);
+    const change = first && last ? Math.round((last.med - first.med) / first.med * 100) : null;
+    return `<figure class="timeline"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly median rent, ${fmtYm(R.months[0])} to ${fmtYm(R.months.at(-1))}">
+      ${[min, (min + max) / 2, max].map(v => `<line x1="${L}" x2="${W - Rr}" y1="${ys(v).toFixed(1)}" y2="${ys(v).toFixed(1)}" class="grid"/><text x="${L - 4}" y="${(ys(v) + 3).toFixed(1)}" class="ax" text-anchor="end">$${Math.round(v)}</text>`).join('')}
+      <polygon points="${band}" class="band"/>
+      ${stats.map((s, k) => s.n ? `<rect x="${(xs(k) - 5).toFixed(1)}" y="${(H - B + 2 + barH - barH * s.n / nMax).toFixed(1)}" width="10" height="${(barH * s.n / nMax).toFixed(1)}" class="bar"><title>${fmtYm(R.months[k])}: ${s.n} leases</title></rect>` : '').join('')}
+      <polyline points="${line}" class="med"/>
+      ${stats.map((s, k) => s.n ? `<circle cx="${xs(k).toFixed(1)}" cy="${ys(s.med).toFixed(1)}" r="3" class="pt"><title>${fmtYm(R.months[k])}: median ${C.weekly(s.med)} · middle half ${C.weekly(s.lo)}–${C.weekly(s.hi)} · ${s.n} leases</title></circle>` : '').join('')}
+      ${R.months.map((ym, k) => `<text x="${xs(k).toFixed(1)}" y="${H - 2}" class="ax" text-anchor="middle">${new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'narrow', timeZone: 'UTC' })}</text>`).join('')}
+    </svg><figcaption>${C.weekly(first.med)} → <b>${C.weekly(last.med)}</b>${change != null ? ` <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : ''}${change}%</span>` : ''} · line = median, band = middle half, bars = leases per month (${fmtYm(R.months[0])}–${fmtYm(R.months.at(-1))})</figcaption></figure>`;
   }
   function paneRent(p) {
     if (p.pci == null) return `<div class="fact"><b>—</b><span>${tag('unknown')} no rental bond records for this point's postcode</span></div>`;
@@ -358,13 +464,7 @@
     const all = C.filterRents(R, { pcSet: new Set([p.pci]) });
     const byBed = BEDS.map(([b, l]) => { const x = all.filter(i => (R.b[i] >= 4 ? 4 : R.b[i]) === b).map(i => R.w[i]).sort((a, c) => a - c); return [l, x.length, C.quantile(x, .5)]; }).filter(r => r[1]);
     const byM = R.months.map((_, m) => idx.filter(i => R.m[i] === m).map(i => R.w[i]).sort((a, b) => a - b));
-    const med = byM.map(x => C.quantile(x, .5)), ok = med.filter(x => x != null);
-    let spark = '';
-    if (ok.length > 2) {
-      const max = Math.max(...ok), min = Math.min(...ok), w = 300, h = 56;
-      const pts = med.map((m, k) => m == null ? null : `${(k / (med.length - 1) * w).toFixed(1)},${(h - 6 - (m - min) / (max - min || 1) * (h - 14)).toFixed(1)}`).filter(Boolean).join(' ');
-      spark = `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Monthly median rent"><polyline points="${pts}" fill="none" stroke="var(--terracotta)" stroke-width="2"/></svg><p class="how">Monthly median, ${fmtYm(R.months[0])} → ${fmtYm(R.months.at(-1))}: ${C.weekly(ok[0])} → ${C.weekly(ok.at(-1))}</p>`;
-    }
+    const spark = rentChart(byM);
     const filt = state.beds.size || state.types.size || state.maxRent;
     return `<div class="fact"><b>${C.weekly(C.quantile(v, .5))}</b><span>median new lease${filt ? ', your filters' : ''} · ${v.length.toLocaleString('en-AU')} leases ${tag('counted')}</span></div>
       <p class="how">Middle half paid ${C.weekly(C.quantile(v, .25))} – ${C.weekly(C.quantile(v, .75))}</p>
@@ -422,13 +522,80 @@
       <p class="note">A notification marks a reported location, not a contaminated parcel or a health risk. No record here is not proof of clean land.</p>
       <p class="how">NSW EPA notified-sites service, CC BY 4.0.</p>`;
   }
+  function placeLabel(p) { const n = suburbs.filter(s => s.kind === 'suburb' && s.pci === p.pci).map(s => s.name); return n[0] || (p.pci != null ? String(R.postcodes[p.pci]).padStart(4, '0') : 'this point'); }
+  function rentOf(p) { if (p.pci == null) return null; const v = C.filterRents(R, { ...filters(false), pcSet: new Set([p.pci]) }).map(i => R.w[i]).sort((a, b) => a - b); return { med: C.quantile(v, .5), n: v.length }; }
   function renderCompare() {
-    const A = state.A, p = state.point;
-    if (!A || !p || keyOf(A) === keyOf(p)) { $('compare').textContent = A ? 'A kept — tap another place' : ''; return; }
-    const a = evidence.get(keyOf(A)) || {}, b = evidence.get(keyOf(p)) || {};
-    const road = x => x.road?.s === 'ok' ? Math.round(x.road.any.distance) + ' m' : '—';
-    const sun = x => x.sun?.s === 'ok' && x.sun.n ? (x.sun.winter.sunMinutes / 60).toFixed(1) + ' h' : '—';
-    $('compare').textContent = `A / here · road ${road(a)} / ${road(b)} · June sun ${sun(a)} / ${sun(b)}`;
+    const pin = state.pin, p = state.point, btn = $('pinA');
+    if (!pin) { btn.textContent = 'Compare with another place'; $('compare').textContent = ''; return; }
+    btn.textContent = 'Stop comparing';
+    if (!p || keyOf(pin) === keyOf(p)) { $('compare').innerHTML = `<b>${esc(placeLabel(pin))}</b> pinned — tap another place on the map`; return; }
+    const a = rentOf(pin), b = rentOf(p);
+    const diff = a?.med && b?.med ? Math.round((b.med - a.med) / a.med * 100) : null;
+    $('compare').innerHTML = `<b>${esc(placeLabel(pin))}</b> ${C.weekly(a?.med)} · <b>${esc(placeLabel(p))}</b> ${C.weekly(b?.med)}${diff != null ? ` <span class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : ''}${diff}%</span>` : ''}`;
+  }
+
+  // ---------- lease dots: 1 dot = 1 new lease ----------
+  // The bond records give a postcode, never an address. Each lease is drawn at one of its postcode's ABS SA1 centres
+  // (where people live), chosen by a fixed hash of the record so dots don't jump, with a small jitter so they don't stack.
+  const DOT_ZOOM = 11.5, DOT_CAP = 30000;
+  let dotStats = { drawn: 0, total: 0, capped: false };
+  const hash = i => { let x = (i + 1) * 2654435761 >>> 0; x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13; return x >>> 0; };
+  // Without SA1 centres, spread dots over the postcode's own land: fixed pseudo-random points inside its boundary.
+  const spreadCache = new Map();
+  function spread(pi) {
+    if (spreadCache.has(pi)) return spreadCache.get(pi);
+    const f = pcFC.features.find(x => x.properties.pci === pi); let out = null;
+    if (f) {
+      let x0 = 180, y0 = 90, x1 = -180, y1 = -90;
+      const walk = a => typeof a[0] === 'number' ? (x0 = Math.min(x0, a[0]), y0 = Math.min(y0, a[1]), x1 = Math.max(x1, a[0]), y1 = Math.max(y1, a[1])) : a.forEach(walk);
+      walk(f.geometry.coordinates);
+      out = [];
+      for (let k = 0, tries = 0; out.length < 400 && tries < 4000; tries++, k++) {
+        const hx = hash(pi * 7919 + k), hy = hash(pi * 104729 + k);
+        const x = x0 + (hx % 100000) / 100000 * (x1 - x0), y = y0 + (hy % 100000) / 100000 * (y1 - y0);
+        if (C.pointInGeometry(x, y, f.geometry)) out.push(x, y);
+      }
+      if (!out.length) out = null;
+    }
+    spreadCache.set(pi, out); return out;
+  }
+  function drawLeases() {
+    if (!mapReady || !R) return;
+    const src = map.getSource('leases');
+    if (map.getZoom() < DOT_ZOOM || state.lens !== 'map' || state.mode === 'buy') { dotStats = { drawn: 0, total: 0, capped: false }; src.setData({ type: 'FeatureCollection', features: [] }); return; }
+    const b = map.getBounds(), padX = (b.getEast() - b.getWest()) * .25, padY = (b.getNorth() - b.getSouth()) * .25;
+    const inView = ([x, y]) => x > b.getWest() - padX && x < b.getEast() + padX && y > b.getSouth() - padY && y < b.getNorth() + padY;
+    const cf = filters(false), feats = [], mc = map.getCenter();
+    let total = 0;
+    // Nearest postcodes first, so the cap never starves the part of the map the visitor is looking at.
+    const order = [];
+    for (let pi = 0; pi < R.postcodes.length; pi++) {
+      const pc = R.postcodes[pi], c = centroids[pc];
+      if (!c || R.start[pi] < 0 || (cf.pcSet && !cf.pcSet.has(pi))) continue;
+      if (c[0] < b.getWest() - padX - .15 || c[0] > b.getEast() + padX + .15 || c[1] < b.getSouth() - padY - .15 || c[1] > b.getNorth() + padY + .15) continue; // cheap reject before any geometry
+      const s = A?.postcodes?.[pc]?.s;
+      const pts = s && s.length ? s : spread(pi);
+      if (!(pts ? (() => { for (let k = 0; k < pts.length; k += 2) if (inView([pts[k], pts[k + 1]])) return true; return false; })() : inView(c))) continue;
+      order.push([Math.hypot(c[0] - mc.lng, c[1] - mc.lat), pi, pc, c, s, pts]);
+    }
+    order.sort((x, y) => x[0] - y[0]);
+    for (const [, pi, pc, c, s, pts] of order) {
+      for (let i = R.start[pi]; i < R.end[pi]; i++) {
+        if (cf.maxRent != null && R.w[i] > cf.maxRent) continue;
+        if (cf.beds && !cf.beds.has(R.b[i] >= 4 ? 4 : R.b[i])) continue;
+        if (cf.types && !cf.types.has(R.t[i])) continue;
+        total++;
+        if (feats.length >= DOT_CAP) continue;
+        const h = hash(i), kx = 111320 * Math.cos(c[1] * Math.PI / 180);
+        let x, y;
+        if (pts) { const k = (h % (pts.length / 2)) * 2; x = pts[k]; y = pts[k + 1]; }
+        else { x = c[0]; y = c[1]; }
+        const r = pts ? (s && s.length ? 90 : 60) : 450, a = ((h >>> 8) % 3600) / 3600 * 2 * Math.PI, d = Math.sqrt(((h >>> 4) % 1000) / 1000) * r;
+        feats.push({ type: 'Feature', properties: { i, w: R.w[i] }, geometry: { type: 'Point', coordinates: [x + d * Math.cos(a) / kx, y + d * Math.sin(a) / 111320] } });
+      }
+    }
+    dotStats = { drawn: feats.length, total, capped: total > feats.length };
+    src.setData({ type: 'FeatureCollection', features: feats });
   }
 
   // ---------- map drawing for the pick ----------
@@ -437,12 +604,12 @@
     if (!mapReady || !state.point) return;
     const p = state.point, ev = evidence.get(keyOf(p)) || {}, f = [];
     f.push({ type: 'Feature', properties: { k: 'pin' }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } });
-    if (ev.road?.s === 'ok') f.push({ type: 'Feature', properties: { k: 'road' }, geometry: { type: 'LineString', coordinates: [[p.lng, p.lat], ev.road.any.at] } });
-    if (state.tab === 'land') {
+    if (PRO && ev.road?.s === 'ok') f.push({ type: 'Feature', properties: { k: 'road' }, geometry: { type: 'LineString', coordinates: [[p.lng, p.lat], ev.road.any.at] } });
+    if (PRO && state.tab === 'adv') {
       f.push({ type: 'Feature', properties: { k: 'ring' }, geometry: { type: 'LineString', coordinates: circle(p, 1000) } });
       if (ev.land?.s === 'ok') for (const s of ev.land.sites) f.push({ type: 'Feature', properties: { k: 'land' }, geometry: { type: 'Point', coordinates: [s.lng, s.lat] } });
     }
-    if (state.tab === 'sun') {
+    if (PRO && state.tab === 'adv') {
       const sp = C.solarPosition(p.lat, p.lng, sydneyToday(), nowMinutes());
       if (sp.elevation > 0) { const a = sp.azimuth * Math.PI / 180, r = 90; f.push({ type: 'Feature', properties: { k: 'sun' }, geometry: { type: 'LineString', coordinates: [[p.lng, p.lat], [p.lng + r * Math.sin(a) / (111320 * Math.cos(p.lat * Math.PI / 180)), p.lat + r * Math.cos(a) / 111320]] } }); }
     }
@@ -452,17 +619,24 @@
   // ---------- lenses ----------
   function setLens(l) {
     state.lens = l; body.dataset.lens = l;
+    body.classList.toggle('pro-preview', !PRO && l !== 'map');
+    $('proLens').hidden = PRO || l === 'map';
+    if (!PRO && l !== 'map') $('proLensWhat').textContent = { '3d': 'Rent terrain in 3D — every postcode raised by its median rent.', strata: 'Every layer at the chosen place, stacked: rent, roads, trees, sun path, land records.', time: 'Twelve months of leases at a glance, by bedrooms.' }[l];
     document.querySelectorAll('#lenses button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lens === l)));
     if (!mapReady) return;
     const is3d = l === '3d';
     map.setLayoutProperty('pc-3d', 'visibility', is3d ? 'visible' : 'none');
     map.setLayoutProperty('pc-fill', 'visibility', is3d ? 'none' : 'visible');
     map.easeTo(is3d ? { pitch: 58, bearing: -18, zoom: Math.min(map.getZoom(), 11.2), duration: 800 } : { pitch: 0, bearing: 0, duration: 700 });
-    cue(); drawOverlay(); renderLegend();
+    cue(); drawOverlay(); drawLeases(); renderLegend();
   }
   function renderLegend() {
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
-    $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>`;
+    const dots = state.lens === 'map' && mapReady && map.getZoom() >= DOT_ZOOM && dotStats.total
+      ? `<div class="dotnote"><i></i>1 dot = 1 new lease (${dotStats.drawn.toLocaleString('en-AU')}${dotStats.capped ? ` of ${dotStats.total.toLocaleString('en-AU')}` : ''}). Records give only the postcode, so each dot sits in a neighbourhood of its postcode — not at the home's address.</div>`
+      : state.lens === 'map' && mapReady && map.getZoom() < DOT_ZOOM ? '<div class="dotnote muted">Zoom in to see each lease as a dot.</div>' : '';
+    $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>${dots}`;
+    $('legend').classList.toggle('has-dots', dots.includes('1 dot'));
   }
 
   // ---------- overlay: strata & time (canvas over the map) ----------
@@ -563,7 +737,7 @@
   $('presets').addEventListener('click', e => {
     const x = e.target.closest('button[data-x]');
     if (x) { const st = store.get(); st.recent = (st.recent || []).filter(p => p.name !== x.dataset.x); store.set(st); renderPresets(true); return; }
-    const b = e.target.closest('button.go'); if (b) { const s = byName(b.dataset.name, b.dataset.pc); if (s) choosePlace(s); }
+    const b = e.target.closest('button.go'); if (b) { const s = byName(b.dataset.name, b.dataset.pc || null); if (s) choosePlace(s); }
   });
   document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('budget').addEventListener('input', setBudgetFromSlider);
@@ -575,11 +749,17 @@
   $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; state.tab = b.dataset.tab; cue(); renderCard(); drawPick(); });
   $('lenses').addEventListener('click', e => { const b = e.target.closest('button[data-lens]'); if (b) setLens(b.dataset.lens); });
   $('selection').addEventListener('click', e => { const b = e.target.closest('button[data-tok]'); if (b) removeToken(b.dataset.tok); });
-  $('pinA').addEventListener('click', () => { if (!state.point) return; state.A = { ...state.point }; renderCompare(); toast('Kept as A. Tap another place to compare.'); });
+  $('pinA').addEventListener('click', () => {
+    if (state.pin) { state.pin = null; renderCompare(); return; }
+    if (!state.point) return; state.pin = { ...state.point }; renderCompare(); toast('Pinned. Now tap another place on the map to compare rents.');
+  });
+  $('commuteWhere').addEventListener('input', () => { clearTimeout(commuteTimer); commuteTimer = setTimeout(geocodeCommute, 450); });
+  $('commuteKm').addEventListener('input', () => { if (state.commute) { state.commute.km = Number($('commuteKm').value); $('commuteKmLabel').textContent = state.commute.km + ' km'; applyFilter(); renderWants(); } else geocodeCommute(); });
+  $('proClose').addEventListener('click', () => setLens('map'));
   addEventListener('resize', drawOverlay);
 
   // ---------- boot ----------
-  window.SHOWHAUS = { state, C, get pc() { return pcFC; }, get rents() { return R; }, get places() { return P; }, get map() { return map; }, evidence, currentIdx, keyOf };
+  window.SHOWHAUS = { state, C, get amen() { return A; }, allowed, get pc() { return pcFC; }, get rents() { return R; }, get places() { return P; }, get map() { return map; }, get dots() { return dotStats; }, evidence, currentIdx, keyOf };
   body.dataset.lens = 'map';
   $('budget').max = String(RENT_STEPS.length); $('budget').value = String(RENT_STEPS.length);
   document.querySelectorAll('#tabs button').forEach(b => { b.dataset.label = b.textContent.trim(); });
