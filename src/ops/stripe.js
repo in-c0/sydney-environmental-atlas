@@ -54,7 +54,7 @@ export async function recordStripeEvent(env, e, { forceEnv } = {}) {
   if (!d) return { status: 503, body: { error: 'store not bound' } };
   const name = classify(e);
   if (!e?.id) return { status: 400, body: { error: 'no event id' } };
-  const seen = await d.prepare('INSERT OR IGNORE INTO hooks_seen (id, at) VALUES (?, ?)').bind(String(e.id), new Date().toISOString()).run();
+  const seen = await d.prepare('INSERT OR IGNORE INTO sh_hooks_seen (id, at) VALUES (?, ?)').bind(String(e.id), new Date().toISOString()).run();
   if (!seen.meta?.changes) return { status: 200, body: { ok: true, duplicate: true } };
   if (!name) return { status: 200, body: { ok: true, ignored: e.type } };
   const o = e.data.object || {};

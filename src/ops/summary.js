@@ -3,6 +3,7 @@
 import { db, getMeta } from './store.js';
 import { ALERT_EVENTS } from './events.js';
 import { recordStripeEvent } from './stripe.js';
+import { mailMode } from './auth.js';
 
 const FUNNEL = ['view', 'search', 'place_card', 'signin_open', 'signup', 'login', 'checkout_started', 'payment_succeeded'];
 const j = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -42,6 +43,7 @@ export async function health(env) {
   return {
     store: !!d,
     mail_binding: !!env.MAIL,
+    mail_mode: mailMode(env),
     webhook_secret: !!env.STRIPE_WEBHOOK_SECRET,
     payment_link: !!env.STUDIO_PAYMENT_LINK,
     mail_last_ok: d ? await getMeta(d, 'mail_last_ok') : null,
@@ -58,13 +60,13 @@ export async function summary(request, env) {
   const since = u.searchParams.get('since') ? new Date(u.searchParams.get('since')) : from;
   const [fromIso, toIso] = [from.toISOString(), to.toISOString()];
   const counts = {};
-  const c = await d.prepare('SELECT env, name, COUNT(*) AS n FROM events WHERE at >= ? AND at <= ? GROUP BY env, name').bind(fromIso, toIso).all();
+  const c = await d.prepare('SELECT env, name, COUNT(*) AS n FROM sh_events WHERE at >= ? AND at <= ? GROUP BY env, name').bind(fromIso, toIso).all();
   for (const r of c.results) (counts[r.env] ||= {})[r.name] = r.n;
-  const prodRows = (await d.prepare("SELECT id, at, name, actor, path, props FROM events WHERE env = 'production' AND at >= ? AND at <= ? ORDER BY at LIMIT 5000").bind(fromIso, toIso).all()).results.map(parse);
-  const alertRows = (await d.prepare(`SELECT id, at, name, env, actor, path, props FROM events WHERE at > ? AND name IN (${[...ALERT_EVENTS].map(() => '?').join(',')}) ORDER BY at LIMIT 200`)
+  const prodRows = (await d.prepare("SELECT id, at, name, actor, path, props FROM sh_events WHERE env = 'production' AND at >= ? AND at <= ? ORDER BY at LIMIT 5000").bind(fromIso, toIso).all()).results.map(parse);
+  const alertRows = (await d.prepare(`SELECT id, at, name, env, actor, path, props FROM sh_events WHERE at > ? AND name IN (${[...ALERT_EVENTS].map(() => '?').join(',')}) ORDER BY at LIMIT 200`)
     .bind(since.toISOString(), ...ALERT_EVENTS).all()).results.map(parse);
-  const users = await d.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS new FROM users WHERE env = 'production'").bind(fromIso).first();
-  const last = await d.prepare('SELECT MAX(at) AS at FROM events').first();
+  const users = await d.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS new FROM sh_users WHERE env = 'production'").bind(fromIso).first();
+  const last = await d.prepare('SELECT MAX(at) AS at FROM sh_events').first();
   return j({
     now: new Date().toISOString(), window: { from: fromIso, to: toIso }, store: true,
     counts, funnel: funnelOf(prodRows),

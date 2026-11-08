@@ -23,11 +23,11 @@ function d1() {
 function makeEnv(extra = {}) {
   resetForTests();
   const sent = [];
-  return { OPS_DB: d1(), MAIL: { send: async m => { sent.push(m); return { messageId: 'm1' }; } }, ASSETS: { fetch: async () => new Response('asset') }, sent, ...extra };
+  return { OPS_DB: d1(), MAIL_SENDING: 'on', MAIL: { send: async m => { sent.push(m); return { messageId: 'm1' }; } }, ASSETS: { fetch: async () => new Response('asset') }, sent, ...extra };
 }
 const ctx = () => { const p = []; return { waitUntil: x => p.push(x), done: () => Promise.all(p) }; };
 const post = (url, body, headers = {}) => new Request(url, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body), headers: { 'content-type': 'application/json', ...headers } });
-const rows = env => env.OPS_DB._db.prepare('SELECT name, env, source, actor, path, props FROM events ORDER BY id').all();
+const rows = env => env.OPS_DB._db.prepare('SELECT name, env, source, actor, path, props FROM sh_events ORDER BY id').all();
 
 test('environment: production only on showhaus.app, probes are synthetic, never upgraded', () => {
   const r = (u, h = {}) => new Request(u, { headers: h });
@@ -72,7 +72,7 @@ test('sign-up then log-in with an emailed code; the email is never stored', asyn
   assert.equal((await again.json()).new, false);
   const names = rows(env).map(r => r.name);
   assert.deepEqual(names.filter(n => n !== 'cta'), ['signup', 'login']);
-  const dump = JSON.stringify(env.OPS_DB._db.prepare("SELECT * FROM users").all()) + JSON.stringify(rows(env)) + JSON.stringify(env.OPS_DB._db.prepare('SELECT * FROM codes').all());
+  const dump = JSON.stringify(env.OPS_DB._db.prepare("SELECT * FROM sh_users").all()) + JSON.stringify(rows(env)) + JSON.stringify(env.OPS_DB._db.prepare('SELECT * FROM sh_codes').all());
   assert.ok(!dump.toLowerCase().includes('example.com'), 'no raw email in the store');
 });
 
@@ -172,5 +172,22 @@ test('journeys fold the anonymous visit into the account it became, money first'
 test('health answers without a store binding (previews may have none)', async () => {
   const r = await worker.fetch(new Request('https://x.workers.dev/api/ops/health'), { ASSETS: { fetch: async () => new Response('') } }, ctx());
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { store: false, mail_binding: false, webhook_secret: false, payment_link: false, mail_last_ok: null, mail_last_error: null });
+  assert.deepEqual(await r.json(), { store: false, mail_binding: false, mail_mode: null, webhook_secret: false, payment_link: false, mail_last_ok: null, mail_last_error: null });
+});
+
+test('without a mail route, sign-in is hidden (me.available false) and start answers 503, never a silent failure', async () => {
+  const env = makeEnv({ MAIL_SENDING: 'off' });
+  const me = await (await worker.fetch(new Request('https://showhaus.app/api/auth/me'), env, ctx())).json();
+  assert.deepEqual(me, { signedIn: false, available: false });
+  const r = await worker.fetch(post('https://showhaus.app/api/auth/start', { email: 'z@example.com' }), env, ctx());
+  assert.equal(r.status, 503); assert.equal(env.sent.length, 0);
+});
+
+test('Resend route is used when RESEND_API_KEY exists', async () => {
+  const calls = [];
+  const { sendCode } = await import('../src/ops/auth.js');
+  await sendCode({ RESEND_API_KEY: 'k' }, 'a@example.com', '123456', async (url, init) => { calls.push([url, JSON.parse(init.body)]); return new Response('{"id":"x"}'); });
+  assert.equal(calls[0][0], 'https://api.resend.com/emails');
+  assert.deepEqual(calls[0][1].to, ['a@example.com']);
+  assert.match(calls[0][1].subject, /^123456 /);
 });
