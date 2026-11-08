@@ -1,0 +1,10 @@
+// Same settings Workers Builds auto-detects for production (static site in dist/),
+// plus an empty `previews` block so branch/PR preview builds (`npx wrangler preview`) can run.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sydney-environmental-atlas",
+  "compatibility_date": "2026-11-04",
+  "observability": { "enabled": true },
+  "assets": { "directory": "./dist" },
+  "previews": {}
+}
