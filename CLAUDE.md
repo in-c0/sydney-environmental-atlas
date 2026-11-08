@@ -6,6 +6,8 @@ Rules live in one place: [in-c0/Project-harness](https://github.com/in-c0/Projec
 own; only the facts below.
 
 ## This repo
+- SHOWHAUS Studio (3D walkthrough for agencies): page `dist/showhaus/studio/` (showhaus.app/studio/?p=<slug>), embed `studio/embed.js`, pilot `studio/pilot.html`, Worker routes `src/studio.js` (`/pay/studio-pilot`, `/api/studio-config`).
+- Studio data: `python3 scripts/showhaus_studio_build.py <slug>` reads `showhaus/studio/<slug>.source.json` (figures + URLs from the planning documents) → `dist/showhaus/studio/data/<slug>.json`. Email kit: `node scripts/showhaus-studio-kit.mjs <slug>` (Playwright + ffmpeg). Judge: `node scripts/showhaus-studio-judge.mjs`; unit tests: `node --test scripts/showhaus-studio.test.mjs`.
 - SHOWHAUS listing kits: `node scripts/showhaus-listing-kit.mjs "<address>" --slug <slug>` → `dist/showhaus/p/<slug>.json` + media; judge `node scripts/showhaus-kit-judge.mjs`. See `docs/showhaus-listing-kit.md`.
 - Unit tests: `node --test scripts/showhaus-core.test.cjs scripts/shadow-geometry.test.cjs scripts/showhaus-worker.test.mjs scripts/showhaus-kit.test.cjs`.
 

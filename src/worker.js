@@ -2,6 +2,7 @@
 //   map.lifeos.studio (and every other host) → the atlas, exactly as before
 //   showhaus.app / www.showhaus.app          → the SHOWHAUS app at the root (served from dist/showhaus/)
 import { handleOps, observeCheckout } from './ops/index.js';
+import { handleStudio } from './studio.js';
 
 const SHOWHAUS_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);
 
@@ -18,7 +19,7 @@ export default {
   async fetch(request, env, ctx) {
     const ops = await handleOps(request, env, ctx);
     if (ops) return ops;
-    const res = await route(request, env);
+    const res = (await handleStudio(request, env, ctx)) || (await route(request, env));
     observeCheckout(request, res, env, ctx);
     return res;
   },

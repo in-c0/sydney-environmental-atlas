@@ -1,0 +1,475 @@
+{
+ "project": {
+  "name": "Arncliffe Central",
+  "address": "26\u201342 Eden Street and 161\u2013179 Princes Highway, Arncliffe NSW 2205",
+  "lga": "Bayside",
+  "application": "SSD-11429726 (State significant development), approved by the Minister for Planning 1 Aug 2022; latest modification MOD-10 determined 2 Jul 2026",
+  "description": "806 apartments across four buildings (consent description); retail, childcare, community facility, Eden Street Park",
+  "developer_as_listed": "Billbergia (per apartments.com.au listing)",
+  "listing_url": "https://www.apartments.com.au/new-apartments/arncliffe-central-26-eden-street-arncliffe-nsw-2205",
+  "endorsement": "None. SHOWHAUS made this independently from public planning documents; neither the developer, the architect nor any agency was involved or endorsed it."
+ },
+ "site": {
+  "lot": "1//DP1283907",
+  "area_m2_cadastre": 13441,
+  "area_m2_assessment_report": 13440.3,
+  "boundary": [
+   [
+    151.1480283,
+    -33.938648
+   ],
+   [
+    151.1481061,
+    -33.9385498
+   ],
+   [
+    151.1481876,
+    -33.938447
+   ],
+   [
+    151.1487606,
+    -33.9377242
+   ],
+   [
+    151.1483611,
+    -33.9373779
+   ],
+   [
+    151.1481902,
+    -33.9375049
+   ],
+   [
+    151.1481194,
+    -33.9375576
+   ],
+   [
+    151.1476074,
+    -33.9379381
+   ],
+   [
+    151.1474547,
+    -33.9380508
+   ],
+   [
+    151.1473293,
+    -33.9381439
+   ],
+   [
+    151.147203,
+    -33.938238
+   ],
+   [
+    151.1470734,
+    -33.9383347
+   ],
+   [
+    151.1469514,
+    -33.9384257
+   ],
+   [
+    151.1468383,
+    -33.9385081
+   ],
+   [
+    151.1470911,
+    -33.9387266
+   ],
+   [
+    151.1471625,
+    -33.9387883
+   ],
+   [
+    151.1472171,
+    -33.9388354
+   ],
+   [
+    151.1473303,
+    -33.9387444
+   ],
+   [
+    151.1474072,
+    -33.9386826
+   ],
+   [
+    151.1477313,
+    -33.9389628
+   ],
+   [
+    151.1477947,
+    -33.9389213
+   ],
+   [
+    151.1478715,
+    -33.9388459
+   ],
+   [
+    151.1479271,
+    -33.9387757
+   ],
+   [
+    151.1480283,
+    -33.938648
+   ]
+  ],
+  "source": "NSW Spatial Services cadastre, NSW_Land_Parcel_Property_Theme/FeatureServer/8 (CC BY 4.0)"
+ },
+ "towers": [
+  {
+   "id": "A",
+   "name": "Building A",
+   "footprint": [
+    [
+     151.1480765,
+     -33.9375957
+    ],
+    [
+     151.1481722,
+     -33.9375246
+    ],
+    [
+     151.1481921,
+     -33.9375431
+    ],
+    [
+     151.1482974,
+     -33.9374649
+    ],
+    [
+     151.1486312,
+     -33.9377705
+    ],
+    [
+     151.1484966,
+     -33.9379231
+    ],
+    [
+     151.1484718,
+     -33.937932
+    ],
+    [
+     151.148225,
+     -33.9377288
+    ]
+   ],
+   "max_rl_ahd_m": 101.0,
+   "ground_rl_m": 21.65,
+   "height_m_est": 79.35,
+   "levels": 22,
+   "floor_to_floor_m_est": 3.2,
+   "sources": {
+    "max_rl": "Consolidated consent (MOD-10, 2 Jul 2026), condition limiting maximum building height: Building A: RL 101.0 m AHD",
+    "ground_rl": "Assessment report (Aug 2022), building height table: 70 m (RL 91.65) \u2192 ground datum = RL \u2212 height = 21.65 m",
+    "levels": "Consolidated consent (MOD-10), approved architectural drawing list: Tower A Ground to Level 21 + Roof",
+    "footprint": "Traced from approved plan DA2013 'Level 8\u201312' (Stamped Plans Part 1, sheet 18 of 238, 1:250), georeferenced to NSW cadastre lot 1//DP1283907 (site boundary, 6 control points, max residual 1.0 m)"
+   }
+  },
+  {
+   "id": "B",
+   "name": "Building B",
+   "footprint": [
+    [
+     151.1479571,
+     -33.9378373
+    ],
+    [
+     151.1480692,
+     -33.9378829
+    ],
+    [
+     151.1481129,
+     -33.9379076
+    ],
+    [
+     151.1483099,
+     -33.9380858
+    ],
+    [
+     151.1483256,
+     -33.9381218
+    ],
+    [
+     151.1481951,
+     -33.9383049
+    ],
+    [
+     151.1481329,
+     -33.9384179
+    ],
+    [
+     151.1481148,
+     -33.9384171
+    ]
+   ],
+   "max_rl_ahd_m": 101.3,
+   "ground_rl_m": 23.4,
+   "height_m_est": 77.9,
+   "levels": 23,
+   "floor_to_floor_m_est": 3.2,
+   "sources": {
+    "max_rl": "Consolidated consent (MOD-10, 2 Jul 2026), condition limiting maximum building height: Building B: RL 101.3 m AHD",
+    "ground_rl": "Assessment report (Aug 2022), building height table: 71.5 m (RL 94.9) \u2192 ground datum = RL \u2212 height = 23.4 m",
+    "levels": "Consolidated consent (MOD-10), approved architectural drawing list: Tower B Ground to Level 22 + Roof",
+    "footprint": "Traced from approved plan DA2013 'Level 8\u201312' (Stamped Plans Part 1, sheet 18 of 238, 1:250), georeferenced to NSW cadastre lot 1//DP1283907 (site boundary, 6 control points, max residual 1.0 m)"
+   }
+  },
+  {
+   "id": "C",
+   "name": "Building C",
+   "footprint": [
+    [
+     151.146931,
+     -33.9384952
+    ],
+    [
+     151.1470778,
+     -33.9383861
+    ],
+    [
+     151.1470607,
+     -33.9383702
+    ],
+    [
+     151.1472904,
+     -33.9381994
+    ],
+    [
+     151.1473458,
+     -33.9381868
+    ],
+    [
+     151.1474284,
+     -33.9382639
+    ],
+    [
+     151.1472436,
+     -33.9384872
+    ],
+    [
+     151.147211,
+     -33.938521
+    ],
+    [
+     151.147227,
+     -33.9385358
+    ],
+    [
+     151.147093,
+     -33.9386355
+    ],
+    [
+     151.1470707,
+     -33.9386253
+    ]
+   ],
+   "max_rl_ahd_m": 96.1,
+   "ground_rl_m": 25.25,
+   "height_m_est": 70.85,
+   "levels": 19,
+   "floor_to_floor_m_est": 3.2,
+   "sources": {
+    "max_rl": "Consolidated consent (MOD-10, 2 Jul 2026), condition limiting maximum building height: Building C: RL 96.1 m AHD",
+    "ground_rl": "Assessment report (Aug 2022), building height table: 67.4 m (RL 92.65) \u2192 ground datum = RL \u2212 height = 25.25 m",
+    "levels": "Consolidated consent (MOD-10), approved architectural drawing list: Tower C Ground to Level 18 + Roof",
+    "footprint": "Traced from approved plan DA2013 'Level 8\u201312' (Stamped Plans Part 1, sheet 18 of 238, 1:250), georeferenced to NSW cadastre lot 1//DP1283907 (site boundary, 6 control points, max residual 1.0 m)"
+   }
+  },
+  {
+   "id": "D",
+   "name": "Building D",
+   "footprint": [
+    [
+     151.1474819,
+     -33.9385917
+    ],
+    [
+     151.1475466,
+     -33.938513
+    ],
+    [
+     151.1476299,
+     -33.9384196
+    ],
+    [
+     151.1477984,
+     -33.9385712
+    ],
+    [
+     151.1478112,
+     -33.9385617
+    ],
+    [
+     151.1479508,
+     -33.9386918
+    ],
+    [
+     151.1477797,
+     -33.9388477
+    ],
+    [
+     151.1476704,
+     -33.9387619
+    ]
+   ],
+   "max_rl_ahd_m": 93.6,
+   "ground_rl_m": 30.6,
+   "height_m_est": 63.0,
+   "levels": 21,
+   "floor_to_floor_m_est": 2.9,
+   "sources": {
+    "max_rl": "Consolidated consent (MOD-10, 2 Jul 2026), condition limiting maximum building height: Building D: RL 93.6 m AHD",
+    "ground_rl": "Assessment report (Aug 2022), building height table: 60.6 m (RL 91.2) \u2192 ground datum = RL \u2212 height = 30.6 m",
+    "levels": "Consolidated consent (MOD-10), approved architectural drawing list: Tower D Ground to Level 20 + Roof",
+    "footprint": "Traced from approved plan DA2013 'Level 8\u201312' (Stamped Plans Part 1, sheet 18 of 238, 1:250), georeferenced to NSW cadastre lot 1//DP1283907 (site boundary, 6 control points, max residual 1.0 m)"
+   }
+  }
+ ],
+ "floor_to_floor_m_est": 3.15,
+ "context_radius_m": 650,
+ "view_targets": [
+  {
+   "id": "cbd",
+   "label": "Sydney CBD towers (upper part)",
+   "fov_deg": 60,
+   "height_amsl_offset_m": 200,
+   "points": [
+    [
+     151.2093,
+     -33.8705
+    ],
+    [
+     151.207,
+     -33.865
+    ],
+    [
+     151.211,
+     -33.876
+    ]
+   ],
+   "note": "line of sight to a point 200 m above ground in the CBD (the towers there are ~200\u2013310 m tall)"
+  },
+  {
+   "id": "bay",
+   "label": "Botany Bay (water)",
+   "fov_deg": 60,
+   "height_amsl_offset_m": 0.5,
+   "points": [
+    [
+     151.175,
+     -33.975
+    ],
+    [
+     151.17,
+     -33.99
+    ],
+    [
+     151.19,
+     -33.99
+    ],
+    [
+     151.21,
+     -33.995
+    ]
+   ],
+   "note": "line of sight to the water surface at four points in the bay"
+  },
+  {
+   "id": "airport",
+   "label": "Sydney Airport runways",
+   "fov_deg": 60,
+   "height_amsl_offset_m": 10,
+   "points": [
+    [
+     151.18,
+     -33.945
+    ],
+    [
+     151.185,
+     -33.955
+    ],
+    [
+     151.176,
+     -33.936
+    ]
+   ],
+   "note": "line of sight to 10 m above the airfield (tail height of a taxiing jet)"
+  }
+ ],
+ "view_method": "For each building, level and facade aspect: eye at ground datum + level \u00d7 floor-to-floor (est.) + 1.6 m, at the facade midpoint. A target counts as visible if the straight line to it clears the terrain (AWS Terrain Tiles, z13) and every OpenStreetMap building with a mapped height on the way, plus the other three buildings of this project, within \u00b160\u00b0 of the facade direction. On land, the line must also clear 8 m above ground everywhere beyond 20 m (a conservative allowance for unmapped houses and trees). Earth curvature with standard refraction applied. Trees, unmapped buildings and future neighbours are not in the model.",
+ "documents": {
+  "project_page": "https://www.planningportal.nsw.gov.au/major-projects/projects/eden-street-arncliffe-mixed-use-redevelopment",
+  "consolidated_consent": "https://majorprojects.planningportal.nsw.gov.au/prweb/PRRestService/mp/01/getContent?AttachRef=SSD-11429726-MOD-10%2120260706T003222.154+GMT",
+  "assessment_report": "https://majorprojects.planningportal.nsw.gov.au/prweb/PRRestService/mp/01/getContent?AttachRef=SSD-11429726%2120220813T230858.851+GMT",
+  "stamped_plans_part1": "https://majorprojects.planningportal.nsw.gov.au/prweb/PRRestService/mp/01/getContent?AttachRef=SSD-11429726%2120220817T034457.110+GMT",
+  "noise_assessment": "https://majorprojects.planningportal.nsw.gov.au/prweb/PRRestService/mp/01/getContent?AttachRef=SSD-11429726%2120210706T032322.104+GMT"
+ },
+ "noise": {
+  "aircraft": {
+   "text": "Outside the ANEF 20 contour of Sydney Airport ANEF 2039",
+   "source": "Applicant's noise and vibration assessment (EIS Appendix P, 2021), section 'Aircraft Noise Assessment' and Figure 13",
+   "url": "https://majorprojects.planningportal.nsw.gov.au/prweb/PRRestService/mp/01/getContent?AttachRef=SSD-11429726%2120210706T032322.104+GMT",
+   "grade": "stated in planning document (not measured by SHOWHAUS)",
+   "geometry": "The ANEF 2039 contour geometry is not connected to SHOWHAUS (no licensed GIS source found); the statement above is the document's."
+  },
+  "traffic": [
+   {
+    "where": "Princes Highway frontage (L3)",
+    "day_laeq15h": 72,
+    "night_laeq9h": 68
+   },
+   {
+    "where": "Forest Road (L4)",
+    "day_laeq15h": 74,
+    "night_laeq9h": 73
+   },
+   {
+    "where": "Eden Street (L2)",
+    "day_laeq15h": 58,
+    "night_laeq9h": 50
+   }
+  ],
+  "rail": {
+   "where": "Rail corridor (L1)",
+   "day_laeq15h": 65,
+   "night_laeq9h": 64
+  },
+  "traffic_source": "Measured by the applicant's acoustic consultant, unattended loggers 3\u201312 Dec 2020 (EIS Appendix P, Tables 2 and 3). Not measured by SHOWHAUS.",
+  "units": "dB(A)"
+ },
+ "sources": [
+  {
+   "what": "Building footprints, levels, maximum heights",
+   "who": "NSW Planning Portal, SSD-11429726 documents",
+   "licence": "public planning record"
+  },
+  {
+   "what": "Site boundary",
+   "who": "NSW Spatial Services cadastre",
+   "licence": "CC BY 4.0"
+  },
+  {
+   "what": "Surrounding buildings and roads",
+   "who": "OpenStreetMap contributors via OpenFreeMap",
+   "licence": "ODbL"
+  },
+  {
+   "what": "Sun position",
+   "who": "NOAA solar position equations",
+   "licence": "public domain"
+  },
+  {
+   "what": "Terrain",
+   "who": "AWS Terrain Tiles (terrarium)",
+   "licence": "public; SRTM / GA-derived"
+  },
+  {
+   "what": "Planning controls",
+   "who": "NSW Planning EPI Primary Planning Layers",
+   "licence": "CC BY 4.0"
+  }
+ ],
+ "notes": [
+  "Massing model from public planning documents: shapes are typical-floor outlines traced from the approved 2022 plans; MOD-4 (2024) changed facades and heights, so the top is shown at the current approved maximum RL. Not an architectural model and not photoreal.",
+  "Heights above ground are estimates: approved maximum RL minus the ground datum implied by the 2022 assessment report.",
+  "Floor heights are estimates (equal floor-to-floor per building)."
+ ]
+}

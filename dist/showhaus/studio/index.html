@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS Studio · 3D walkthrough</title>
+<meta name="description" content="A 3D walkthrough of an off-the-plan project: massing from public planning documents, real surrounding buildings, real sun, and what each floor can see.">
+<meta property="og:title" content="SHOWHAUS Studio · 3D walkthrough">
+<meta property="og:description" content="Massing from public planning documents, real surroundings (OpenStreetMap), real sun (NOAA), floor-by-floor views.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="./studio.css">
+</head>
+<body data-state="loading">
+<div id="map" role="img" aria-label="3D massing model of the project among the surrounding buildings"></div>
+
+<header class="bar">
+  <a class="brand" href="/" aria-label="SHOWHAUS home">SHOWHAUS<span> Studio</span></a>
+  <div class="title"><h1 id="pname">Loading…</h1><p id="plabel">massing model from public planning documents</p></div>
+  <span class="spacer"></span>
+  <button class="chipbtn keep" id="detailsBtn" type="button">Floor details</button>
+  <button class="chipbtn" id="embedBtn" type="button">Embed</button>
+  <a class="chipbtn primary" id="pilotLink" href="./pilot.html">Pilot for your project →</a>
+</header>
+
+<button class="play" id="playBig" type="button">▶ Play walkthrough</button>
+<div class="caption" id="caption" aria-live="polite"></div>
+<a class="made" id="made" href="https://showhaus.app/studio/" target="_blank" rel="noopener">Made with SHOWHAUS</a>
+
+<div class="dock" role="group" aria-label="Sun and walkthrough controls">
+  <button class="iconbtn" id="playBtn" type="button" aria-label="Pause walkthrough">❚❚</button>
+  <div class="seg" id="days" role="group" aria-label="Day">
+    <button type="button" data-day="today" aria-pressed="true">Today</button>
+    <button type="button" data-day="06-21" aria-pressed="false">21 Jun</button>
+    <button type="button" data-day="12-21" aria-pressed="false">21 Dec</button>
+  </div>
+  <label class="time"><span class="mono" aria-hidden="true">☀</span><input id="clock" type="range" min="300" max="1260" step="5" value="720" aria-label="Time of day"><output id="clockOut">12:00</output></label>
+</div>
+
+<aside class="panel" aria-label="Floor details">
+  <header>
+    <h2 id="selTitle">Building —</h2><button class="chipbtn" id="closeDetails" type="button">Close</button>
+    <p class="sub" id="selSub">—</p>
+  </header>
+  <div class="towers" id="towers" role="group" aria-label="Building"></div>
+  <div class="body">
+    <div class="content">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="sun">Sun</button>
+        <button role="tab" aria-selected="false" data-tab="view">View</button>
+        <button role="tab" aria-selected="false" data-tab="noise">Noise</button>
+        <button role="tab" aria-selected="false" data-tab="plan">Planning</button>
+      </div>
+      <section class="tab on" id="tab-sun"></section>
+      <section class="tab" id="tab-view"></section>
+      <section class="tab" id="tab-noise"></section>
+      <section class="tab" id="tab-plan"></section>
+    </div>
+    <nav class="lift" id="lift" aria-label="Level"></nav>
+  </div>
+  <footer>
+    <button type="button" id="srcBtn">Sources &amp; method</button>
+    <span>· est. = modelled, not measured</span>
+  </footer>
+</aside>
+
+<dialog id="srcDlg"><button class="close" type="button" data-close>close</button><h3>Sources &amp; method</h3><div id="srcBody"></div></dialog>
+<dialog id="embedDlg"><button class="close" type="button" data-close>close</button><h3>Put this walkthrough on your site</h3>
+  <p class="fact">Paste this where the walkthrough should appear. It loads only when scrolled into view and resizes with the page.</p>
+  <pre id="embedCode"></pre>
+  <p><button class="chipbtn primary" type="button" id="copyEmbed">Copy code</button> <span id="copied" class="note"></span></p>
+  <p class="note">For email, use the hosted GIF and link it to this page — moving 3D cannot run inside an email.</p>
+</dialog>
+
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="../lib/core.js"></script>
+<script src="../lib/shadow-geometry.js"></script>
+<script src="./lib/studio-core.js"></script>
+<script src="./studio.js"></script>
+</body>
+</html>

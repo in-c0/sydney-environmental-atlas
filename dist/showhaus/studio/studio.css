@@ -1,0 +1,163 @@
+/* SHOWHAUS Studio — a surveyor's plan on Sydney sandstone, now standing up in 3D. */
+:root {
+  --paper: #efe6d4; --paper-2: #e6dac3; --ink: #1d2733; --ink-2: #4a5566; --line: #2f4c7a;
+  --terracotta: #c4622d; --jacaranda: #7d5fc7; --harbour: #2b7ea1; --sun: #e2a234; --leaf: #4f7d4a; --warn: #b4472b;
+  --glass: rgba(239, 230, 212, .93); --shadow: 0 1px 0 rgba(29,39,51,.08), 0 10px 30px rgba(29,39,51,.16);
+  --mono: 'IBM Plex Mono', ui-monospace, monospace; --sans: 'Inter Tight', system-ui, sans-serif; --serif: 'Fraunces', Georgia, serif;
+  --pad: 16px; --panel-w: 360px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #15181d; --paper-2: #1d2128; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; --glass: rgba(21,24,29,.9); --shadow: 0 10px 30px rgba(0,0,0,.45); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #15181d; --paper-2: #1d2128; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; --glass: rgba(21,24,29,.9); color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font: 14px/1.4 var(--sans); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
+a { color: var(--line); }
+#map { position: fixed; inset: 0; right: var(--panel-w); }
+.mono { font-family: var(--mono); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+body.kit .play { display: none !important; }
+
+/* top bar */
+.bar { position: fixed; top: 0; left: 0; right: var(--panel-w); z-index: 5; display: flex; align-items: center; gap: 12px; padding: 12px var(--pad); pointer-events: none; }
+.bar > * { pointer-events: auto; }
+.brand { font: 600 13px/1 var(--mono); letter-spacing: .14em; text-decoration: none; color: var(--ink); background: var(--glass); padding: 8px 10px; border-radius: 6px; box-shadow: var(--shadow); white-space: nowrap; }
+.brand span { color: var(--terracotta); }
+.title { background: var(--glass); padding: 6px 12px; border-radius: 6px; box-shadow: var(--shadow); min-width: 0; }
+.title h1 { margin: 0; font: 600 18px/1.15 var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title p { margin: 2px 0 0; font: 11px/1.3 var(--mono); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .spacer { flex: 1; }
+.chipbtn { background: var(--glass); box-shadow: var(--shadow); border-radius: 999px; padding: 7px 12px; font: 500 12px/1 var(--mono); white-space: nowrap; text-decoration: none; color: var(--ink); }
+.chipbtn.primary { background: var(--terracotta); color: #fff8ee; }
+
+/* walkthrough state */
+.play { position: fixed; left: 50%; top: 50%; transform: translate(calc(-50% - var(--panel-w) / 2), -50%); z-index: 4; background: var(--glass); box-shadow: var(--shadow); border-radius: 999px; padding: 12px 20px; font: 600 14px/1 var(--sans); display: none; }
+body[data-state="paused"] .play { display: block; }
+.caption { position: fixed; left: var(--pad); bottom: 92px; z-index: 4; max-width: min(520px, calc(100vw - var(--panel-w) - 2 * var(--pad))); background: var(--glass); box-shadow: var(--shadow); border-radius: 8px; padding: 8px 12px; font: 13px/1.35 var(--sans); opacity: 0; transition: opacity .6s; pointer-events: none; }
+body[data-state="playing"] .caption.on { opacity: 1; }
+.caption b { font-family: var(--serif); font-weight: 600; }
+
+/* bottom control dock */
+.dock { position: fixed; left: var(--pad); right: calc(var(--panel-w) + var(--pad)); bottom: var(--pad); z-index: 5; display: flex; gap: 10px; align-items: center; background: var(--glass); box-shadow: var(--shadow); border-radius: 10px; padding: 8px 12px; }
+.seg { display: flex; gap: 2px; background: var(--paper-2); border-radius: 7px; padding: 2px; }
+.seg button { padding: 6px 9px; border-radius: 5px; font: 500 12px/1 var(--mono); white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.time { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.time input { flex: 1; min-width: 60px; accent-color: var(--sun); }
+.time output { font: 500 12px/1 var(--mono); min-width: 74px; text-align: right; }
+.iconbtn { width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; flex: none; font-size: 12px; }
+
+/* right panel */
+.panel { position: fixed; top: 0; right: 0; bottom: 0; width: var(--panel-w); z-index: 6; background: var(--paper); border-left: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); display: flex; flex-direction: column; }
+.panel header { padding: 14px var(--pad) 8px; }
+.panel h2 { margin: 0; font: 600 20px/1.15 var(--serif); }
+.panel .sub { margin: 2px 0 0; font: 12px/1.35 var(--mono); color: var(--ink-2); }
+.towers { display: flex; gap: 6px; padding: 4px var(--pad) 8px; }
+.towers button { flex: 1; padding: 7px 0; border-radius: 6px; background: var(--paper-2); font: 600 13px/1 var(--mono); }
+.towers button[aria-pressed="true"] { background: var(--jacaranda); color: #fff; }
+.body { flex: 1; display: grid; grid-template-columns: 1fr 64px; gap: 10px; padding: 0 var(--pad); min-height: 0; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); margin-bottom: 8px; }
+.tabs button { padding: 6px 8px; font: 500 12px/1 var(--mono); color: var(--ink-2); border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-color: var(--terracotta); }
+.content { min-height: 0; overflow: hidden; }
+.tab { display: none; }
+.tab.on { display: block; }
+.k { font: 11px/1.3 var(--mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 4px; }
+.rows { display: grid; gap: 4px; }
+.row { display: grid; grid-template-columns: 34px 1fr 52px; align-items: center; gap: 8px; font: 12px/1.2 var(--mono); }
+.row .barw { height: 10px; background: var(--paper-2); border-radius: 3px; overflow: hidden; position: relative; }
+.row .barw i { position: absolute; inset: 0 auto 0 0; background: var(--sun); border-radius: 3px; }
+.row .barw s { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--ink) 25%, transparent) 0 2px, transparent 2px 5px); }
+.row b { text-align: right; font-weight: 500; }
+.view { display: grid; grid-template-columns: 34px 1fr auto; gap: 6px; align-items: center; font: 12px/1.25 var(--sans); padding: 3px 0; }
+.view .a { font: 600 12px/1 var(--mono); }
+.view .look { font: 500 11px/1 var(--mono); padding: 5px 7px; border-radius: 5px; background: var(--paper-2); }
+.view .none { color: var(--ink-2); }
+.note { font: 11px/1.4 var(--sans); color: var(--ink-2); margin: 6px 0 0; }
+.fact { font: 12.5px/1.35 var(--sans); margin: 3px 0; }
+.fact .v { font-family: var(--mono); font-weight: 500; }
+.tag { display: inline-block; font: 500 10px/1 var(--mono); padding: 2px 5px; border-radius: 3px; background: var(--paper-2); color: var(--ink-2); vertical-align: 1px; }
+
+/* the elevator: one row per level, four cells = sun on each aspect for the chosen day */
+.lift { display: flex; flex-direction: column-reverse; gap: 1px; min-height: 0; overflow: hidden; padding-bottom: 4px; }
+.lift button { flex: 1 1 0; min-height: 0; max-height: 22px; display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 3px; border-radius: 3px; font: 500 10px/1 var(--mono); }
+.lift button .cells { display: grid; grid-auto-flow: column; gap: 1px; height: 70%; }
+.lift button .cells i { border-radius: 1px; background: var(--paper-2); }
+.lift button[aria-pressed="true"] { background: var(--jacaranda); color: #fff; }
+.lift .cap { font: 10px/1.2 var(--mono); color: var(--ink-2); text-align: center; padding: 2px 0; }
+
+.panel footer { padding: 8px var(--pad) 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: 11px/1.3 var(--mono); color: var(--ink-2); border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.panel footer button, .panel footer a { text-decoration: underline; color: var(--ink-2); font: inherit; }
+.made { position: fixed; right: calc(var(--panel-w) + 10px); bottom: 70px; z-index: 5; font: 500 11px/1 var(--mono); background: var(--glass); padding: 5px 8px; border-radius: 5px; text-decoration: none; color: var(--ink); box-shadow: var(--shadow); display: none; }
+
+dialog { border: 0; border-radius: 10px; padding: 18px 20px; max-width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 48px); background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(15, 18, 24, .45); }
+dialog h3 { margin: 0 0 8px; font: 600 18px/1.2 var(--serif); }
+dialog ul { padding-left: 18px; margin: 6px 0; }
+dialog li { margin: 4px 0; font-size: 13px; }
+dialog pre { white-space: pre-wrap; word-break: break-all; background: var(--paper-2); padding: 10px; border-radius: 6px; font: 12px/1.4 var(--mono); }
+dialog .close { float: right; font: 500 12px/1 var(--mono); text-decoration: underline; }
+
+.maplibregl-ctrl-attrib { font-size: 10px; }
+
+/* embed: everything a little tighter, panel becomes a sheet */
+body.embed .bar .chipbtn:not(.keep) { display: none; }
+body.embed .made { display: none; }
+
+/* phone and narrow frames: map on top, sheet below — still one screen */
+@media (max-width: 900px) {
+  :root { --panel-w: 0px; --sheet-h: 46vh; }
+  #map { right: 0; bottom: var(--sheet-h); }
+  .bar { right: 0; padding: 8px; gap: 6px; flex-wrap: wrap; }
+  .brand { display: none; }
+  .title { flex: 1 1 100%; padding: 5px 10px; }
+  .title h1 { font-size: 15px; }
+  .title p { font-size: 9.5px; white-space: normal; }
+  .bar .spacer { display: none; }
+  .chipbtn { padding: 6px 9px; font-size: 11px; }
+  .panel { top: auto; height: var(--sheet-h); width: 100%; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); }
+  .panel header { padding: 8px 12px 4px; display: flex; align-items: baseline; gap: 8px; }
+  .panel h2 { font-size: 16px; white-space: nowrap; }
+  .panel .sub { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .towers { padding: 2px 12px 6px; }
+  .towers button { padding: 5px 0; }
+  .body { padding: 0 12px; grid-template-columns: 1fr 52px; gap: 8px; }
+  .k { margin: 5px 0 3px; }
+  .dock { left: 8px; right: 8px; bottom: calc(var(--sheet-h) + 8px); padding: 6px 8px; gap: 6px; flex-wrap: wrap; }
+  .dock .seg button { padding: 5px 6px; font-size: 11px; }
+  .time output { min-width: 46px; font-size: 11px; flex: none; }
+  .caption { bottom: calc(var(--sheet-h) + 98px); left: 8px; max-width: calc(100vw - 16px); font-size: 12px; }
+  .play { transform: translate(-50%, -50%); top: calc((100vh - var(--sheet-h)) / 2); }
+  .made { right: 8px; bottom: calc(var(--sheet-h) + 92px); }
+  .panel footer { padding: 6px 12px 8px; }
+}
+@media (max-width: 900px) and (max-height: 520px) { :root { --sheet-h: 0px; } .panel { display: none; } }
+@media (min-width: 901px) and (max-height: 560px) { .caption { display: none; } }
+
+/* embed in a short or narrow frame: map fills the frame, details open as an overlay */
+#detailsBtn, #closeDetails { display: none; }
+@media (max-width: 900px), (max-height: 600px) {
+  body.embed { --sheet-h: 0px; --panel-w: 0px; }
+  body.embed #map { right: 0; bottom: 0; }
+  body.embed .bar { right: 0; }
+  body.embed .dock { right: 8px; bottom: 8px; }
+  body.embed .caption { bottom: 98px; }
+  body.embed .made { bottom: 64px; right: 8px; }
+  body.embed .play { transform: translate(-50%, -50%); top: 50%; }
+  body.embed #detailsBtn { display: inline-block; }
+  body.embed .panel { display: none; }
+  body.embed.details .panel { display: flex; position: fixed; inset: 0; width: auto; height: auto; top: 0; z-index: 9; }
+  body.embed.details #closeDetails { display: inline-block; margin-left: auto; }
+  body.embed .title p { display: none; }
+}
+
+/* recording mode for the email kit: picture + caption + label only */
+body.clean .panel, body.clean .dock, body.clean .bar .chipbtn, body.clean .made, body.clean .play, body.clean .brand { display: none !important; }
+body.clean { --panel-w: 0px; --sheet-h: 0px; }
+body.clean #map { right: 0; bottom: 0; }
+body.clean .bar { right: 0; }
+body.clean .caption { bottom: 16px; }
+body.clean .title p { white-space: normal; }
+body.clean[data-state] .caption.on { opacity: 1; }
