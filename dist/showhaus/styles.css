@@ -15,6 +15,7 @@
 :root[data-theme="dark"] { --paper: #15181d; --paper-2: #1d2128; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; --glass: rgba(21,24,29,.9); color-scheme: dark; }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font: 15px/1.4 var(--sans); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
 #map, #overlay { position: fixed; inset: 0; }
@@ -132,6 +133,9 @@ body[data-act="3"] .lenses, body[data-act="4"] .lenses { opacity: 1; pointer-eve
   .card { left: var(--pad); right: var(--pad); width: auto; top: auto; height: 46vh; bottom: 56px; }
   .lenses { flex-direction: row; top: 64px; }
   .legend { display: none; }
+  .legend.has-dots { display: block; top: 104px; bottom: auto; right: var(--pad); max-width: none; padding: 6px 8px; }
+  .legend.has-dots > :not(.dotnote) { display: none; }
+  .legend.has-dots .dotnote { margin-top: 0; }
   .selection { flex-wrap: nowrap; overflow: hidden; right: 64px; }
   .selection .say { white-space: nowrap; }
 }
@@ -145,3 +149,46 @@ body[data-act="3"] .lenses, body[data-act="4"] .lenses { opacity: 1; pointer-eve
 .tabs { overflow: hidden; }
 .tabs button { padding: 8px 7px; white-space: nowrap; }
 @media (max-width: 760px) { .tabs button { font-size: 11px; padding: 8px 5px; } }
+
+/* ---- wants: commute, count, chip notes ---- */
+.chips button small { display: block; font: 400 10px var(--mono); opacity: .7; }
+.commute { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 10px; }
+.commute input#commuteWhere { min-width: 0; border: 1px solid var(--ink-2); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 8px 10px; font: inherit; }
+.commute .km { display: flex; align-items: center; gap: 6px; font: 500 12px var(--mono); }
+.commute .km input { width: 110px; accent-color: var(--jacaranda); }
+.commute .hint { grid-column: 1 / -1; margin: 0; }
+#act3 .readout { margin: 10px 0 2px; }
+
+/* ---- Pro (soft paywall: real evidence previewed under a blur) ---- */
+.pro-badge { display: inline-block; font: 600 9px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 3px 5px; border-radius: 3px; background: var(--jacaranda); color: #fff; vertical-align: 1px; margin-left: 3px; }
+.pro-wrap { position: relative; min-height: 220px; }
+.pro-body.locked { filter: blur(5px); user-select: none; pointer-events: none; max-height: 300px; overflow: hidden; }
+.pro-body section h3 { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; margin: 10px 0 4px; }
+.pro-lock, .pro-lens { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 16px; border-radius: 10px; background: var(--glass); box-shadow: var(--shadow); }
+.pro-lock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(280px, 90%); }
+.pro-lock b, .pro-lens b { font: 650 18px/1.1 var(--serif); }
+.pro-lock p, .pro-lens p { margin: 0; font-size: 13px; color: var(--ink-2); }
+.soon { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--jacaranda); border: 1px solid var(--jacaranda); border-radius: 999px; padding: 4px 10px; }
+.pro-lens { position: fixed; z-index: 12; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(340px, calc(100vw - 32px)); }
+.pro-lens button { border: 1px solid var(--ink); background: none; border-radius: 6px; padding: 7px 12px; font: 500 12px var(--mono); }
+body.pro-preview #map, body.pro-preview #overlay { filter: blur(6px) saturate(.8); }
+
+/* ---- rent history timeline ---- */
+.timeline { margin: 6px 0 0; }
+.timeline svg { width: 100%; height: auto; display: block; }
+.timeline .grid { stroke: color-mix(in srgb, var(--ink) 12%, transparent); stroke-width: 1; }
+.timeline .ax { font: 400 9px var(--mono); fill: var(--ink-2); }
+.timeline .band { fill: color-mix(in srgb, var(--terracotta) 18%, transparent); }
+.timeline .bar { fill: color-mix(in srgb, var(--line) 35%, transparent); }
+.timeline .med { fill: none; stroke: var(--terracotta); stroke-width: 2; stroke-linejoin: round; }
+.timeline .pt { fill: var(--paper); stroke: var(--terracotta); stroke-width: 1.6; }
+.timeline .pt:hover { r: 4.5; fill: var(--terracotta); }
+.timeline figcaption { font: 400 11px var(--mono); color: var(--ink-2); margin-top: 2px; }
+.up { color: var(--sold); } .down { color: var(--leaf); }
+
+/* ---- lease dots ---- */
+.legend .dotnote { margin-top: 6px; display: flex; gap: 6px; align-items: flex-start; }
+.legend .dotnote i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--terracotta); margin-top: 3px; }
+.legend .dotnote.muted { color: var(--ink-2); }
+.dot-pop .maplibregl-popup-content small { color: var(--ink-2); }
+.card-foot #compare { min-width: 0; }

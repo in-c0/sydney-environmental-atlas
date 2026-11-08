@@ -56,7 +56,13 @@
 <section class="act" id="act3" aria-labelledby="q3">
   <h1 id="q3">What matters at home?</h1>
   <div class="chips" id="wants"></div>
-  <p class="hint">Each choice turns on its evidence on the map. Nothing here is a score.</p>
+  <div class="commute" id="commuteBox" hidden>
+    <input id="commuteWhere" autocomplete="off" placeholder="Work or school — e.g. Macquarie University, Parramatta" aria-describedby="commuteHint">
+    <label class="km"><input id="commuteKm" type="range" min="2" max="40" step="1" value="10" aria-label="Distance"><b id="commuteKmLabel">10 km</b></label>
+    <p class="hint" id="commuteHint"></p>
+  </div>
+  <p class="readout"><b id="c3">—</b> new leases match</p>
+  <p class="hint" id="wantsHint"></p>
   <button class="next" type="button" data-go="4">Show the place</button>
 </section>
 
@@ -68,25 +74,27 @@
   </div>
   <div class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="rent" aria-selected="true">Rent</button>
-    <button role="tab" data-tab="road">Road</button>
-    <button role="tab" data-tab="sun">Sun</button>
-    <button role="tab" data-tab="trees">Trees</button>
-    <button role="tab" data-tab="land">Land</button>
-    <button role="tab" data-tab="plan">Plan</button>
+    <button role="tab" data-tab="adv" aria-selected="false">Advanced <span class="pro-badge">Pro</span></button>
   </div>
   <div class="pane" id="pane"></div>
   <div class="card-foot">
-    <button type="button" id="pinA" title="Keep this place to compare">Keep as A</button>
+    <button type="button" id="pinA">Compare with another place</button>
     <span id="compare"></span>
   </div>
 </aside>
 
 <nav class="lenses" id="lenses" aria-label="Lens">
   <button type="button" data-lens="map" aria-pressed="true">Map</button>
-  <button type="button" data-lens="3d" aria-pressed="false">3D</button>
-  <button type="button" data-lens="strata" aria-pressed="false">Strata</button>
-  <button type="button" data-lens="time" aria-pressed="false">Time</button>
+  <button type="button" data-lens="3d" aria-pressed="false">3D <span class="pro-badge">Pro</span></button>
+  <button type="button" data-lens="strata" aria-pressed="false">Strata <span class="pro-badge">Pro</span></button>
+  <button type="button" data-lens="time" aria-pressed="false">Time <span class="pro-badge">Pro</span></button>
 </nav>
+<div class="pro-lens" id="proLens" hidden role="dialog" aria-labelledby="proLensTitle">
+  <b id="proLensTitle">SHOWHAUS Pro</b>
+  <p id="proLensWhat"></p>
+  <span class="soon">Coming soon</span>
+  <button type="button" id="proClose">Back to the map</button>
+</div>
 
 <footer class="selection" id="selection" aria-label="Your selection"></footer>
 
