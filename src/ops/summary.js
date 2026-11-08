@@ -66,7 +66,7 @@ export async function summary(request, env) {
   const alertRows = (await d.prepare(`SELECT id, at, name, env, actor, path, props FROM sh_events WHERE at > ? AND name IN (${[...ALERT_EVENTS].map(() => '?').join(',')}) ORDER BY at LIMIT 200`)
     .bind(since.toISOString(), ...ALERT_EVENTS).all()).results.map(parse);
   const users = await d.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS new FROM sh_users WHERE env = 'production'").bind(fromIso).first();
-  const last = await d.prepare('SELECT MAX(at) AS at FROM sh_events').first();
+  const last = await d.prepare('SELECT MIN(at) AS first, MAX(at) AS at FROM sh_events').first();
   return j({
     now: new Date().toISOString(), window: { from: fromIso, to: toIso }, store: true,
     counts, funnel: funnelOf(prodRows),
@@ -74,6 +74,7 @@ export async function summary(request, env) {
     journeys: buildJourneys(prodRows),
     accounts: { production_total: users?.total || 0, production_new: users?.new || 0 },
     last_event_at: last?.at || null,
+    first_event_at: last?.first || null, // tracking began here: a window starting earlier is not a measured zero
     health: await health(env),
     webhook_last_event_at: await getMeta(d, 'stripe_last_event_at'),
   });
