@@ -22,6 +22,7 @@
         fetch('/api/e', { method: 'POST', body, headers: { 'content-type': 'application/json' }, keepalive: true }).catch(() => {});
       }
     } catch { /* analytics never breaks the page */ }
+    try { if (window.posthog && window.posthog.capture) window.posthog.capture('sh_' + name, { ...(props || {}), synthetic }); } catch { /* same */ }
   }
   const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => /^utm_(source|medium|campaign)$/.test(k)));
   track('view', utm, { once: true });
