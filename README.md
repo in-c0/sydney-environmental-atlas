@@ -19,6 +19,18 @@ Directional road petals show relative mapped road geometry, not measured noise d
 
 The interface deliberately shows **Not rated** and data uncertainty where the evidence is insufficient to support an overall livability score.
 
+## SHOWHAUS (dist/showhaus/)
+
+A Sydney home-search map built on this atlas: every new lease in Greater Sydney (NSW rental bonds, 12 months) on one screen, then the road, ground-level sun, canopy, EPA land records and planning overlays around any point. Spec: [showhaus/SPEC.md](showhaus/SPEC.md) · data sources: [docs/showhaus-data-sources.md](docs/showhaus-data-sources.md) · benchmark: [docs/showhaus-benchmark.md](docs/showhaus-benchmark.md).
+
+```sh
+python3 scripts/showhaus_build_data.py            # rebuild data (pip install openpyxl)
+node --test scripts/showhaus-core.test.cjs        # unit tests
+node scripts/showhaus-judge.mjs --shots shots     # outside judge (needs playwright)
+```
+
+Served at `/showhaus/` from the same `dist` deployment.
+
 ## Run locally
 
 No build step is needed. Serve the `dist` directory rather than opening the HTML file directly, because the map loads local data assets.
