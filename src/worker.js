@@ -1,6 +1,8 @@
 // Host routing for one static deployment:
 //   map.lifeos.studio (and every other host) → the atlas, exactly as before
 //   showhaus.app / www.showhaus.app          → the SHOWHAUS app at the root (served from dist/showhaus/)
+import { handleStudio } from './studio.js';
+
 const SHOWHAUS_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);
 
 export function rewrite(url) {
@@ -14,6 +16,8 @@ export function rewrite(url) {
 
 export default {
   async fetch(request, env) {
+    const studio = await handleStudio(request, env);
+    if (studio) return studio;
     const r = rewrite(request.url);
     if (!r) return env.ASSETS.fetch(request);
     if (r.redirect) return Response.redirect(r.redirect, 301);

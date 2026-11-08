@@ -11,6 +11,8 @@
   "previews": {},
   // Public Stripe Payment Link for the SHOWHAUS Studio founding-pilot deposit (AUD 1,250, max 4). Not a secret.
   "vars": { "STUDIO_PAYMENT_LINK": "https://buy.stripe.com/aFacN5aRla7jcClaUW1kA00" },
+  // SHOWHAUS Studio page beacons (src/studio.js): Workers Analytics Engine, no cookies, no IP, no personal data.
+  "analytics_engine_datasets": [{ "binding": "EVENTS", "dataset": "showhaus_studio_events" }],
   // showhaus.app (zone in this account) is attached as a Workers Custom Domain on deploy; worker.js redirects www → apex.
   // Declaring routes turns workers.dev and preview URLs off by default; keep both (atlas links and PR previews use them).
   "workers_dev": true,
