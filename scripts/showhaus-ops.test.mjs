@@ -106,7 +106,7 @@ test('Stripe webhook: 503 without secret; signed, deduped, PII-free with it', as
   const good = `t=${t},v1=${await stripeSignature('whsec_test', t, body)}`;
   assert.equal((await worker.fetch(post('https://showhaus.app/hooks/stripe', body, { 'stripe-signature': `t=${t},v1=${await stripeSignature('nope', t, body)}` }), env, ctx())).status, 400);
   const r1 = await worker.fetch(post('https://showhaus.app/hooks/stripe', body, { 'stripe-signature': good }), env, ctx());
-  assert.deepEqual(await r1.json(), { ok: true, recorded: 'payment_succeeded', env: 'production' });
+  assert.deepEqual(await r1.json(), { ok: true, recorded: 'payment_succeeded', env: 'production', entitlement: 'owed', mailed: 'cloudflare' });
   const r2 = await worker.fetch(post('https://showhaus.app/hooks/stripe', body, { 'stripe-signature': good }), env, ctx());
   assert.equal((await r2.json()).duplicate, true);
   const ev1 = rows(env);
@@ -173,7 +173,7 @@ test('journeys fold the anonymous visit into the account it became, money first'
 test('health answers without a store binding (previews may have none)', async () => {
   const r = await worker.fetch(new Request('https://x.workers.dev/api/ops/health'), { ASSETS: { fetch: async () => new Response('') } }, ctx());
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { store: false, mail_binding: false, mail_mode: null, webhook_secret: false, payment_link: false, mail_last_ok: null, mail_last_error: null });
+  assert.deepEqual(await r.json(), { store: false, mail_binding: false, mail_mode: null, webhook_secret: false, payment_link: false, mail_last_ok: null, mail_last_error: null, alert_last_ok: null, alert_last_error: null });
 });
 
 test('without a mail route, sign-in is hidden (me.available false) and start answers 503, never a silent failure', async () => {
@@ -203,4 +203,47 @@ test('listing-kit beacons: kit slug and src kept, no actor without an id, bad sl
   assert.equal(a.actor, null);
   assert.deepEqual(JSON.parse(a.props), { utm_source: 'agent-4-17-flood-st-clovelly', kit: '4-17-flood-st-clovelly' });
   assert.deepEqual(JSON.parse(b.props), { cta: 'explore' });
+});
+
+test('payment → owner mail at once (production only), entitlement owed → refunded; replay never mails', async () => {
+  const { recordStripeEvent } = await import('../src/ops/stripe.js');
+  const env = makeEnv();
+  const paid = { id: 'evt_p', type: 'checkout.session.completed', livemode: true, created: 1762590000, data: { object: { payment_intent: 'pi_1', amount_total: 125000, currency: 'aud', payment_status: 'paid', customer_details: { email: 'buyer@example.com' } } } };
+  const r = await recordStripeEvent(env, paid);
+  assert.deepEqual([r.body.entitlement, r.body.mailed], ['owed', 'cloudflare']);
+  assert.equal(env.sent.length, 1);
+  assert.equal(env.sent[0].to, 'hello@showhaus.app');
+  assert.match(env.sent[0].subject, /결제 성공 1,250\.00 AUD/);
+  assert.ok(!JSON.stringify(env.sent).includes('buyer@'), 'no raw email in the alert');
+  const refund = { id: 'evt_r', type: 'charge.refunded', livemode: true, data: { object: { id: 'ch_1', payment_intent: 'pi_1', amount_refunded: 125000, currency: 'aud' } } };
+  assert.equal((await recordStripeEvent(env, refund)).body.entitlement, 'refunded');
+  assert.equal(env.sent.length, 2);
+  const synth = await recordStripeEvent(env, { ...paid, id: 'evt_s', data: { object: { ...paid.data.object, payment_intent: 'pi_2' } } }, { forceEnv: 'synthetic' });
+  assert.equal(synth.body.mailed, false); assert.equal(env.sent.length, 2);
+  const { entitlementSummary, markEntitlement } = await import('../src/ops/owner.js');
+  const d = env.OPS_DB;
+  assert.deepEqual(await entitlementSummary(d), { owed: 0, delivered: 0, refunded: 1, disputed: 0, oldest_owed_at: null, owed_amount: 0 });
+  await recordStripeEvent(env, { ...paid, id: 'evt_p3', data: { object: { ...paid.data.object, payment_intent: 'pi_3' } } });
+  assert.equal((await entitlementSummary(d)).owed, 1);
+  assert.equal((await markEntitlement(d, { id: 'pi_3', status: 'delivered' })).status, 200);
+  assert.equal((await markEntitlement(d, { id: 'pi_1', status: 'delivered' })).status, 404, 'a refunded payment cannot be marked delivered');
+  assert.equal((await entitlementSummary(d)).delivered, 1);
+});
+
+test('a failing mail route never fails the webhook; the error is visible in health', async () => {
+  const { recordStripeEvent } = await import('../src/ops/stripe.js');
+  const env = makeEnv({ MAIL: { send: async () => { throw new Error('not verified'); } } });
+  const r = await recordStripeEvent(env, { id: 'evt_f', type: 'checkout.session.completed', livemode: true, data: { object: { payment_intent: 'pi_9', amount_total: 100, currency: 'aud', payment_status: 'paid' } } });
+  assert.equal(r.status, 200); assert.equal(r.body.mailed, false);
+  const h = await (await worker.fetch(new Request('https://showhaus.app/api/ops/health'), env, ctx())).json();
+  assert.equal(h.alert_last_error, 'E');
+});
+
+test('one-tap "looks wrong" feedback is a page event with no free text', async () => {
+  const env = makeEnv(), c = ctx();
+  assert.equal((await worker.fetch(post('https://showhaus.app/api/e', { name: 'feedback', anon: 'b2', props: { kind: 'wrong', cta: 'rent', postcode: '2205', note: 'my address is 1 Foo St' } }, { 'user-agent': 'Mozilla/5.0' }), env, c)).status, 204);
+  await c.done();
+  const [r] = rows(env);
+  assert.equal(r.name, 'feedback');
+  assert.deepEqual(JSON.parse(r.props), { kind: 'wrong', cta: 'rent', postcode: '2205' });
 });

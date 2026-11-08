@@ -4,6 +4,7 @@ import { db, getMeta } from './store.js';
 import { ALERT_EVENTS } from './events.js';
 import { recordStripeEvent } from './stripe.js';
 import { mailMode } from './auth.js';
+import { entitlementSummary, alertHealth, markEntitlement } from './owner.js';
 
 const FUNNEL = ['view', 'search', 'place_card', 'signin_open', 'signup', 'login', 'checkout_started', 'payment_succeeded'];
 const j = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -48,6 +49,7 @@ export async function health(env) {
     payment_link: !!env.STUDIO_PAYMENT_LINK,
     mail_last_ok: d ? await getMeta(d, 'mail_last_ok') : null,
     mail_last_error: d ? JSON.parse(await getMeta(d, 'mail_last_error') || 'null')?.code ?? null : null,
+    ...(d ? await alertHealth(d) : { alert_last_ok: null, alert_last_error: null }),
   };
 }
 
@@ -77,6 +79,7 @@ export async function summary(request, env) {
     first_event_at: last?.first || null, // tracking began here: a window starting earlier is not a measured zero
     health: await health(env),
     webhook_last_event_at: await getMeta(d, 'stripe_last_event_at'),
+    entitlements: await entitlementSummary(d), // production only: paid → owed → delivered | refunded | disputed
   });
 }
 
@@ -84,5 +87,12 @@ export async function replay(request, env) {
   const e = await request.json().catch(() => null);
   if (!e) return j({ error: 'bad json' }, 400);
   const r = await recordStripeEvent(env, e, { forceEnv: 'synthetic' });
+  return j(r.body, r.status);
+}
+
+export async function entitlement(request, env) {
+  const d = await db(env);
+  if (!d) return j({ error: 'store not bound' }, 503);
+  const r = await markEntitlement(d, await request.json().catch(() => null));
   return j(r.body, r.status);
 }
