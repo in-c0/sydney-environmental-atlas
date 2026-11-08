@@ -124,7 +124,8 @@ for (const [w, h] of VIEWPORTS) {
   const rentFact = await page.locator('#pane .fact b').first().innerText();
   check(`${tag} place card leads with a counted median`, /^\$[\d,]+\/wk$/.test(rentFact), rentFact);
   for (const t of ['road', 'sun', 'trees', 'land', 'plan']) { await page.click(`[data-tab="${t}"]`); }
-  await page.waitForTimeout(3000);
+  // Every live request has a 15 s timeout, so each lens must leave 'load' within ~20 s (ok, none or err).
+  await page.waitForFunction(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return e && Object.values(e).every(v => v.s !== 'load'); }, null, { timeout: 22000 }).catch(() => {});
   const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });
   check(`${tag} every evidence lens resolved (ok/none/err, never stuck)`, Object.values(statuses).every(s => s !== 'load'), JSON.stringify(statuses));
 
