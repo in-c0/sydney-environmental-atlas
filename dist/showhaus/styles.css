@@ -192,3 +192,22 @@ body.pro-preview #map, body.pro-preview #overlay { filter: blur(6px) saturate(.8
 .legend .dotnote.muted { color: var(--ink-2); }
 .dot-pop .maplibregl-popup-content small { color: var(--ink-2); }
 .card-foot #compare { min-width: 0; }
+
+/* ---- account (email code sign-in, src/ops/auth.js) ---- */
+.acct { white-space: nowrap; border: 0; font: 500 12px var(--mono); color: var(--ink); background: var(--glass); padding: 8px 12px; border-radius: 6px; box-shadow: var(--shadow); cursor: pointer; }
+body.signed-in .acct { color: var(--leaf); }
+.acct-dlg { position: fixed; z-index: 30; top: 64px; right: var(--pad); width: min(340px, calc(100vw - 2 * var(--pad))); display: grid; gap: 10px; padding: 18px 16px 14px; border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+.acct-dlg[hidden] { display: none; }
+.acct-dlg > b { font: 650 18px/1.1 var(--serif); padding-right: 24px; }
+.acct-dlg form, .acct-done { display: none; gap: 8px; }
+.acct-dlg[data-step="email"] .acct-email, .acct-dlg[data-step="code"] .acct-code, .acct-dlg[data-step="done"] .acct-done { display: grid; }
+.acct-dlg label { font: 400 12px var(--mono); color: var(--ink-2); }
+.acct-dlg input { border: 1px solid var(--ink-2); background: var(--paper-2); color: var(--ink); border-radius: 6px; padding: 10px; font: 500 16px var(--sans); }
+.acct-dlg #acctCode { letter-spacing: .3em; font-family: var(--mono); }
+.acct-dlg button[type="submit"], #acctOut { border: 0; background: var(--terracotta); color: #fff8ec; padding: 10px 14px; border-radius: 6px; font-weight: 600; }
+.acct-dlg .link { border: 0; background: none; color: var(--ink-2); text-decoration: underline; font: 400 12px var(--mono); justify-self: start; padding: 0; }
+.acct-x { position: absolute; top: 8px; right: 8px; border: 0; background: none; font-size: 20px; line-height: 1; color: var(--ink-2); width: 32px; height: 32px; }
+.acct-msg { margin: 0; min-height: 1.2em; font: 400 12px var(--mono); color: var(--terracotta); }
+.acct-fine { margin: 0; font: 400 10.5px var(--mono); color: var(--ink-2); }
+.acct-done p { margin: 0; }
+@media (max-width: 760px) { .acct { margin-left: auto; padding: 7px 10px; } .acct-dlg { top: 56px; } }

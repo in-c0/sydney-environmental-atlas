@@ -11,6 +11,12 @@
   "previews": {},
   // Public Stripe Payment Link for the SHOWHAUS Studio founding-pilot deposit (AUD 1,250, max 4). Not a secret.
   "vars": { "STUDIO_PAYMENT_LINK": "https://buy.stripe.com/aFacN5aRla7jcClaUW1kA00" },
+  // Operations store (src/ops/): pseudonymous events, sign-in codes, sessions, webhook dedupe. No database_id on purpose:
+  // `wrangler deploy` (Workers Builds) provisions the D1 database by name on first deploy and reuses it after.
+  "d1_databases": [{ "binding": "OPS_DB", "database_name": "showhaus-ops" }],
+  // Sign-in codes are sent with Cloudflare Email Service from login@showhaus.app (src/ops/auth.js).
+  "send_email": [{ "name": "MAIL" }],
+  // Secret (set in the dashboard, never in git): STRIPE_WEBHOOK_SECRET — until it exists /hooks/stripe answers 503.
   // showhaus.app (zone in this account) is attached as a Workers Custom Domain on deploy; worker.js redirects www → apex.
   // Declaring routes turns workers.dev and preview URLs off by default; keep both (atlas links and PR previews use them).
   "workers_dev": true,
