@@ -1,0 +1,36 @@
+{
+ "slug": "arncliffe-central",
+ "recorded": "2026-11-08T06:48:23.747Z",
+ "date": "2026-11-08",
+ "viewport": [
+  1280,
+  800
+ ],
+ "fps": 12,
+ "frames": 60,
+ "walkthrough_seconds": 30,
+ "timelapse": 6,
+ "gif": {
+  "width": 580,
+  "height": 363,
+  "bytes": 1750848,
+  "duration_s": 5.01
+ },
+ "mp4": {
+  "bytes": 2203110,
+  "duration_s": 5
+ },
+ "stills": {
+  "sunrise": "still-sunrise.png",
+  "winter_3pm": "still-winter-3pm.png",
+  "top_floor_view": "still-top-floor-view.png",
+  "top_floor": {
+   "tower": "A",
+   "level": 21,
+   "aspect": "NE",
+   "target": "cbd"
+  }
+ },
+ "label": "Massing model from public planning documents · sun position: NOAA · surrounding buildings: OpenStreetMap. Not photoreal.",
+ "console_errors": 0
+}
