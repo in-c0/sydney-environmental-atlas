@@ -48,22 +48,25 @@
   function searchSuburbs(suburbs, raw, limit = 6) {
     const q = classifyWhere(raw);
     if (q.kind === 'postcode') return { query: q, scope: 'postcode', matches: suburbs.filter(s => s.postcode === q.value).sort((a, b) => b.n - a.n).slice(0, limit) };
+    if (q.kind === 'text' && OTHER_STATES.has(q.value)) return { query: q, scope: 'elsewhere', matches: [] };
     if (q.kind !== 'text') return { query: q, scope: 'none', matches: [] };
     const exact = [], prefix = [], contains = [];
     for (const s of suburbs) {
-      const k = s.key || (s.key = norm(s.name));
-      if (k === q.value) exact.push(s);
-      else if (k.startsWith(q.value)) prefix.push(s);
-      else if (k.includes(q.value)) contains.push(s);
+      const keys = s.keys || (s.keys = [norm(s.name), ...(s.aliases || []).map(norm)]);
+      if (keys.some(k => k === q.value)) exact.push(s);
+      else if (keys.some(k => k.startsWith(q.value))) prefix.push(s);
+      else if (keys.some(k => k.includes(q.value))) contains.push(s);
     }
     const byCount = (a, b) => b.n - a.n;
+    // Several places can be called the same thing ("Sydney", "Randwick"): the broader one first, the suburb right after.
+    exact.sort((a, b) => (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9) || b.n - a.n);
     let matches = [...exact, ...prefix.sort(byCount), ...contains.sort(byCount)];
     let scope = exact.length ? 'exact' : matches.length ? 'close' : 'none';
     let suggestion = null;
     if (!matches.length && q.value.length >= 4) {
       let best = null;
       for (const s of suburbs) {
-        const d = editDistance(q.value, s.key, 3);
+        const d = Math.min(...(s.keys || [norm(s.name)]).map(k => editDistance(q.value, k, 3)));
         if (d <= 3) {
           const score = d - Math.log10(1 + s.n) * 0.25;
           if (!best || score < best.score) best = { s, score, d };
@@ -73,6 +76,10 @@
     }
     return { query: q, scope, matches: matches.slice(0, limit), suggestion };
   }
+
+  // Places outside NSW that people type; rental bonds here are NSW-only, so we say so instead of "no match".
+  const KIND_RANK = { state: 0, metro: 1, everyday: 2, council: 3, region: 4, suburb: 5 };
+  const OTHER_STATES = new Set(['victoria', 'vic', 'melbourne', 'queensland', 'qld', 'brisbane', 'gold coast', 'western australia', 'wa', 'perth', 'south australia', 'sa', 'adelaide', 'tasmania', 'tas', 'hobart', 'act', 'canberra', 'australian capital territory', 'northern territory', 'nt', 'darwin', 'australia']);
 
   // ---------- sales ----------
   // sales: column arrays {lat,lng,price,date(yyyymmdd),area,sub,kind}. Returns indices that pass.
@@ -217,22 +224,54 @@
   // ---------- selection line ----------
   function selectionLine(state) {
     const t = [];
-    if (state.place) t.push({ key: 'place', text: state.place.name + (state.place.postcode ? ' ' + state.place.postcode : '') });
+    if (state.place) t.push({ key: 'place', text: state.place.name + (state.place.kind === 'suburb' && state.place.postcode ? ' ' + state.place.postcode : '') });
     if (state.mode) t.push({ key: 'mode', text: state.mode === 'buy' ? 'buying' : state.mode === 'rent' ? 'renting' : 'just looking' });
     if (state.maxPrice) t.push({ key: 'maxPrice', text: 'up to ' + money(state.maxPrice) });
     if (state.maxRent) t.push({ key: 'maxRent', text: 'up to ' + weekly(state.maxRent) });
     for (const b of state.beds || []) t.push({ key: 'beds:' + b, text: b === 0 ? 'studio' : b >= 4 ? '4+ bed' : b + ' bed' });
     for (const s of state.excluded || []) t.push({ key: 'exclude:' + s.name, text: 'not ' + s.name });
-    for (const [k, v] of Object.entries(state.wants || {})) if (v) t.push({ key: 'want:' + k, text: WANTS[k]?.label || k });
+    for (const [k, v] of Object.entries(state.wants || {})) if (v) t.push({ key: 'want:' + k, text: k === 'commute' && state.commute ? `≤ ${state.commute.km} km from ${state.commute.label}` : WANTS[k]?.label || k });
     return t;
   }
+  // area: measured per postcode (share of neighbourhoods meeting it) → changes the lease count.
+  // home: only checked at a chosen home → never changes the count, and the chip says so.
   const WANTS = {
-    quiet: { label: 'quiet street', lens: 'road' },
-    sun: { label: 'sun at ground level', lens: 'sun' },
-    trees: { label: 'trees', lens: 'canopy' },
-    land: { label: 'no notified land record within 1 km', lens: 'land' },
-    flight: { label: 'away from the flight path', lens: 'flight' },
+    quiet: { label: 'quiet street, away from main roads', scope: 'area', metric: 'quiet', min: 0.5, tab: 'road' },
+    sun: { label: 'ample sunlight', scope: 'home', tab: 'sun' },
+    trees: { label: 'surrounded by trees / shade', scope: 'area', metric: 'canopy', min: 0.25, tab: 'trees' },
+    park: { label: 'park or walking track nearby', scope: 'area', metric: 'park', min: 0.5, tab: 'road' },
+    supermarket: { label: 'close to a supermarket', scope: 'area', metric: 'supermarket', min: 0.5, tab: 'road' },
+    station: { label: 'near a train, metro or light rail station', scope: 'area', metric: 'station', min: 0.5, tab: 'road' },
+    school: { label: 'near a school', scope: 'area', metric: 'school', min: 0.5, tab: 'plan' },
+    flight: { label: 'away from the flight path', scope: 'area', metric: 'anec', max: 0, tab: 'plan' },
+    land: { label: 'no notified land record within 1 km', scope: 'home', tab: 'land' },
+    commute: { label: 'close to work / school / …', scope: 'area', custom: true, tab: 'rent' },
   };
+  // Which postcodes pass every area want? amen: {pc: {quiet, canopy, ...}}. Unknown values do not pass (and are counted).
+  function allowedPostcodes(postcodes, amen, wants, { commute = null, centroids = null } = {}) {
+    const active = Object.keys(wants).filter(k => wants[k] && WANTS[k] && WANTS[k].scope === 'area');
+    if (!active.length) return { allowed: null, unknown: 0 };
+    const allowed = new Set(); let unknown = 0;
+    postcodes.forEach((pc, i) => {
+      const a = amen?.[pc];
+      let ok = true, unk = false;
+      for (const k of active) {
+        const w = WANTS[k];
+        if (w.custom) {
+          if (!commute || !centroids?.[pc]) { if (!commute) continue; unk = true; ok = false; break; }
+          const c = centroids[pc];
+          if (metres({ lat: commute.lat, lng: commute.lng }, { lat: c[1], lng: c[0] }) > commute.km * 1000) { ok = false; break; }
+          continue;
+        }
+        const v = a ? a[w.metric] : null;
+        if (v == null) { unk = true; ok = false; break; }
+        if (w.min != null && v < w.min) { ok = false; break; }
+        if (w.max != null && v > w.max) { ok = false; break; }
+      }
+      if (ok) allowed.add(i); else if (unk) unknown++;
+    });
+    return { allowed, unknown };
+  }
 
-  return { filterRents, quantile, weekly, pointInGeometry, norm, editDistance, classifyWhere, parsePrice, searchSuburbs, filterSales, median, monthsAgo, minusMonths, money, metres, nearestOnLines, pointInRing, solarPosition, daylightMinutes, sunMinutesAtPoint, selectionLine, WANTS };
+  return { filterRents, quantile, weekly, pointInGeometry, norm, editDistance, classifyWhere, parsePrice, searchSuburbs, filterSales, median, monthsAgo, minusMonths, money, metres, nearestOnLines, pointInRing, solarPosition, daylightMinutes, sunMinutesAtPoint, selectionLine, WANTS, allowedPostcodes };
 });

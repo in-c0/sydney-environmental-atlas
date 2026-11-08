@@ -38,12 +38,20 @@
     R.perPc = perPc;
     R.start = new Array(R.postcodes.length).fill(-1); R.end = new Array(R.postcodes.length).fill(-1);
     for (let i = 0; i < R.pc.length; i++) { if (R.start[R.pc[i]] < 0) R.start[R.pc[i]] = i; R.end[R.pc[i]] = i + 1; }
-    suburbs = P.suburbs.map(([name, postcode, lat, lng], i) => ({ i, name, postcode, lat, lng, pci: pcIndexOf.get(Number(postcode)), n: perPc[pcIndexOf.get(Number(postcode))] || 0 }))
-      .filter(s => s.pci != null);
+    const subs = P.suburbs.map(([name, postcode, lat, lng]) => ({ kind: 'suburb', name, postcode, lat, lng, pcis: [pcIndexOf.get(Number(postcode))] }))
+      .filter(s => s.pcis[0] != null);
+    const cent = new Map(P.postcodes.map(p => [p.pc, p.c]));
+    const areas = P.areas.map(a => {
+      const pcis = a.pcs.map(pc => pcIndexOf.get(pc)).filter(x => x != null);
+      const pts = a.pcs.map(pc => cent.get(pc)).filter(Boolean);
+      const bbox = pts.length ? [Math.min(...pts.map(c => c[0])), Math.min(...pts.map(c => c[1])), Math.max(...pts.map(c => c[0])), Math.max(...pts.map(c => c[1]))] : null;
+      return { kind: a.kind, name: a.name, aliases: a.aliases, pcis, bbox, lat: bbox ? (bbox[1] + bbox[3]) / 2 : null, lng: bbox ? (bbox[0] + bbox[2]) / 2 : null };
+    }).filter(a => a.pcis.length && a.bbox);
+    suburbs = [...areas, ...subs].map((x, i) => ({ ...x, i, pci: x.pcis[0], n: x.pcis.reduce((t, k) => t + (perPc[k] || 0), 0) }));
     pcFC = { type: 'FeatureCollection', features: P.postcodes.filter(p => pcIndexOf.has(p.pc)).map(p => ({ type: 'Feature', id: p.pc, geometry: p.g, properties: { pc: p.pc, pci: pcIndexOf.get(p.pc), med: 0, n: 0, h: 0, sel: 0 } })) };
     const last = R.months.at(-1), first = R.months[0];
     $('live').textContent = `${R.w.length.toLocaleString('en-AU')} leases · ${fmtYm(first)}–${fmtYm(last)}`;
-    $('live').title = 'Every NSW rental bond lodged in Greater Sydney postcodes. Built ' + R.generatedAt.slice(0, 10) + '. ' + R.sources.map(s => s.name + ' (' + s.licence + ')').join(' · ');
+    $('live').title = 'Every rental bond lodged with NSW Fair Trading. Built ' + R.generatedAt.slice(0, 10) + '. ' + R.sources.map(s => s.name + ' (' + s.licence + ')').join(' · ');
   }
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -51,7 +59,7 @@
   function initMap() {
     map = new maplibregl.Map({
       container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
-      attributionControl: { compact: true }, maxBounds: [[149.6, -35.0], [152.6, -32.8]],
+      attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
     });
     map.on('load', () => {
       tintBasemap();
@@ -105,7 +113,7 @@
 
   // ---------- filter & counters ----------
   const filters = (withPlace = true) => ({
-    pcSet: withPlace && state.place ? new Set([state.place.pci]) : null,
+    pcSet: withPlace && state.place ? new Set(state.place.pcis) : null,
     maxRent: state.mode === 'rent' ? state.maxRent : null,
     beds: state.beds.size ? state.beds : null, types: state.types.size ? state.types : null,
   });
@@ -137,7 +145,8 @@
         f.properties.n = v.length; f.properties.med = C.quantile(v, .5) || 0; f.properties.h = v.length ? (f.properties.med - 200) * 6 : 0;
       }
     }
-    if (pcFC) for (const f of pcFC.features) f.properties.sel = state.place && state.place.pci === f.properties.pci ? 1 : 0;
+    const selSet = state.place ? new Set(state.place.pcis) : null;
+    if (pcFC) for (const f of pcFC.features) f.properties.sel = selSet && selSet.has(f.properties.pci) ? 1 : 0;
     if (mapReady) map.getSource('pc').setData(pcFC);
     const rents = idx.map(i => R.w[i]).sort((a, b) => a - b);
     $('c1').textContent = idx.length.toLocaleString('en-AU');
@@ -158,28 +167,36 @@
     else renderPresets(false);
     if (q.kind === 'short') hint.textContent = 'Keep typing — 3 letters or a 4-digit postcode.';
     else if (q.kind === 'price') hint.innerHTML = `That looks like a budget (${q.value < 10000 ? C.weekly(q.value) : C.money(q.value)}). It goes in the next step — <kbd>Enter</kbd> to keep it.`;
-    else if (q.kind === 'text' && !sugg.length) hint.innerHTML = suggestion ? `No suburb called “${esc(raw)}”. Did you mean <b>${esc(suggestion.name)}</b>? <kbd>Tab</kbd>` : `No Greater Sydney suburb matches “${esc(raw)}”.`;
-    else if (q.kind === 'postcode' && !sugg.length) hint.textContent = `Postcode ${q.value} isn't in Greater Sydney's records.`;
+    else if (r.scope === 'elsewhere') hint.textContent = 'SHOWHAUS covers New South Wales for now — rental bond records outside NSW are held by other states.';
+    else if (q.kind === 'text' && !sugg.length) hint.innerHTML = suggestion ? `No suburb called “${esc(raw)}”. Did you mean <b>${esc(suggestion.name)}</b>? <kbd>Tab</kbd>` : `No NSW suburb, council or area matches “${esc(raw)}”.`;
+    else if (q.kind === 'postcode' && !sugg.length) hint.textContent = `Postcode ${q.value} has no NSW rental bond records.`;
     else if (sugg.length) hint.textContent = r.scope === 'postcode' ? `Postcode ${q.value}: ${sugg.length} suburb${sugg.length > 1 ? 's' : ''}` : r.scope === 'exact' ? 'Exact match' : 'Close matches';
-    $('suggest').innerHTML = sugg.map((s, k) => `<li><button type="button" role="option" data-i="${s.i}" aria-selected="${k === 0}">${esc(s.name)}<small>${s.postcode}</small></button></li>`).join('');
+    $('suggest').innerHTML = sugg.map((s, k) => `<li><button type="button" role="option" data-i="${s.i}" aria-selected="${k === 0}">${esc(s.name)}<small>${placeTag(s)}</small></button></li>`).join('');
     const top = sugg[0];
     state.place = top || null;
     applyFilter();
-    if (top && mapReady) map.easeTo({ center: [top.lng, top.lat], zoom: 12.6, duration: 500 });
+    if (top && mapReady) flyToPlace(top);
     else if (!top && mapReady && q.kind === 'empty') map.easeTo({ center: SYD, zoom: 9.6, duration: 500 });
-    $('c1label').textContent = top ? `new leases in ${top.postcode}, last 12 months` : 'new leases lodged, last 12 months';
+    $('c1label').textContent = top ? `new leases in ${top.kind === 'suburb' ? top.postcode : top.name}, last 12 months` : 'new leases lodged in NSW, last 12 months';
+  }
+  const KIND = { state: 'state', metro: 'metro area', region: 'ABS region', council: 'council', everyday: 'as commonly used' };
+  const placeTag = s => s.kind === 'suburb' ? s.postcode : `${KIND[s.kind]} · ${s.pcis.length} postcode${s.pcis.length > 1 ? 's' : ''}`;
+  function flyToPlace(s) {
+    if (s.kind === 'suburb' || !s.bbox) return map.easeTo({ center: [s.lng, s.lat], zoom: 12.6, duration: 500 });
+    const [w, so, e, n] = s.bbox, pad = Math.max(0.01, (e - w) * 0.08);
+    map.fitBounds([[w - pad, so - pad], [e + pad, n + pad]], { padding: { top: 90, bottom: 280, left: 40, right: 40 }, maxZoom: 13, duration: 600 });
   }
   function choosePlace(s) {
     state.place = s; $('where').value = s.name; remember(s); applyFilter(); go(2);
   }
   function remember(s) {
     const st = store.get(); const list = (st.recent || []).filter(x => x.name !== s.name);
-    list.unshift({ name: s.name, postcode: s.postcode }); st.recent = list.slice(0, 6); store.set(st);
+    list.unshift({ name: s.name, postcode: s.postcode || null, kind: s.kind }); st.recent = list.slice(0, 6); store.set(st);
   }
-  const byName = (name, pc) => suburbs.find(s => s.name === name && s.postcode === pc);
+  const byName = (name, pc) => suburbs.find(s => s.name === name && (s.postcode || null) === (pc || null));
   function renderPresets(show) {
     const list = show ? (store.get().recent || []).filter(p => byName(p.name, p.postcode)) : [];
-    $('presets').innerHTML = list.map(p => `<li><button class="go" type="button" data-name="${esc(p.name)}" data-pc="${p.postcode}">${esc(p.name)}</button><button class="x" type="button" data-x="${esc(p.name)}" aria-label="Remove ${esc(p.name)}">×</button></li>`).join('');
+    $('presets').innerHTML = list.map(p => `<li><button class="go" type="button" data-name="${esc(p.name)}" data-pc="${p.postcode || ''}">${esc(p.name)}</button><button class="x" type="button" data-x="${esc(p.name)}" aria-label="Remove ${esc(p.name)}">×</button></li>`).join('');
   }
 
   // ---------- act 2 ----------
@@ -232,7 +249,15 @@
       setTimeout(() => $('budget').focus(), 50);
     }
     if (n === 3) { renderWants(); setTimeout(demoChip, 400); }
-    if (n === 4) { if (!state.point && state.place) selectPoint({ lng: state.place.lng, lat: state.place.lat }); else renderCard(); }
+    if (n === 4) {
+      if (!state.point && state.place) {
+        if (state.place.kind === 'suburb') selectPoint({ lng: state.place.lng, lat: state.place.lat });
+        else { // a broad area: start at its busiest postcode's centre
+          const top = state.place.pcis.slice().sort((a, b) => R.perPc[b] - R.perPc[a])[0], c = P.postcodes.find(p => p.pc === R.postcodes[top])?.c;
+          selectPoint(c ? { lng: c[0], lat: c[1] } : { lng: state.place.lng, lat: state.place.lat });
+        }
+      } else renderCard();
+    }
     cue(); renderSelection();
   }
 
@@ -340,7 +365,7 @@
     const ev = evidence.get(keyOf(p)) || {};
     const pc = p.pci != null ? R.postcodes[p.pci] : null;
     const names = pc ? suburbs.filter(s => s.pci === p.pci).map(s => s.name) : [];
-    $('cardKicker').textContent = pc ? `Postcode ${String(pc).padStart(4, '0')}` : 'Outside Greater Sydney postcodes';
+    $('cardKicker').textContent = pc ? `Postcode ${String(pc).padStart(4, '0')}` : 'Outside NSW postcode records';
     $('cardTitle').textContent = names[0] ? names.slice(0, 2).join(' · ') + (names.length > 2 ? ` +${names.length - 2}` : '') : 'Chosen point';
     $('cardSub').textContent = `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} · tap anywhere to move`;
     const dots = { rent: pc ? 'ok' : 'err', road: ev.road?.s, sun: ev.sun?.s, trees: ev.canopy?.s, land: ev.land?.s, plan: ev.plan?.s };
@@ -563,7 +588,7 @@
   $('presets').addEventListener('click', e => {
     const x = e.target.closest('button[data-x]');
     if (x) { const st = store.get(); st.recent = (st.recent || []).filter(p => p.name !== x.dataset.x); store.set(st); renderPresets(true); return; }
-    const b = e.target.closest('button.go'); if (b) { const s = byName(b.dataset.name, b.dataset.pc); if (s) choosePlace(s); }
+    const b = e.target.closest('button.go'); if (b) { const s = byName(b.dataset.name, b.dataset.pc || null); if (s) choosePlace(s); }
   });
   document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   $('budget').addEventListener('input', setBudgetFromSlider);

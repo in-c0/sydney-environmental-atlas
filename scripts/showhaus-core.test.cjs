@@ -18,6 +18,17 @@ test('where-field classification catches wrong-step and too-short input', () => 
   assert.equal(C.classifyWhere('2033').kind, 'postcode');
 });
 
+test('search: broad areas by alias rank above a same-named suburb; other states are recognised', () => {
+  const items = [...suburbs, { name: 'Sydney', postcode: '2000', n: 500, kind: 'suburb' }, { name: 'Greater Sydney', aliases: ['sydney'], n: 200000, kind: 'metro' }, { name: 'Sydney CBD', aliases: ['cbd'], n: 6000, kind: 'everyday' }];
+  const r = C.searchSuburbs(items, 'sydney');
+  assert.equal(r.matches[0].name, 'Greater Sydney'); assert.equal(r.matches[1].name, 'Sydney');
+  assert.equal(C.searchSuburbs(items, 'CBD').matches[0].name, 'Sydney CBD');
+  assert.equal(C.searchSuburbs(items, 'melbourne').scope, 'elsewhere');
+  const es = [{ name: 'Sydney - Eastern Suburbs', aliases: ['eastern suburbs'], n: 21000, kind: 'region' }, { name: 'Eastern Suburbs', aliases: ['eastern suburbs'], n: 20000, kind: 'everyday' }, { name: 'Randwick', postcode: '2031', n: 900, kind: 'suburb' }, { name: 'Randwick Council', aliases: ['randwick'], n: 12000, kind: 'council' }];
+  assert.equal(C.searchSuburbs(es, 'eastern suburbs').matches[0].name, 'Eastern Suburbs', 'the everyday name beats the ABS region');
+  assert.deepEqual(C.searchSuburbs(es, 'randwick').matches.slice(0, 2).map(m => m.name), ['Randwick Council', 'Randwick']);
+});
+
 test('search: exact, prefix, postcode, typo suggestion, saint alias', () => {
   assert.equal(C.searchSuburbs(suburbs, 'kensington').scope, 'exact');
   assert.deepEqual(C.searchSuburbs(suburbs, 'k').matches, []);
@@ -67,8 +78,21 @@ test('a tall building to the north shades a point in winter but not in summer mi
 });
 
 test('selection line names every token', () => {
-  const t = C.selectionLine({ place: { name: 'Kensington', postcode: '2033' }, mode: 'buy', maxPrice: 1200000, excluded: [{ name: 'Kingsford' }], wants: { quiet: true, land: true } });
-  assert.deepEqual(t.map(x => x.text), ['Kensington 2033', 'buying', 'up to $1.2M', 'not Kingsford', 'quiet street', 'no notified land record within 1 km']);
+  const t = C.selectionLine({ place: { name: 'Kensington', postcode: '2033', kind: 'suburb' }, mode: 'buy', maxPrice: 1200000, excluded: [{ name: 'Kingsford' }], wants: { quiet: true, land: true } });
+  assert.deepEqual(t.map(x => x.text), ['Kensington 2033', 'buying', 'up to $1.2M', 'not Kingsford', 'quiet street, away from main roads', 'no notified land record within 1 km']);
+});
+
+test('area wants filter postcodes; home wants never do; unknown is counted, not passed', () => {
+  const pcs = [2000, 2033, 2750];
+  const amen = { 2000: { quiet: .2, supermarket: .9, canopy: .1, anec: 0 }, 2033: { quiet: .7, supermarket: .8, canopy: .3, anec: 0 }, 2750: { quiet: .9, supermarket: .4, canopy: null, anec: .2 } };
+  assert.equal(C.allowedPostcodes(pcs, amen, { sun: true, land: true }).allowed, null);
+  assert.deepEqual([...C.allowedPostcodes(pcs, amen, { quiet: true }).allowed], [1, 2]);
+  assert.deepEqual([...C.allowedPostcodes(pcs, amen, { quiet: true, supermarket: true }).allowed], [1]);
+  const t = C.allowedPostcodes(pcs, amen, { trees: true });
+  assert.deepEqual([...t.allowed], [1]); assert.equal(t.unknown, 1);
+  assert.deepEqual([...C.allowedPostcodes(pcs, amen, { flight: true }).allowed], [0, 1]);
+  const cen = { 2000: [151.207, -33.867], 2033: [151.222, -33.910], 2750: [150.69, -33.75] };
+  assert.deepEqual([...C.allowedPostcodes(pcs, amen, { commute: true }, { commute: { lat: -33.867, lng: 151.207, km: 6 }, centroids: cen }).allowed], [0, 1]);
 });
 
 test('SHOWHAUS ships an identical copy of the atlas shadow module', () => {
@@ -84,6 +108,11 @@ test('built data files are internally consistent', () => {
   assert.ok(R.w.every(v => v > 0), 'no zero or unknown rents kept');
   assert.equal(R.months.length, 12);
   const pcs = new Set(P.postcodes.map(p => p.pc));
-  assert.ok(R.postcodes.filter(p => !pcs.has(p)).length <= 3, 'almost every postcode has a boundary');
+  const missing = R.postcodes.map((p, i) => [p, i]).filter(([p]) => !pcs.has(p));
+  const missingRows = R.pc.filter(i => missing.some(m => m[1] === i)).length;
+  assert.ok(missing.length <= R.postcodes.length * 0.01 && missingRows <= n * 0.001, `postcodes without an ABS boundary: ${missing.map(m => m[0])} (${missingRows} leases)`);
+  const kinds = new Set(P.areas.map(a => a.kind));
+  for (const k of ['state', 'metro', 'region', 'council', 'everyday']) assert.ok(kinds.has(k), 'area kind ' + k);
+  assert.ok(P.areas.find(a => a.name === 'Sydney CBD').pcs.includes(2000));
   assert.ok(P.suburbs.every(s => R.postcodes.includes(Number(s[1]))), 'every suburb maps to a postcode with records');
 });

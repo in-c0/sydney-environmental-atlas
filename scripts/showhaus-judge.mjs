@@ -33,6 +33,10 @@ function recount({ postcode = null, maxRent = null, beds = null } = {}) {
   }
   return n;
 }
+function recountArea(name) {
+  const a = places.areas.find(x => x.name === name); const set = new Set(a.pcs.map(pc => rents.postcodes.indexOf(pc)).filter(i => i >= 0));
+  let n = 0; for (let i = 0; i < rents.w.length; i++) if (set.has(rents.pc[i])) n++; return n;
+}
 function median(post, beds, maxRent) {
   const pi = rents.postcodes.indexOf(Number(post)); const v = [];
   for (let i = 0; i < rents.w.length; i++) if (rents.pc[i] === pi && (!beds || beds.includes(rents.b[i] >= 4 ? 4 : rents.b[i])) && (maxRent == null || rents.w[i] <= maxRent)) v.push(rents.w[i]);
@@ -89,6 +93,14 @@ for (const [w, h] of VIEWPORTS) {
   await page.fill('#where', busiest.slice(0, 3) + 'x' + busiest.slice(4));
   const typo = await page.locator('#whereHint').innerText();
   check(`${tag} typo gets an honest no-match + suggestion`, /Did you mean|No recorded/.test(typo), typo.slice(0, 80));
+  for (const [q, name] of [['sydney', 'Greater Sydney'], ['CBD', 'Sydney CBD'], ['nsw', 'New South Wales'], ['eastern suburbs', 'Eastern Suburbs'], ['randwick council', 'Randwick Council']]) {
+    await page.fill('#where', q);
+    const first = await page.locator('#suggest button').first().innerText();
+    const cnt = (await page.locator('#c1').innerText()).replace(/,/g, '');
+    check(`${tag} "${q}" → ${name}, counter equals recount`, first.startsWith(name) && cnt === String(recountArea(name)), `${first.split('\n')[0]} · ${cnt} vs ${recountArea(name)}`);
+  }
+  await page.fill('#where', 'melbourne');
+  check(`${tag} another state is named honestly, not "no match"`, (await page.locator('#whereHint').innerText()).includes('New South Wales'));
   await page.fill('#where', '$1.2m');
   check(`${tag} a price in the place field is recognised`, (await page.locator('#whereHint').innerText()).includes('budget'));
   await page.fill('#where', busiest); await page.keyboard.press('Enter');
