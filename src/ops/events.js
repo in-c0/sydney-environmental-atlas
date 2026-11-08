@@ -4,7 +4,7 @@
 import { db, insertEvent, pseudo } from './store.js';
 
 // Events a browser may send. Account and money events are server-only, so a page cannot forge them.
-export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_interest', 'signin_open', 'cta']);
+export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_interest', 'signin_open', 'cta', 'feedback']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
   'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute']);
 // Events that page the owner during a sprint (CVF polls them; see /api/ops/summary).

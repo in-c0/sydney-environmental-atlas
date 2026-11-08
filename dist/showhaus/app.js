@@ -344,6 +344,7 @@
   function selectPoint(p) {
     p.pci = pcAt(p);
     state.point = p;
+    const fw = $('flagWrong'); if (fw && fw.dataset.done) { delete fw.dataset.done; fw.textContent = 'Looks wrong?'; }
     if (state.act !== 4) go(4);
     map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16.2), duration: 600 });
     const k = keyOf(p);
@@ -436,6 +437,14 @@
     }
     renderCompare();
   }
+  // One tap: "this card looks wrong" → a pseudonymous feedback event (no text, no address). CVF escalates
+  // when several arrive in a day, so a broken data source reaches an agent without anyone writing a report.
+  const flag = $('flagWrong');
+  if (flag) flag.addEventListener('click', () => {
+    const p = state.point; if (!p || flag.dataset.done) return;
+    window.SH && SH.track('feedback', { kind: 'wrong', cta: state.tab, ...(p.pci != null ? { postcode: String(R.postcodes[p.pci]).padStart(4, '0') } : {}) });
+    flag.dataset.done = '1'; flag.textContent = 'Thanks — logged';
+  });
   function proLock(what) {
     return `<div class="pro-lock" role="note"><b>SHOWHAUS Pro</b><p>${what}</p><span class="soon">Coming soon</span></div>`;
   }

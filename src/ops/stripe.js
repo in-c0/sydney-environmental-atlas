@@ -4,6 +4,7 @@
 // Records PII-free events only: amount, currency, mode, payment link id, pseudonymous customer.
 import { db, pseudo, setMeta } from './store.js';
 import { track } from './events.js';
+import { afterStripeEvent } from './owner.js';
 
 const TOLERANCE_S = 300;
 const enc = new TextEncoder();
@@ -49,7 +50,7 @@ export function classify(e) {
 }
 
 // Shared by the signed webhook and CVF's authenticated replay (which forces environment = synthetic).
-export async function recordStripeEvent(env, e, { forceEnv } = {}) {
+export async function recordStripeEvent(env, e, { forceEnv, fetchImpl = fetch } = {}) {
   const d = await db(env);
   if (!d) return { status: 503, body: { error: 'store not bound' } };
   const name = classify(e);
@@ -69,9 +70,12 @@ export async function recordStripeEvent(env, e, { forceEnv } = {}) {
     failure: o.last_payment_error?.code || o.failure_code || null,
   };
   for (const k of Object.keys(props)) if (props[k] == null) delete props[k];
-  await track(env, { name, env: environment, source: 'stripe', actor: who ? 'c:' + await pseudo(d, 'customer', who) : null, path: '/hooks/stripe', props, at: e.created ? new Date(e.created * 1000).toISOString() : undefined });
+  const customer = who ? 'c:' + await pseudo(d, 'customer', who) : null;
+  const at = e.created ? new Date(e.created * 1000).toISOString() : undefined;
+  await track(env, { name, env: environment, source: 'stripe', actor: customer, path: '/hooks/stripe', props, at });
   await setMeta(d, 'stripe_last_event_at', new Date().toISOString());
-  return { status: 200, body: { ok: true, recorded: name, env: environment } };
+  const after = await afterStripeEvent(env, d, e, name, { environment, customer, props, at }, fetchImpl);
+  return { status: 200, body: { ok: true, recorded: name, env: environment, entitlement: after.entitlement, mailed: after.mailed } };
 }
 
 export async function handleStripeHook(request, env) {

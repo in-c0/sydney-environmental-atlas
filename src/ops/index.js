@@ -6,7 +6,7 @@ import { handleBeacon, track, environmentOf } from './events.js';
 import { handleAuth, currentUser, cookieOf } from './auth.js';
 import { handleStripeHook } from './stripe.js';
 import { requireOps } from './oidc.js';
-import { summary, replay, health } from './summary.js';
+import { summary, replay, health, entitlement } from './summary.js';
 import { db, pseudo } from './store.js';
 
 const sameOrigin = request => {
@@ -20,7 +20,7 @@ export async function handleOps(request, env, ctx) {
   if (!(path === '/api/e' || path.startsWith('/api/auth/') || path === '/hooks/stripe' || path.startsWith('/api/ops/'))) return null;
   try {
     if (path === '/hooks/stripe') return await handleStripeHook(request, env);
-    if (request.method === 'POST' && path !== '/api/ops/replay' && !sameOrigin(request)) return new Response('forbidden', { status: 403 });
+    if (request.method === 'POST' && path !== '/api/ops/replay' && path !== '/api/ops/entitlement' && !sameOrigin(request)) return new Response('forbidden', { status: 403 });
     if (path === '/api/e') {
       if (request.method !== 'POST') return new Response('method', { status: 405 });
       const user = await currentUser(request, env).catch(() => null);
@@ -31,6 +31,7 @@ export async function handleOps(request, env, ctx) {
     if (!(await requireOps(request))) return new Response('unauthorized', { status: 401 });
     if (path === '/api/ops/summary') return await summary(request, env);
     if (path === '/api/ops/replay' && request.method === 'POST') return await replay(request, env);
+    if (path === '/api/ops/entitlement' && request.method === 'POST') return await entitlement(request, env);
     return new Response('not found', { status: 404 });
   } catch (e) {
     console.error('ops', path, e && e.stack || e);
