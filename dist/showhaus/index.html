@@ -24,7 +24,30 @@
     <li data-cut="4"><button type="button">04<span> Place</span></button></li>
   </ol>
   <div class="live" id="live" title="When the sales records were built">records —</div>
+  <button type="button" class="acct" id="acct" aria-haspopup="dialog" aria-controls="acctDlg">Sign in</button>
 </header>
+
+<div class="acct-dlg" id="acctDlg" role="dialog" aria-modal="true" aria-labelledby="acctTitle" data-step="email" hidden>
+  <button type="button" class="acct-x" id="acctClose" aria-label="Close">×</button>
+  <b id="acctTitle">Sign in to SHOWHAUS</b>
+  <form id="acctEmailForm" class="acct-email" novalidate>
+    <label for="acctEmail">Email — we send a 6-digit code, no password</label>
+    <input id="acctEmail" type="email" autocomplete="email" inputmode="email" required placeholder="you@example.com">
+    <button type="submit">Email me a code</button>
+  </form>
+  <form id="acctCodeForm" class="acct-code" novalidate>
+    <label for="acctCode">Code sent to <span id="acctSentTo"></span></label>
+    <input id="acctCode" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="123456">
+    <button type="submit">Sign in</button>
+    <button type="button" class="link" id="acctBack">Use a different email</button>
+  </form>
+  <div class="acct-done">
+    <p id="acctDoneText" tabindex="-1">You are signed in.</p>
+    <button type="button" id="acctOut">Sign out</button>
+  </div>
+  <p class="acct-msg" id="acctMsg" role="status" aria-live="polite"></p>
+  <p class="acct-fine">We keep a scrambled id, not your email address.</p>
+</div>
 
 <section class="act" id="act1" aria-labelledby="q1">
   <h1 id="q1">Where do you want to live?</h1>
@@ -93,6 +116,7 @@
   <b id="proLensTitle">SHOWHAUS Pro</b>
   <p id="proLensWhat"></p>
   <span class="soon">Coming soon</span>
+  <button type="button" id="proWant">Count me in — sign in</button>
   <button type="button" id="proClose">Back to the map</button>
 </div>
 
@@ -102,6 +126,7 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="./lib/ops.js"></script>
 <script src="./lib/shadow-geometry.js"></script>
 <script src="./lib/core.js"></script>
 <script src="./app.js"></script>

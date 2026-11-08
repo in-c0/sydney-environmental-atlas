@@ -218,6 +218,7 @@
   }
   function choosePlace(s) {
     state.place = s; $('where').value = s.name; remember(s); applyFilter(); go(2);
+    window.SH && SH.track('search', { kind: s.kind, postcode: s.postcode });
   }
   function remember(s) {
     const st = store.get(); const list = (st.recent || []).filter(x => x.name !== s.name);
@@ -348,6 +349,7 @@
     const k = keyOf(p);
     if (!evidence.has(k)) evidence.set(k, { road: { s: 'load' }, sun: { s: 'load' }, canopy: { s: 'load' }, land: { s: 'load' }, plan: { s: 'load' } });
     renderCard(); drawPick();
+    window.SH && SH.track('place_card', p.pci != null ? { postcode: String(R.postcodes[p.pci]).padStart(4, '0') } : undefined);
     map.once('idle', () => { measureLocal(p); renderCard(); drawPick(); drawOverlay(); });
     fetchCanopy(p); fetchLand(p); fetchPlanning(p);
   }
@@ -621,6 +623,7 @@
     state.lens = l; body.dataset.lens = l;
     body.classList.toggle('pro-preview', !PRO && l !== 'map');
     $('proLens').hidden = PRO || l === 'map';
+    if (!PRO && l !== 'map' && window.SH) SH.track('pro_interest', { lens: l });
     if (!PRO && l !== 'map') $('proLensWhat').textContent = { '3d': 'Rent terrain in 3D — every postcode raised by its median rent.', strata: 'Every layer at the chosen place, stacked: rent, roads, trees, sun path, land records.', time: 'Twelve months of leases at a glance, by bedrooms.' }[l];
     document.querySelectorAll('#lenses button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lens === l)));
     if (!mapReady) return;
@@ -746,7 +749,7 @@
   document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(Number(b.dataset.go))));
   document.querySelectorAll('.cuts button').forEach(b => b.addEventListener('click', () => go(Number(b.parentElement.dataset.cut))));
   $('wants').addEventListener('click', e => { const b = e.target.closest('button[data-want]'); if (b) toggleWant(b.dataset.want); });
-  $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; state.tab = b.dataset.tab; cue(); renderCard(); drawPick(); });
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; state.tab = b.dataset.tab; if (!PRO && b.dataset.tab === 'adv' && window.SH) SH.track('pro_interest', { lens: 'advanced' }); cue(); renderCard(); drawPick(); });
   $('lenses').addEventListener('click', e => { const b = e.target.closest('button[data-lens]'); if (b) setLens(b.dataset.lens); });
   $('selection').addEventListener('click', e => { const b = e.target.closest('button[data-tok]'); if (b) removeToken(b.dataset.tok); });
   $('pinA').addEventListener('click', () => {
@@ -756,6 +759,7 @@
   $('commuteWhere').addEventListener('input', () => { clearTimeout(commuteTimer); commuteTimer = setTimeout(geocodeCommute, 450); });
   $('commuteKm').addEventListener('input', () => { if (state.commute) { state.commute.km = Number($('commuteKm').value); $('commuteKmLabel').textContent = state.commute.km + ' km'; applyFilter(); renderWants(); } else geocodeCommute(); });
   $('proClose').addEventListener('click', () => setLens('map'));
+  if ($('proWant')) $('proWant').addEventListener('click', () => { if (window.SH && SH.signedIn) { SH.track('pro_interest', { cta: 'count_me_in' }); toast('Counted. Thank you.'); setLens('map'); return; } setLens('map'); window.SH && SH.openSignIn('pro'); });
   addEventListener('resize', drawOverlay);
 
   // ---------- boot ----------
