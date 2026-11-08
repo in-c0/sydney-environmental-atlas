@@ -6,7 +6,8 @@ Rules live in one place: [in-c0/Project-harness](https://github.com/in-c0/Projec
 own; only the facts below.
 
 ## This repo
-- (no repo-specific facts recorded; add build/test commands here if a session needs them)
+- SHOWHAUS listing kits: `node scripts/showhaus-listing-kit.mjs "<address>" --slug <slug>` → `dist/showhaus/p/<slug>.json` + media; judge `node scripts/showhaus-kit-judge.mjs`. See `docs/showhaus-listing-kit.md`.
+- Unit tests: `node --test scripts/showhaus-core.test.cjs scripts/shadow-geometry.test.cjs scripts/showhaus-worker.test.mjs scripts/showhaus-kit.test.cjs`.
 
 Earlier rule files for this repo are archived under `docs/archive/rules/2026-11-08/` and expire
 on 2027-02-06 (POLICY.md §8). Open one only if something in this repo stops making sense
