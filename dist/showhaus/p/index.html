@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS · property experience</title>
+<meta name="description" content="One address, from public records: the 3D street around it, the sun and shadows from sunrise to sunset today and on 21 June, the main road, tree canopy, aircraft noise, planning overlays and local rents — each with its source.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<!-- Fonts and the map stylesheet never block the facts: they apply when they arrive. -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="./kit.css">
+</head>
+<body data-state="loading">
+<main class="kit">
+  <section class="stage" aria-label="3D view of the street around the address">
+    <div id="map"></div>
+    <div class="sweep" id="sweep">
+      <button type="button" id="play" aria-label="Pause the sun sweep">❚❚</button>
+      <div class="days" role="radiogroup" aria-label="Day">
+        <button type="button" role="radio" data-day="today" aria-checked="true">Today</button>
+        <button type="button" role="radio" data-day="winter" aria-checked="false">21 June</button>
+      </div>
+      <input id="time" type="range" min="0" max="1000" value="0" aria-label="Time of day">
+      <output id="clock" for="time">—</output>
+    </div>
+    <p class="maplegend" id="legend"></p>
+    <div class="caption" id="caption" aria-hidden="true"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="addr">
+    <header class="head">
+      <a class="brand" href="../" id="brand">SHOWHAUS</a>
+      <h1 id="addr">Loading…</h1>
+      <p class="sub" id="sub"></p>
+    </header>
+    <ul class="facts" id="facts"></ul>
+    <div class="rent" id="rent"></div>
+    <footer class="foot">
+      <button type="button" class="cta" id="cta">Want this for your next listing?</button>
+      <a class="explore" id="explore" href="../">Explore all of Sydney ↗</a>
+      <button type="button" class="srcbtn" id="srcbtn">Sources &amp; method</button>
+    </footer>
+  </section>
+</main>
+
+<dialog id="sources" aria-labelledby="srcTitle">
+  <form method="dialog"><button class="x" aria-label="Close">×</button></form>
+  <h2 id="srcTitle">Sources &amp; method</h2>
+  <div id="srcBody"></div>
+</dialog>
+<dialog id="ctaBox" aria-labelledby="ctaTitle">
+  <form method="dialog"><button class="x" aria-label="Close">×</button></form>
+  <h2 id="ctaTitle">For your next listing</h2>
+  <p>Reply to the email this link came with and Ji will build the same experience for the address you choose: the 3D street, the sun from sunrise to sunset, the main road, trees, aircraft noise, planning overlays and local rents, each with its public source.</p>
+</dialog>
+
+<script src="../lib/core.js"></script>
+<script src="../lib/shadow-geometry.js"></script>
+<script src="../lib/kit.js"></script>
+<script src="./kit-page.js"></script>
+</body>
+</html>
