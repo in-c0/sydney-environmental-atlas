@@ -247,3 +247,18 @@ test('one-tap "looks wrong" feedback is a page event with no free text', async (
   assert.equal(r.name, 'feedback');
   assert.deepEqual(JSON.parse(r.props), { kind: 'wrong', cta: 'rent', postcode: '2205' });
 });
+
+test('server events mirror to PostHog only when opted in, pseudonymous, never for synthetic traffic', async () => {
+  const { mirrorToPostHog } = await import('../src/ops/events.js');
+  const calls = [];
+  const fake = async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return new Response(null, { status: 200 }); };
+  const ev = { name: 'checkout_started', actor: 'a:abc', env: 'production', source: 'server', path: '/pay/studio-pilot', props: { cta: 'x' }, at: '2026-11-08T12:00:00Z' };
+  assert.equal(await mirrorToPostHog({}, ev, fake), false);
+  assert.equal(await mirrorToPostHog({ POSTHOG_MIRROR: 'on' }, { ...ev, env: 'synthetic' }, fake), false);
+  assert.equal(await mirrorToPostHog({ POSTHOG_MIRROR: 'on' }, ev, fake), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].body.event, 'sh_checkout_started');
+  assert.equal(calls[0].body.distinct_id, 'a:abc');
+  assert.equal(calls[0].body.properties.product, 'showhaus');
+  assert.ok(!JSON.stringify(calls[0].body).includes('@'));
+});

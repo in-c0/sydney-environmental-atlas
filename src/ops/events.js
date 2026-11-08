@@ -38,9 +38,21 @@ function cleanProps(name, p = {}) {
 // Record an event decided by the server (signup, login, checkout_started, webhook outcomes).
 export async function track(env, ev) {
   const d = await db(env);
-  if (!d) return false;
-  await insertEvent(d, { ...ev, at: ev.at || new Date().toISOString() });
-  return true;
+  const at = ev.at || new Date().toISOString();
+  await Promise.all([d ? insertEvent(d, { ...ev, at }) : null, mirrorToPostHog(env, { ...ev, at })]);
+  return !!d;
+}
+
+// Server-decided events also go to PostHog (public project key, product=showhaus) so funnels there include
+// checkout_started / payment_* that never pass through the browser. Pseudonymous actor only; never an email.
+const POSTHOG_KEY = 'phc_z7qYzteR85WcVGvZjZLVAH6v7VM42Z3ik4WU8dBMfTVJ';
+export async function mirrorToPostHog(env, ev, fetchImpl = fetch) {
+  const key = (env && env.POSTHOG_PROJECT_KEY) || POSTHOG_KEY;
+  if (!key || !env || env.POSTHOG_MIRROR !== 'on' || ev.env === 'synthetic') return false; // opt-in: tests and probes never reach PostHog
+  const body = { api_key: key, event: 'sh_' + ev.name, distinct_id: ev.actor || 'showhaus-server', timestamp: ev.at,
+    properties: { ...(ev.props || {}), product: 'showhaus', source: ev.source || 'server', environment: ev.env || 'production', path: ev.path, $process_person_profile: false } };
+  try { const r = await fetchImpl('https://us.i.posthog.com/i/v0/e/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return r.ok; }
+  catch { return false; }
 }
 
 // POST /api/e — beacon from the page. Body: { name, anon?, path?, env?: 'synthetic', props? }.
