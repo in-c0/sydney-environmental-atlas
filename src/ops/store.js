@@ -11,6 +11,9 @@ const SCHEMA = [
      sent_count INTEGER NOT NULL DEFAULT 0, window_start INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS sh_sessions (token_h TEXT PRIMARY KEY, user_id TEXT NOT NULL, exp INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS sh_hooks_seen (id TEXT PRIMARY KEY, at TEXT NOT NULL)`,
+  // What a payment entitles the customer to, so "paid but not served" is countable (one row per payment).
+  `CREATE TABLE IF NOT EXISTS sh_entitlements (id TEXT PRIMARY KEY, at TEXT NOT NULL, env TEXT NOT NULL, customer TEXT,
+     amount INTEGER, currency TEXT, payment_link TEXT, status TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 ];
 
 let ready = null;
