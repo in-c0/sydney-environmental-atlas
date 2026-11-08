@@ -10,13 +10,13 @@
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": true },
   "previews": {},
   // Public Stripe Payment Link for the SHOWHAUS Studio founding-pilot deposit (AUD 1,250, max 4). Not a secret.
-  "vars": { "STUDIO_PAYMENT_LINK": "https://buy.stripe.com/aFacN5aRla7jcClaUW1kA00" },
-  // Operations store (src/ops/): pseudonymous events, sign-in codes, sessions, webhook dedupe. No database_id on purpose:
-  // `wrangler deploy` (Workers Builds) provisions the D1 database by name on first deploy and reuses it after.
-  "d1_databases": [{ "binding": "OPS_DB", "database_name": "showhaus-ops" }],
-  // Sign-in codes are sent with Cloudflare Email Service from login@showhaus.app (src/ops/auth.js).
-  "send_email": [{ "name": "MAIL" }],
-  // Secret (set in the dashboard, never in git): STRIPE_WEBHOOK_SECRET — until it exists /hooks/stripe answers 503.
+  "vars": { "STUDIO_PAYMENT_LINK": "https://buy.stripe.com/aFacN5aRla7jcClaUW1kA00", "MAIL_SENDING": "off" },
+  // Operations store (src/ops/, tables prefixed sh_): pseudonymous events, sign-in codes, sessions, webhook dedupe.
+  // The account is at the free plan's 10-database D1 limit, so this shares CVF's existing cvf-feedback-pilot database.
+  "d1_databases": [{ "binding": "OPS_DB", "database_name": "cvf-feedback-pilot", "database_id": "8b1d4472-dcac-4628-a8b8-cd8497f9f49b" }],
+  // Secrets (set by name, never in git): STRIPE_WEBHOOK_SECRET — until it exists /hooks/stripe answers 503;
+  // RESEND_API_KEY — sends sign-in codes (src/ops/auth.js). Cloudflare Email Sending needs Workers Paid; when it is on,
+  // add `"send_email": [{ "name": "MAIL" }]` and set MAIL_SENDING to "on". With no mail route the Sign in button stays hidden.
   // showhaus.app (zone in this account) is attached as a Workers Custom Domain on deploy; worker.js redirects www → apex.
   // Declaring routes turns workers.dev and preview URLs off by default; keep both (atlas links and PR previews use them).
   "workers_dev": true,

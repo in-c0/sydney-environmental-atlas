@@ -759,7 +759,7 @@
   $('commuteWhere').addEventListener('input', () => { clearTimeout(commuteTimer); commuteTimer = setTimeout(geocodeCommute, 450); });
   $('commuteKm').addEventListener('input', () => { if (state.commute) { state.commute.km = Number($('commuteKm').value); $('commuteKmLabel').textContent = state.commute.km + ' km'; applyFilter(); renderWants(); } else geocodeCommute(); });
   $('proClose').addEventListener('click', () => setLens('map'));
-  if ($('proWant')) $('proWant').addEventListener('click', () => { if (window.SH && SH.signedIn) { SH.track('pro_interest', { cta: 'count_me_in' }); toast('Counted. Thank you.'); setLens('map'); return; } setLens('map'); window.SH && SH.openSignIn('pro'); });
+  if ($('proWant')) $('proWant').addEventListener('click', () => { if (window.SH && (SH.signedIn || !SH.canSignIn)) { SH.track('pro_interest', { cta: 'count_me_in' }); toast('Counted. Thank you.'); setLens('map'); return; } setLens('map'); window.SH && SH.openSignIn('pro'); });
   addEventListener('resize', drawOverlay);
 
   // ---------- boot ----------

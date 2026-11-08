@@ -33,6 +33,7 @@
   const btn = $('acct'), dlg = $('acctDlg');
   function paint() {
     if (!btn) return;
+    btn.hidden = !(me.signedIn || me.available); // no mail route yet → no sign-in promise on screen
     btn.textContent = me.signedIn ? 'Signed in' : 'Sign in';
     btn.setAttribute('aria-label', me.signedIn ? 'Account: signed in' : 'Sign in with email');
     document.body.classList.toggle('signed-in', !!me.signedIn);
@@ -45,7 +46,7 @@
     dlg.dataset.reason = reason || ''; dlg.hidden = false; msg(''); step(me.signedIn ? 'done' : 'email');
   }
   function close() { if (dlg) { dlg.hidden = true; btn && btn.focus(); } }
-  window.SH = { track, openSignIn: open, get signedIn() { return !!me.signedIn; } };
+  window.SH = { track, openSignIn: open, get signedIn() { return !!me.signedIn; }, get canSignIn() { return !!me.available; } };
 
   api('me').then(r => { if (r.ok) { me = r.data; paint(); } }).catch(() => {});
   if (btn) btn.addEventListener('click', () => (dlg && !dlg.hidden ? close() : open('header')));
