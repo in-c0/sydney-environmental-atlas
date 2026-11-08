@@ -397,6 +397,9 @@
     if (s.s !== 'ok') return `<div class="fact"><b>—</b><span>${tag('unknown')} ${esc(s.why || '')}</span></div>`;
     const h = m => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
     const now = C.solarPosition(p.lat, p.lng, s.day, nowMinutes());
+    if (!s.n) return `<div class="fact"><b>—</b><span>shade estimate ${tag('unknown')}</span></div>
+      <p class="note">No building within 240 m has a mapped height (${s.total} footprints without heights), so we can't estimate shade here. Open sky today: ${h(s.today.daylightMinutes)} of daylight.</p>
+      <p class="how">Sun now: ${now.elevation > 0 ? `${Math.round(now.elevation)}° up, from the ${compass(now.azimuth)}` : 'below the horizon'}. OpenStreetMap heights are missing in many Sydney streets.</p>`;
     return `<div class="fact"><b>${h(s.today.sunMinutes)}</b><span>direct sun at ground level today ${tag('est')}</span></div>
       <div class="fact"><b>${h(s.winter.sunMinutes)}</b><span>on 21 June (winter) ${tag('est')}</span></div>
       <p class="how">Daylight today ${h(s.today.daylightMinutes)} · uncertain (low sun) ${h(s.today.uncertainMinutes)} · ${s.n} of ${s.total} mapped buildings within 240 m have a height; ${s.today.blockingBuildings} cast shade here today. Sun now: ${now.elevation > 0 ? `${Math.round(now.elevation)}° up, from the ${compass(now.azimuth)}` : 'below the horizon'}.</p>
@@ -424,7 +427,7 @@
     if (!A || !p || keyOf(A) === keyOf(p)) { $('compare').textContent = A ? 'A kept — tap another place' : ''; return; }
     const a = evidence.get(keyOf(A)) || {}, b = evidence.get(keyOf(p)) || {};
     const road = x => x.road?.s === 'ok' ? Math.round(x.road.any.distance) + ' m' : '—';
-    const sun = x => x.sun?.s === 'ok' ? (x.sun.winter.sunMinutes / 60).toFixed(1) + ' h' : '—';
+    const sun = x => x.sun?.s === 'ok' && x.sun.n ? (x.sun.winter.sunMinutes / 60).toFixed(1) + ' h' : '—';
     $('compare').textContent = `A / here · road ${road(a)} / ${road(b)} · June sun ${sun(a)} / ${sun(b)}`;
   }
 
@@ -505,7 +508,7 @@
       { name: 'Rent · postcode', val: pcf && pcf.properties.n ? `${C.weekly(pcf.properties.med)} median (counted)` : 'unknown', col: '#c4622d', scale: 2500, draw: (pt) => { if (!pcf) return; const polys = pcf.geometry.type === 'Polygon' ? [pcf.geometry.coordinates] : pcf.geometry.coordinates; g.lineWidth = 1.5; for (const poly of polys) { g.beginPath(); poly[0].forEach((q, k) => { const [x, y] = pt(q[0], q[1]); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.globalAlpha = .25; g.fill(); g.globalAlpha = 1; g.stroke(); } } },
       { name: 'Road geometry', val: ev.road?.s === 'ok' ? `${Math.round(ev.road.any.distance)} m to ${ev.road.any.cls}` : 'unknown', col: '#2f4c7a', draw: (pt) => { if (ev.road?.s !== 'ok') return; for (const l of ev.road.local) { g.lineWidth = ROAD_RANK[l.cls] >= 4 ? 3 : 1.2; g.beginPath(); l.pts.forEach((q, k) => { const [x, y] = pt(q[0], q[1]); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); } } },
       { name: 'Canopy', val: ev.canopy?.s === 'ok' ? `${Math.round(ev.canopy.canopy * 100)}% of hexagon (live)` : 'unknown', col: '#4f7d4a', draw: (pt, w, h) => { if (ev.canopy?.s !== 'ok') return; const n = Math.round(ev.canopy.canopy * 400); let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647; for (let k = 0; k < n; k++) { g.beginPath(); g.arc(rnd() * w, rnd() * h, 1.6, 0, 7); g.fill(); } } },
-      { name: 'Sun path · today', val: ev.sun?.s === 'ok' ? `${(ev.sun.today.sunMinutes / 60).toFixed(1)} h at ground (est.)` : 'unknown', col: '#e2a234', draw: (pt) => { const day = sydneyToday(); g.lineWidth = 2; g.beginPath(); let started = false; for (let m = 270; m <= 1260; m += 15) { const sp = C.solarPosition(p.lat, p.lng, day, m); if (sp.elevation <= 0) continue; const a = sp.azimuth * Math.PI / 180, r = RAD * (1 - sp.elevation / 90); const [x, y] = pt(p.lng + r * Math.sin(a) / kx, p.lat + r * Math.cos(a) / ky); started ? g.lineTo(x, y) : g.moveTo(x, y); started = true; } g.stroke(); } },
+      { name: 'Sun path · today', val: ev.sun?.s === 'ok' && ev.sun.n ? `${(ev.sun.today.sunMinutes / 60).toFixed(1)} h at ground (est.)` : 'shade unknown (no mapped heights)', col: '#e2a234', draw: (pt) => { const day = sydneyToday(); g.lineWidth = 2; g.beginPath(); let started = false; for (let m = 270; m <= 1260; m += 15) { const sp = C.solarPosition(p.lat, p.lng, day, m); if (sp.elevation <= 0) continue; const a = sp.azimuth * Math.PI / 180, r = RAD * (1 - sp.elevation / 90); const [x, y] = pt(p.lng + r * Math.sin(a) / kx, p.lat + r * Math.cos(a) / ky); started ? g.lineTo(x, y) : g.moveTo(x, y); started = true; } g.stroke(); } },
       { name: 'Land records · 1 km', val: ev.land?.s === 'ok' ? `${ev.land.sites.length} EPA notifications (live)` : 'unknown', col: '#8a4b2a', scale: 1000, draw: (pt) => { if (ev.land?.s !== 'ok') return; for (const st of ev.land.sites) { const [x, y] = pt(st.lng, st.lat); g.fillRect(x - 3, y - 3, 6, 6); } } },
     ];
     const cardW = innerWidth > 760 ? 400 : 0;
