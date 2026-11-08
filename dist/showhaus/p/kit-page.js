@@ -22,11 +22,12 @@
   if (REC) document.body.classList.add('rec');
   window.__kit = { ready: false, idle: () => true };
 
-  // ---------- events: no cookies, no identifiers, no personal data; the Worker stores event, slug and src only ----------
-  function track(e) {
+  // ---------- events: the SHOWHAUS /api/e contract (src/ops/events.js), with no id, cookie or storage ----------
+  // view → {name:'view', props:{kit, utm_source}}; clicks → {name:'cta', props:{cta:'explore'|'listing', kit, utm_source}}.
+  function track(name, props = {}) {
     if (quiet || !slug) return;
     try {
-      const body = JSON.stringify({ e, a: slug, src });
+      const body = JSON.stringify({ name, path: location.pathname, props: { kit: slug, utm_source: src || undefined, ...props } });
       if (!(navigator.sendBeacon && navigator.sendBeacon('/api/e', new Blob([body], { type: 'application/json' })))) fetch('/api/e', { method: 'POST', body, keepalive: true, headers: { 'content-type': 'application/json' } }).catch(() => {});
     } catch { /* tracking never breaks the page */ }
   }
@@ -215,9 +216,9 @@
     if (sun && !sun.winter.known && sun.winter.ifEstimated === undefined) sun.winter = K.groundSun(kit, d.winter, { modelUnknown: true });
     renderSources(); $('sources').showModal();
   });
-  $('cta').addEventListener('click', () => { track('cta'); $('ctaBox').showModal(); });
-  $('explore').addEventListener('click', () => track('explore'));
-  $('brand').addEventListener('click', () => track('explore'));
+  $('cta').addEventListener('click', () => { track('cta', { cta: 'listing' }); $('ctaBox').showModal(); });
+  $('explore').addEventListener('click', () => track('cta', { cta: 'explore' }));
+  $('brand').addEventListener('click', () => track('cta', { cta: 'explore' }));
 
   // ---------- recorder hooks (used only by scripts/showhaus-listing-kit.mjs) ----------
   let idleFlag = true;

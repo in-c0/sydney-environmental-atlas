@@ -174,3 +174,15 @@ test('health answers without a store binding (previews may have none)', async ()
   assert.equal(r.status, 200);
   assert.deepEqual(await r.json(), { store: false, mail_binding: false, webhook_secret: false, payment_link: false, mail_last_ok: null, mail_last_error: null });
 });
+
+test('listing-kit beacons: kit slug and src kept, no actor without an id, bad slugs dropped', async () => {
+  const env = makeEnv(), c = ctx();
+  const send = body => worker.fetch(post('https://showhaus.app/api/e', body, { 'user-agent': 'Mozilla/5.0' }), env, c);
+  assert.equal((await send({ name: 'view', path: '/p/', props: { kit: '4-17-flood-st-clovelly', utm_source: 'agent-4-17-flood-st-clovelly' } })).status, 204);
+  assert.equal((await send({ name: 'cta', path: '/p/', props: { kit: '../etc', cta: 'explore' } })).status, 204);
+  await c.done();
+  const [a, b] = rows(env);
+  assert.equal(a.actor, null);
+  assert.deepEqual(JSON.parse(a.props), { utm_source: 'agent-4-17-flood-st-clovelly', kit: '4-17-flood-st-clovelly' });
+  assert.deepEqual(JSON.parse(b.props), { cta: 'explore' });
+});

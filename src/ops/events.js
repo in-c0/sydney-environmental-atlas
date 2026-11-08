@@ -29,6 +29,7 @@ function cleanProps(name, p = {}) {
   for (const k of ['step', 'plan', 'lens', 'kind', 'cta', 'utm_source', 'utm_medium', 'utm_campaign']) if (p[k] != null) out[k] = clip(p[k], 60);
   if (p.ref) { try { out.ref = new URL(p.ref).hostname.slice(0, 80); } catch { /* not a URL: drop */ } }
   if (p.postcode != null && /^\d{4}$/.test(String(p.postcode))) out.postcode = String(p.postcode); // area, not a person
+  if (p.kit != null && /^[a-z0-9-]{3,80}$/.test(String(p.kit))) out.kit = String(p.kit); // listing-kit slug = a street address page, not a person
   return Object.keys(out).length ? out : undefined;
 }
 

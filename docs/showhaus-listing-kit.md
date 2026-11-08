@@ -20,4 +20,4 @@ node scripts/showhaus-kit-judge.mjs [--only <slug>] [--shots dir]
 | Aircraft noise | Sydney Airport ANEF 2039: no GIS layer → unknown. Western Sydney ANEC from the state layer | unknown / live |
 | Rent | NSW Fair Trading rental bonds, whole postcode, SHOWHAUS medians (recounted by the judge from `rents.json`) | counted |
 
-Tracking: the page sends `{e: view|explore|cta, a: slug, src}` to `POST /api/e`; the Worker writes only those three strings to Workers Analytics Engine (`EVENTS` → dataset `showhaus_events`). No cookies, IP or user agent. The recorder (`rec=1`, `scene=…`) never sends events.
+Tracking: the page uses the SHOWHAUS event contract (`POST /api/e`, `src/ops/events.js`): `view` with `props {kit, utm_source}` on load, `cta` with `props.cta = explore | listing` on clicks. Kit links carry `?src=agent-<slug>`, sent as `utm_source`. The page sends no anon id and sets no cookie or storage; the Worker never stores IPs or query strings. The recorder (`rec=1`, `scene=…`) never sends events.

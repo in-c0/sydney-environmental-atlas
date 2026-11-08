@@ -161,8 +161,8 @@ for (const slug of slugs) {
       check(`${slug}: zoning equals the NSW answer`, z ? r.v.zoning?.v?.startsWith(z.SYM_CODE + ' ') : r.v.zoning?.v === 'no LEP zone mapped', r.v.zoning?.v);
       check(`${slug}: Sydney Airport ANEF shown as unknown (not connected)`, r.v.aircraft?.v === 'unknown');
       await page.waitForTimeout(300);
-      const got = events.slice(before).find(e => e.e === 'view' && e.a === slug);
-      check(`${slug}: view event sent with src, nothing else`, !!got && got.src === `agent-${slug}` && Object.keys(got).sort().join() === 'a,e,src', JSON.stringify(got));
+      const got = events.slice(before).find(e => e.name === 'view' && e.props?.kit === slug);
+      check(`${slug}: view beacon carries kit + src only (no id)`, !!got && got.props.utm_source === `agent-${slug}` && !got.anon && Object.keys(got.props).sort().join() === 'kit,utm_source', JSON.stringify(got));
     }
     await ctx.close();
   }
