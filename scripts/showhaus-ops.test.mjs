@@ -262,3 +262,22 @@ test('server events mirror to PostHog only when opted in, pseudonymous, never fo
   assert.equal(calls[0].body.properties.product, 'showhaus');
   assert.ok(!JSON.stringify(calls[0].body).includes('@'));
 });
+
+test('checkout carries the visitor PostHog id to Stripe and to the mirror, so the funnel joins one person', async () => {
+  const env = makeEnv();
+  env.STUDIO_PAYMENT_LINK = 'https://buy.stripe.com/test_123';
+  const phCookie = 'ph_phc_z7qYzteR85WcVGvZjZLVAH6v7VM42Z3ik4WU8dBMfTVJ_posthog=' + encodeURIComponent(JSON.stringify({ distinct_id: '019f7-abc_D' }));
+  const c = ctx();
+  const r = await worker.fetch(new Request('https://map.lifeos.studio/pay/studio-pilot', { headers: { cookie: 'sh_a=b9; ' + phCookie, 'user-agent': 'Mozilla/5.0' } }), env, c);
+  assert.equal(r.status, 302);
+  assert.equal(new URL(r.headers.get('location')).searchParams.get('client_reference_id'), '019f7-abc_D');
+  await c.done();
+  // Without the cookie the redirect is untouched.
+  const r2 = await worker.fetch(new Request('https://map.lifeos.studio/pay/studio-pilot', { headers: { 'user-agent': 'Mozilla/5.0' } }), env, ctx());
+  assert.equal(r2.headers.get('location'), 'https://buy.stripe.com/test_123');
+  const { mirrorToPostHog } = await import('../src/ops/events.js');
+  const calls = [];
+  const fake = async (url, init) => { calls.push(JSON.parse(init.body)); return new Response(null, { status: 200 }); };
+  await mirrorToPostHog({ POSTHOG_MIRROR: 'on' }, { name: 'payment_succeeded', actor: 'c:x', ph: '019f7-abc_D', env: 'production' }, fake);
+  assert.equal(calls[0].distinct_id, '019f7-abc_D');
+});

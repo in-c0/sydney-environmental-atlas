@@ -20,8 +20,7 @@ export default {
     const ops = await handleOps(request, env, ctx);
     if (ops) return ops;
     const res = (await handleStudio(request, env, ctx)) || (await route(request, env));
-    observeCheckout(request, res, env, ctx);
-    return res;
+    return observeCheckout(request, res, env, ctx) || res;
   },
 };
 

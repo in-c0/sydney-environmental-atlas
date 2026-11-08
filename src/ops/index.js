@@ -39,22 +39,40 @@ export async function handleOps(request, env, ctx) {
   }
 }
 
+// posthog-js keeps the visitor's PostHog id in the ph_<key>_posthog cookie. Sending server events under that id
+// joins them to the same person's pageviews, so the PostHog funnel visit -> checkout -> paid connects.
+export function posthogIdOf(request) {
+  const m = (request.headers.get('cookie') || '').match(/(?:^|;\s*)ph_phc_[A-Za-z0-9]+_posthog=([^;]+)/);
+  if (!m) return null;
+  try { const id = JSON.parse(decodeURIComponent(m[1])).distinct_id; return typeof id === 'string' && id.length <= 200 ? id : null; } catch { return null; }
+}
+
+export const REF_OK = /^[A-Za-z0-9_-]{1,200}$/; // Stripe client_reference_id charset
 const CHECKOUT_HOSTS = /(^|\.)(buy|checkout)\.stripe\.com$/;
 // Any route that redirects a visitor to Stripe Checkout counts as checkout_started (server-observed, so
 // a page cannot fake it). Works for /pay/* routes owned elsewhere in the Worker without touching them.
+// Returns a replacement redirect when it can tag a Payment Link with the visitor's PostHog id
+// (client_reference_id), so the webhook's payment_succeeded joins the same PostHog person; otherwise undefined.
 export function observeCheckout(request, response, env, ctx) {
   try {
     if (!(response.status >= 300 && response.status < 400)) return;
     const loc = response.headers.get('location');
     if (!loc || !CHECKOUT_HOSTS.test(new URL(loc).hostname)) return;
     const path = new URL(request.url).pathname;
+    const ph = posthogIdOf(request);
     ctx.waitUntil((async () => {
       const d = await db(env); if (!d) return;
       const user = await currentUser(request, env).catch(() => null);
       const anon = cookieOf(request, 'sh_a');
       const actor = user ? 'u:' + user.id : anon ? 'a:' + await pseudo(d, 'anon', anon.slice(0, 64)) : null;
       const synthetic = new URL(request.url).searchParams.get('synthetic') === '1';
-      await track(env, { name: 'checkout_started', env: environmentOf(request, { claimed: synthetic ? 'synthetic' : undefined }), source: 'server', actor, path, props: { cta: path.slice(0, 60) } });
+      await track(env, { name: 'checkout_started', env: environmentOf(request, { claimed: synthetic ? 'synthetic' : undefined }), source: 'server', actor, ph, path, props: { cta: path.slice(0, 60) } });
     })().catch(e => console.error('observeCheckout', e)));
+    const to = new URL(loc);
+    if (ph && REF_OK.test(ph) && to.hostname === 'buy.stripe.com' && !to.searchParams.has('client_reference_id')) {
+      to.searchParams.set('client_reference_id', ph);
+      const headers = new Headers(response.headers); headers.set('location', to.toString());
+      return new Response(null, { status: response.status, headers });
+    }
   } catch { /* never break the redirect */ }
 }
