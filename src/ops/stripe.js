@@ -72,7 +72,9 @@ export async function recordStripeEvent(env, e, { forceEnv, fetchImpl = fetch } 
   for (const k of Object.keys(props)) if (props[k] == null) delete props[k];
   const customer = who ? 'c:' + await pseudo(d, 'customer', who) : null;
   const at = e.created ? new Date(e.created * 1000).toISOString() : undefined;
-  await track(env, { name, env: environment, source: 'stripe', actor: customer, path: '/hooks/stripe', props, at });
+  // client_reference_id carries the payer's PostHog id (set by observeCheckout), joining the PostHog funnel.
+  const ph = typeof o.client_reference_id === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(o.client_reference_id) ? o.client_reference_id : null;
+  await track(env, { name, env: environment, source: 'stripe', actor: customer, ph, path: '/hooks/stripe', props, at });
   await setMeta(d, 'stripe_last_event_at', new Date().toISOString());
   const after = await afterStripeEvent(env, d, e, name, { environment, customer, props, at }, fetchImpl);
   return { status: 200, body: { ok: true, recorded: name, env: environment, entitlement: after.entitlement, mailed: after.mailed } };

@@ -49,7 +49,7 @@ const POSTHOG_KEY = 'phc_z7qYzteR85WcVGvZjZLVAH6v7VM42Z3ik4WU8dBMfTVJ';
 export async function mirrorToPostHog(env, ev, fetchImpl = fetch) {
   const key = (env && env.POSTHOG_PROJECT_KEY) || POSTHOG_KEY;
   if (!key || !env || env.POSTHOG_MIRROR !== 'on' || ev.env === 'synthetic') return false; // opt-in: tests and probes never reach PostHog
-  const body = { api_key: key, event: 'sh_' + ev.name, distinct_id: ev.actor || 'showhaus-server', timestamp: ev.at,
+  const body = { api_key: key, event: 'sh_' + ev.name, distinct_id: ev.ph || ev.actor || 'showhaus-server', timestamp: ev.at,
     properties: { ...(ev.props || {}), product: 'showhaus', source: ev.source || 'server', environment: ev.env || 'production', path: ev.path, $process_person_profile: false } };
   try { const r = await fetchImpl('https://us.i.posthog.com/i/v0/e/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return r.ok; }
   catch { return false; }
