@@ -38,7 +38,7 @@ export function funnelOf(rows) {
 }
 
 export async function health(env) {
-  const d = await db(env).catch(() => null);
+  const d = await Promise.resolve().then(() => db(env)).catch(() => null);
   return {
     store: !!d,
     mail_binding: !!env.MAIL,

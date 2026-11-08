@@ -168,3 +168,9 @@ test('journeys fold the anonymous visit into the account it became, money first'
   assert.deepEqual(j[0].steps.map(s => s.name), ['view', 'search', 'signup', 'checkout_started']);
   assert.equal(funnelOf(r).view, 2);
 });
+
+test('health answers without a store binding (previews may have none)', async () => {
+  const r = await worker.fetch(new Request('https://x.workers.dev/api/ops/health'), { ASSETS: { fetch: async () => new Response('') } }, ctx());
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { store: false, mail_binding: false, webhook_secret: false, payment_link: false, mail_last_ok: null, mail_last_error: null });
+});
