@@ -25,7 +25,7 @@
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
   const state = { act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
-  const PRO = false; // no Pro subscription exists yet: advanced evidence and lenses are previewed blurred
+  let PRO = false; // set from the signed-in account (/api/auth/me → pro); everyone else sees Pro previewed blurred
   let A = null, centroids = {}, R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
   const evidence = new Map();
 
@@ -790,6 +790,13 @@
   document.querySelectorAll('.cuts button').forEach(b => b.addEventListener('click', () => go(Number(b.parentElement.dataset.cut))));
   $('wants').addEventListener('click', e => { const b = e.target.closest('button[data-want]'); if (b) toggleWant(b.dataset.want); });
   $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; state.tab = b.dataset.tab; if (!PRO && b.dataset.tab === 'adv' && window.SH) SH.track('pro_interest', { lens: 'advanced' }); cue(); renderCard(); drawPick(); });
+  addEventListener('sh:account', () => {
+    const next = !!(window.SH && SH.pro);
+    if (next === PRO) return;
+    PRO = next; document.body.classList.toggle('pro', PRO);
+    if (R) { setLens(state.lens); renderCard(); drawPick(); } // before the records load, the first render already reads PRO
+    if (PRO) toast('Pro unlocked');
+  });
   $('lenses').addEventListener('click', e => { const b = e.target.closest('button[data-lens]'); if (b) setLens(b.dataset.lens); });
   $('selection').addEventListener('click', e => { const b = e.target.closest('button[data-tok]'); if (b) removeToken(b.dataset.tok); });
   $('pinA').addEventListener('click', () => {

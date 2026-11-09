@@ -38,6 +38,7 @@
     btn.textContent = me.signedIn ? 'Signed in' : 'Sign in';
     btn.setAttribute('aria-label', me.signedIn ? 'Account: signed in' : 'Sign in with email');
     document.body.classList.toggle('signed-in', !!me.signedIn);
+    window.dispatchEvent(new Event('sh:account')); // the map page re-renders Pro-gated parts when this changes
   }
   function step(n) { if (!dlg) return; dlg.dataset.step = n; const f = dlg.querySelector(n === 'code' ? '#acctCode' : n === 'email' ? '#acctEmail' : '#acctDone'); if (f) setTimeout(() => f.focus(), 30); }
   function msg(t) { const m = $('acctMsg'); if (m) m.textContent = t || ''; }
@@ -47,7 +48,7 @@
     dlg.dataset.reason = reason || ''; dlg.hidden = false; msg(''); step(me.signedIn ? 'done' : 'email');
   }
   function close() { if (dlg) { dlg.hidden = true; btn && btn.focus(); } }
-  window.SH = { track, openSignIn: open, get signedIn() { return !!me.signedIn; }, get canSignIn() { return !!me.available; } };
+  window.SH = { track, openSignIn: open, get signedIn() { return !!me.signedIn; }, get pro() { return !!(me.signedIn && me.pro); }, get canSignIn() { return !!me.available; } };
 
   api('me').then(r => { if (r.ok) { me = r.data; paint(); } }).catch(() => {});
   if (btn) btn.addEventListener('click', () => (dlg && !dlg.hidden ? close() : open('header')));
@@ -65,7 +66,7 @@
     e.preventDefault(); msg('Checking…');
     const r = await api('verify', { email, code: $('acctCode').value, anon }).catch(() => ({ ok: false, data: {} }));
     if (!r.ok) return msg(r.data.error || 'Something went wrong. Try again.');
-    me = { signedIn: true, since: r.data.since }; paint(); msg(''); step('done');
+    me = { signedIn: true, pro: !!r.data.pro, since: r.data.since }; paint(); msg(''); step('done');
     if (dlg.dataset.reason === 'pro') track('pro_interest', { cta: 'signed_in' });
     $('acctDoneText').textContent = r.data.new ? 'Account created. You are signed in on this browser.' : 'Welcome back. You are signed in.';
   });

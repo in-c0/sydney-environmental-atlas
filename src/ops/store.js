@@ -14,6 +14,8 @@ const SCHEMA = [
   // What a payment entitles the customer to, so "paid but not served" is countable (one row per payment).
   `CREATE TABLE IF NOT EXISTS sh_entitlements (id TEXT PRIMARY KEY, at TEXT NOT NULL, env TEXT NOT NULL, customer TEXT,
      amount INTEGER, currency TEXT, payment_link TEXT, status TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  // Accounts with Pro. Keyed by the same HMAC-ed email id as sh_users, so a grant can exist before first sign-in.
+  `CREATE TABLE IF NOT EXISTS sh_pro (user_id TEXT PRIMARY KEY, at TEXT NOT NULL, via TEXT NOT NULL)`,
 ];
 
 let ready = null;
