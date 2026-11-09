@@ -21,6 +21,7 @@
   const ROAD_RANK = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2, minor: 1, service: 0 };
   const BEDS = [[0, 'Studio'], [1, '1 bed'], [2, '2 bed'], [3, '3 bed'], [4, '4+ bed']];
   const TYPES = [[0, 'Unit'], [1, 'House'], [2, 'Townhouse']];
+  const DARK = matchMedia('(prefers-color-scheme: dark)').matches, INK = DARK ? '#ece4d3' : '#1d2733', PAPER = DARK ? '#15181d' : '#fffaf0';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
   const state = { act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
@@ -56,6 +57,11 @@
     $('live').textContent = `${R.w.length.toLocaleString('en-AU')} leases · ${fmtYm(first)}–${fmtYm(last)}`;
     $('live').title = 'Every rental bond lodged with NSW Fair Trading. Built ' + R.generatedAt.slice(0, 10) + '. ' + R.sources.map(s => s.name + ' (' + s.licence + ')').join(' · ');
   }
+  function pcNodes() {
+    const k = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n);
+    return { type: 'FeatureCollection', features: (pcFC?.features || []).filter(f => f.properties.n > 0 && centroids[f.properties.pc])
+      .map(f => ({ type: 'Feature', properties: { n: f.properties.n, lab: k(f.properties.n) }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
+  }
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
   // ---------- map ----------
@@ -70,17 +76,29 @@
       map.addSource('pc', { type: 'geojson', data: pcFC || { type: 'FeatureCollection', features: [] }, promoteId: 'pc' });
       map.addLayer({ id: 'pc-fill', type: 'fill', source: 'pc', paint: {
         'fill-color': ['case', ['==', ['get', 'n'], 0], 'rgba(0,0,0,0)', ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]]],
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .62, 14, .35, 16, .12] } }, before);
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .5, 11.2, .5, 12.4, .26, 16, .1] } }, before);
       map.addLayer({ id: 'pc-line', type: 'line', source: 'pc', paint: { 'line-color': '#2f4c7a', 'line-opacity': ['case', ['==', ['get', 'sel'], 1], .95, .25], 'line-width': ['case', ['==', ['get', 'sel'], 1], 2.4, .6] } });
       map.addLayer({ id: 'pc-3d', type: 'fill-extrusion', source: 'pc', layout: { visibility: 'none' }, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
       map.addSource('leases', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'lease-dots', type: 'circle', source: 'leases', minzoom: DOT_ZOOM, paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 1.8, 14, 3.4, 17, 6],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 2.6, 14, 4, 17, 7],
         'circle-color': ['interpolate', ['linear'], ['get', 'w'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
-        'circle-stroke-color': 'rgba(255,255,255,.85)', 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 0, 14, .6],
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .55, 14, .9] } });
+        'circle-stroke-color': INK, 'circle-stroke-opacity': .75, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .7, 14, 1, 17, 1.4],
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .35, DOT_ZOOM + .4, .95] } });
+      // Zoomed out: one bubble per postcode = how many new leases fit. Size = count, dark ink so it never melts into the rent colours.
+      map.addSource('pcn', { type: 'geojson', data: pcNodes() });
+      const fadeOut = ['interpolate', ['linear'], ['zoom'], DOT_ZOOM - .3, 1, DOT_ZOOM + .4, 0];
+      map.addLayer({ id: 'pc-nodes', type: 'circle', source: 'pcn', maxzoom: DOT_ZOOM + .5, layout: { 'circle-sort-key': ['get', 'n'] }, paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'],
+          8, ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 2.5, 10, 4, 40, 9, 80, 15],
+          11, ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 4, 10, 7, 40, 15, 80, 24]],
+        'circle-color': INK, 'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM - .3, .88, DOT_ZOOM + .4, 0],
+        'circle-stroke-color': PAPER, 'circle-stroke-width': 1.5, 'circle-stroke-opacity': fadeOut } });
+      map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', maxzoom: DOT_ZOOM + .5, filter: ['>=', ['get', 'n'], 30], layout: {
+        'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'symbol-sort-key': ['-', ['get', 'n']],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9, 11, 11.5] }, paint: { 'text-color': PAPER, 'text-opacity': fadeOut } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'pick-ring', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'ring'], paint: { 'line-color': '#7d5fc7', 'line-width': 1.2, 'line-opacity': .7 } });
@@ -98,6 +116,9 @@
       dotPop.setLngLat(f.geometry.coordinates).setHTML(`<b>${C.weekly(R.w[i])}</b> · ${R.b[i] ? R.b[i] + '-bed' : 'studio / unknown beds'} ${esc(R.types[R.t[i]].toLowerCase())}<br>lodged ${fmtYm(R.months[R.m[i]])}<br><small>Placed in a neighbourhood of ${pc}, not at the home's address.</small>`).addTo(map);
     });
     map.on('mouseenter', 'lease-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('click', 'pc-nodes', e => { const f = e.features[0]; if (f) map.easeTo({ center: f.geometry.coordinates, zoom: DOT_ZOOM + 1, duration: 700 }); });
+    map.on('mouseenter', 'pc-nodes', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'pc-nodes', () => { map.getCanvas().style.cursor = ''; });
     const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
     map.on('mousemove', 'pc-fill', e => {
       const f = e.features[0]; if (!f) return;
@@ -175,7 +196,7 @@
     }
     const selSet = state.place ? new Set(state.place.pcis) : null;
     if (pcFC) for (const f of pcFC.features) f.properties.sel = selSet && selSet.has(f.properties.pci) ? 1 : 0;
-    if (mapReady) map.getSource('pc').setData(pcFC);
+    if (mapReady) { map.getSource('pc').setData(pcFC); map.getSource('pcn').setData(pcNodes()); }
     const rents = idx.map(i => R.w[i]).sort((a, b) => a - b);
     $('c1').textContent = idx.length.toLocaleString('en-AU');
     $('c2').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
@@ -573,6 +594,8 @@
   function drawLeases() {
     if (!mapReady || !R) return;
     const src = map.getSource('leases');
+    const showNodes = state.lens === 'map' && state.mode !== 'buy' ? 'visible' : 'none';
+    for (const id of ['pc-nodes', 'pc-nodes-n']) if (map.getLayoutProperty(id, 'visibility') !== showNodes) map.setLayoutProperty(id, 'visibility', showNodes);
     if (map.getZoom() < DOT_ZOOM || state.lens !== 'map' || state.mode === 'buy') { dotStats = { drawn: 0, total: 0, capped: false }; src.setData({ type: 'FeatureCollection', features: [] }); return; }
     const b = map.getBounds(), padX = (b.getEast() - b.getWest()) * .25, padY = (b.getNorth() - b.getSouth()) * .25;
     const inView = ([x, y]) => x > b.getWest() - padX && x < b.getEast() + padX && y > b.getSouth() - padY && y < b.getNorth() + padY;
@@ -590,12 +613,14 @@
       order.push([Math.hypot(c[0] - mc.lng, c[1] - mc.lat), pi, pc, c, s, pts]);
     }
     order.sort((x, y) => x[0] - y[0]);
+    const keep = i => !(cf.maxRent != null && R.w[i] > cf.maxRent) && !(cf.beds && !cf.beds.has(R.b[i] >= 4 ? 4 : R.b[i])) && !(cf.types && !cf.types.has(R.t[i]));
+    for (const [, pi] of order) for (let i = R.start[pi]; i < R.end[pi]; i++) if (keep(i)) total++;
+    // Over the cap: thin evenly everywhere (fixed per-lease hash, so dots don't flicker) instead of leaving the edges of the view empty.
+    const rate = Math.min(1, DOT_CAP / Math.max(total, 1));
     for (const [, pi, pc, c, s, pts] of order) {
       for (let i = R.start[pi]; i < R.end[pi]; i++) {
-        if (cf.maxRent != null && R.w[i] > cf.maxRent) continue;
-        if (cf.beds && !cf.beds.has(R.b[i] >= 4 ? 4 : R.b[i])) continue;
-        if (cf.types && !cf.types.has(R.t[i])) continue;
-        total++;
+        if (!keep(i)) continue;
+        if (rate < 1 && (hash(i * 31 + 7) % 100000) / 100000 >= rate) continue;
         if (feats.length >= DOT_CAP) continue;
         const h = hash(i), kx = 111320 * Math.cos(c[1] * Math.PI / 180);
         let x, y;
@@ -646,7 +671,7 @@
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
     const dots = state.lens === 'map' && mapReady && map.getZoom() >= DOT_ZOOM && dotStats.total
       ? `<div class="dotnote"><i></i>1 dot = 1 new lease (${dotStats.drawn.toLocaleString('en-AU')}${dotStats.capped ? ` of ${dotStats.total.toLocaleString('en-AU')}` : ''}). Records give only the postcode, so each dot sits in a neighbourhood of its postcode — not at the home's address.</div>`
-      : state.lens === 'map' && mapReady && map.getZoom() < DOT_ZOOM ? '<div class="dotnote muted">Zoom in to see each lease as a dot.</div>' : '';
+      : state.lens === 'map' && mapReady && map.getZoom() < DOT_ZOOM ? '<div class="dotnote muted">Bubble = new leases in that postcode. Tap one to zoom into its dots.</div>' : '';
     $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>${dots}`;
     $('legend').classList.toggle('has-dots', dots.includes('1 dot'));
   }
