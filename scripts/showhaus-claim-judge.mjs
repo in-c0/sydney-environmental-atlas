@@ -24,7 +24,7 @@ const pdf = Buffer.concat([Buffer.from('%PDF-1.4\n% SHOWHAUS judge sample: autho
 async function fillDetails(page, { email, website, slow = 0 }) {
   await page.locator('.roles label').filter({ hasText: 'Listing agent' }).click();
   const type = async (sel, v) => { const el = page.locator(sel); await el.click(); if (slow) await el.pressSequentially(v, { delay: slow }); else await el.fill(v); };
-  await type('[name=company]', 'Harbour Realty');
+  await type('[name=company]', 'Your Agency');
   await type('[name=licence]', '51 824 753 556');
   await type('[name=website]', website);
   await type('[name=email]', email);
@@ -98,7 +98,7 @@ async function walk(browser, { name, viewport, email, website, expect, shots = t
   await pub.waitForFunction(() => document.getElementById('pname').textContent !== 'Loading…', null, { timeout: 30000 }).catch(() => {});
   await pub.waitForTimeout(1500);
   const by = await pub.locator('#pby').isVisible() ? await pub.locator('#pby').textContent() : '';
-  check(expect === 'verified' ? by === 'Marketed by Harbour Realty' : by === '', `${name}: public page branding ${by ? '“' + by + '”' : 'hidden'} (${expect})`);
+  check(expect === 'verified' ? by === 'Marketed by Your Agency' : by === '', `${name}: public page branding ${by ? '“' + by + '”' : 'hidden'} (${expect})`);
   if (shots) await pub.screenshot({ path: join(SHOTS, `${name}-5-share-link.png`) });
   await pub.close();
   check(!errors.length, `${name}: no page errors ${errors.slice(0, 3).join(' | ')}`);
@@ -135,7 +135,7 @@ async function explainer(browser) {
   await point('#modeNext');
   await page.waitForTimeout(500);
   await point('.roles label:has-text("Listing agent")');
-  for (const [sel, v] of [['[name=company]', 'Harbour Realty'], ['[name=licence]', '51 824 753 556'], ['[name=website]', 'harbourrealty.com.au'], ['[name=email]', 'sam@harbourrealty.com.au']]) {
+  for (const [sel, v] of [['[name=company]', 'Your Agency'], ['[name=licence]', '51 824 753 556'], ['[name=website]', 'youragency.com.au'], ['[name=email]', 'you@youragency.com.au']]) {
     await point(sel); await page.locator(sel).pressSequentially(v, { delay: 28 });
   }
   await page.setInputFiles('[name=file]', { name: 'authority-to-market.pdf', mimeType: 'application/pdf', buffer: pdf });
@@ -197,10 +197,10 @@ if (process.argv.includes('--explainer')) await explainer(browser);
 else if (process.argv.includes('--email')) await email(browser);
 else {
   const stamp = Date.now().toString(36);
-  await walk(browser, { name: 'desktop-verified', viewport: { width: 1440, height: 900 }, email: `sam.${stamp}@harbourrealty.com.au`, website: 'https://www.harbourrealty.com.au', expect: 'verified' });
-  await walk(browser, { name: 'mobile-verified', viewport: { width: 390, height: 844 }, email: `kim.${stamp}@harbourrealty.com.au`, website: 'harbourrealty.com.au', expect: 'verified' });
-  await walk(browser, { name: 'mobile-pending', viewport: { width: 390, height: 844 }, email: `harbour.${stamp}@gmail.com`, website: 'harbourrealty.com.au', expect: 'pending' });
-  await walk(browser, { name: 'desktop-pending', viewport: { width: 1440, height: 900 }, email: `sam.${stamp}@harbour-group.com.au`, website: 'harbourrealty.com.au', expect: 'pending', shots: true });
+  await walk(browser, { name: 'desktop-verified', viewport: { width: 1440, height: 900 }, email: `judge.a.${stamp}@youragency.com.au`, website: 'https://www.youragency.com.au', expect: 'verified' });
+  await walk(browser, { name: 'mobile-verified', viewport: { width: 390, height: 844 }, email: `judge.b.${stamp}@youragency.com.au`, website: 'youragency.com.au', expect: 'verified' });
+  await walk(browser, { name: 'mobile-pending', viewport: { width: 390, height: 844 }, email: `judge.c.${stamp}@gmail.com`, website: 'youragency.com.au', expect: 'pending' });
+  await walk(browser, { name: 'desktop-pending', viewport: { width: 1440, height: 900 }, email: `judge.a.${stamp}@youragency-group.com.au`, website: 'youragency.com.au', expect: 'pending', shots: true });
   console.log(`screenshots: ${SHOTS}`);
 }
 await browser.close();
