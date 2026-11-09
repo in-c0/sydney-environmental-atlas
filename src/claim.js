@@ -6,8 +6,11 @@
 //   POST /api/claim/release {token}  the claimant withdraws the claim (share link stops showing their branding)
 //   GET  /api/claim/brand?c=<code>   { company } only for a verified claim — what the public walkthrough may show
 //   GET  /s/<slug>[/<code>]          the share link → the walkthrough page (with the claimant's line when verified)
-// Verification is automatic and never waits on a person: the work-email domain must match the company website's
-// domain (free-mail domains never match). Anything else stays "pending" and is listed for CVF in /api/ops/summary.
+// Verification is automatic and never waits on a person, and needs BOTH: the claimant proved the work mailbox with the
+// 6-digit email code (src/ops/auth.js session for exactly that address) AND its domain matches the company website's
+// domain (free-mail domains never match). Until then the claim is "pending": the share link works, unbranded. A pending
+// domain-match claim upgrades by itself the first time that address signs in. Pending claims are listed for CVF in
+// /api/ops/summary. Only verified claims ever show the claimant's name (share link, data-by embed).
 // Stored: business details the claimant typed (company, ABN/licence, website host), the work-email DOMAIN and an
 // HMAC of the address (never the address), a hash of the guest token, the optional evidence file (D1, chunked).
 import { db, pseudo, sha256 } from './ops/store.js';
@@ -30,6 +33,9 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS sh_claims_slug ON sh_claims (slug, status)`,
   `CREATE TABLE IF NOT EXISTS sh_claim_files (claim_id TEXT NOT NULL, seq INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (claim_id, seq))`,
   `CREATE TABLE IF NOT EXISTS sh_claim_rate (k TEXT PRIMARY KEY, n INTEGER NOT NULL, window_start INTEGER NOT NULL)`,
+  // 2026-11-10: domain match alone no longer verifies. Claims verified under the old rule (reason 'domain_match') go back
+  // to pending until the mailbox is proven; proven ones carry reason 'email_confirmed', so this is idempotent.
+  `UPDATE sh_claims SET status = 'pending', reason = 'email_unconfirmed' WHERE status = 'verified' AND reason = 'domain_match'`,
 ];
 let ready = null;
 async function cdb(env) {
@@ -87,13 +93,19 @@ export function parseLicence(raw) {
   if (/^[A-Z0-9]{4,14}$/.test(s)) return { kind: 'licence', value: s };
   return { error: 'Enter your ABN (11 digits) or agency licence number.' };
 }
-// The one verification rule: work-email domain == company-website domain, and neither is free mail.
-export function verdict(email, website) {
+// Domain half of the rule: work-email domain == company-website domain, and neither is free mail.
+export function domainCheck(email, website) {
   const ed = emailDomain(email), wh = websiteHost(website);
-  if (!ed || !wh) return { status: 'pending', reason: 'invalid' };
-  if (isFreeMail(ed)) return { status: 'pending', reason: 'free_mail' };
-  if (isFreeMail(siteDomain(wh))) return { status: 'pending', reason: 'free_mail_site' };
-  return siteDomain(ed) === siteDomain(wh) ? { status: 'verified', reason: 'domain_match' } : { status: 'pending', reason: 'domain_mismatch' };
+  if (!ed || !wh) return { match: false, reason: 'invalid' };
+  if (isFreeMail(ed)) return { match: false, reason: 'free_mail' };
+  if (isFreeMail(siteDomain(wh))) return { match: false, reason: 'free_mail_site' };
+  return siteDomain(ed) === siteDomain(wh) ? { match: true, reason: 'domain_match' } : { match: false, reason: 'domain_mismatch' };
+}
+// The whole rule: verified only when the domain matches AND the mailbox was proven with the emailed code.
+export function verdict(email, website, mailboxProven = false) {
+  const d = domainCheck(email, website);
+  if (!d.match) return { status: 'pending', reason: d.reason };
+  return mailboxProven ? { status: 'verified', reason: 'email_confirmed' } : { status: 'pending', reason: 'email_unconfirmed' };
 }
 // Evidence: sniff the bytes, not the filename. Returns the canonical MIME type or null.
 export function sniff(bytes) {
@@ -204,7 +216,8 @@ async function submit(request, env, ctx, d) {
   const emailH = await pseudo(d, 'email', email);
   const { actor, user } = await actorOf(request, env, d, f.anon);
   const owner = user ? 'u:' + user.id : f.mode === 'signup' ? 'u:' + emailH : null; // a sign-up claim follows the email's account
-  const { status, reason } = verdict(email, f.website);
+  const proven = !!user && user.id === emailH; // signed in through the emailed code for exactly this address
+  const { status, reason } = verdict(email, f.website, proven);
   const now = new Date().toISOString();
   const src = clean(f.src, 60) || null;
 
@@ -246,16 +259,27 @@ async function byToken(d, token) {
   return d.prepare('SELECT * FROM sh_claims WHERE token_h = ?').bind(await sha256(token)).first();
 }
 
+// A signed-in session proves its own address. Domain-matched claims made with that address become verified.
+async function confirmMailbox(env, d, user, request) {
+  const rows = (await d.prepare("SELECT id, slug, mode, role, actor FROM sh_claims WHERE email_h = ? AND status = 'pending' AND reason = 'email_unconfirmed'").bind(user.id).all()).results;
+  if (!rows.length) return 0;
+  await d.prepare("UPDATE sh_claims SET status = 'verified', reason = 'email_confirmed', updated_at = ? WHERE email_h = ? AND status = 'pending' AND reason = 'email_unconfirmed'").bind(new Date().toISOString(), user.id).run();
+  const environment = user.env === 'synthetic' ? 'synthetic' : environmentOf(request);
+  await Promise.all(rows.map(r => track(env, { name: 'claim_verified', env: environment, source: 'server', actor: 'u:' + user.id, path: '/api/claim/state', props: { kind: 'claim:' + r.slug, step: 'email_confirmed', cta: r.role } }))).catch(() => {});
+  return rows.length;
+}
+
 async function state(request, env, d) {
   const url = new URL(request.url);
   const slug = url.searchParams.get('p') || '';
   const prop = await propertyOf(request, env, slug);
   if (!prop) return j({ error: 'Unknown property.' }, 404);
   const user = await currentUser(request, env).catch(() => null);
+  if (user) await confirmMailbox(env, d, user, request);
   const hashes = await Promise.all(tokensOf(request).map(t => sha256(t)));
   const conds = [], args = [prop.slug];
   if (hashes.length) { conds.push(`token_h IN (${hashes.map(() => '?').join(',')})`); args.push(...hashes); }
-  if (user) { conds.push('owner = ?'); args.push('u:' + user.id); }
+  if (user) { conds.push('owner = ? OR email_h = ?'); args.push('u:' + user.id, user.id); } // the account, or claims made with its address
   const mine = conds.length
     ? (await d.prepare(`SELECT * FROM sh_claims WHERE slug = ? AND status != 'released' AND (${conds.join(' OR ')}) ORDER BY updated_at DESC LIMIT 5`).bind(...args).all()).results
     : [];

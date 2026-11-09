@@ -115,6 +115,12 @@
       <button class="btn primary" id="copyShare" type="button">Copy link</button>
     </div>
     <p class="status-note" id="statusNote"></p>
+    <div class="confirm" id="confirmBox" hidden>
+      <label class="field"><span>Work email</span><input id="cfEmail" type="email" inputmode="email" autocomplete="email"></label>
+      <label class="field" id="cfCodeRow" hidden><span>6-digit code from that inbox</span><input id="cfCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></label>
+      <p class="err" id="cfErr" role="alert"></p>
+      <button class="btn primary small" id="cfBtn" type="button">Email me a code</button>
+    </div>
     <details class="more">
       <summary>Embed on your site</summary>
       <pre id="embed" class="mono"></pre>
