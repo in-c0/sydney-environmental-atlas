@@ -1,6 +1,7 @@
 /* SHOWHAUS Studio embed — paste into any page:
  *   <script src="https://showhaus.app/studio/embed.js" data-project="arncliffe-central" async></script>
- * Optional: data-ratio="16/10" (default; 4/5 below 560 px wide), data-src="your-campaign".
+ * Optional: data-ratio="16/10" (default; 4/5 below 560 px wide), data-src="your-campaign",
+ *           data-by="<claim code>" (a verified claimant's line, from showhaus.app/claim).
  * Renders a responsive, lazy-loaded iframe of the walkthrough plus a small "Made with SHOWHAUS" link. No cookies. */
 (function () {
   var scripts = document.querySelectorAll('script[src*="/studio/embed.js"]:not([data-showhaus-done])');
@@ -12,7 +13,8 @@
     var base = new URL('./', s.src).href; // …/studio/
     var host = (location.hostname || 'file').replace(/[^a-z0-9.-]/gi, '').slice(0, 40);
     var src = s.getAttribute('data-src') || ('embed-' + host);
-    var url = base + '?p=' + encodeURIComponent(slug) + '&embed=1&src=' + encodeURIComponent(src);
+    var by = String(s.getAttribute('data-by') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+    var url = base + '?p=' + encodeURIComponent(slug) + '&embed=1&src=' + encodeURIComponent(src) + (by ? '&by=' + by : '');
 
     var wrap = document.createElement('div');
     wrap.className = 'showhaus-embed';

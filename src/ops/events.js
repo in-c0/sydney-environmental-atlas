@@ -6,11 +6,13 @@ import { db, insertEvent, pseudo } from './store.js';
 // Events a browser may send. Account and money events are server-only, so a page cannot forge them.
 export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_interest', 'signin_open', 'cta', 'feedback',
   // SHOWHAUS Studio walkthrough (dist/showhaus/studio): props.kind = 'studio:<slug>', props.step = '<building><level>'
-  'play', 'floor', 'embed_copy']);
+  'play', 'floor', 'embed_copy',
+  // Claim flow (dist/showhaus/claim): props.kind = 'claim:<slug>'. claim_submitted / claim_verified are server-only.
+  'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
-  'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute']);
+  'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified']);
 // Events that page the owner during a sprint (CVF polls them; see /api/ops/summary).
-export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute']);
+export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted']);
 
 const BOT_UA = /cvf-e2e|cvf-promise-probe|headlesschrome|playwright|bot\b|crawler|spider|slurp|facebookexternalhit|preview/i;
 const PROD_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);

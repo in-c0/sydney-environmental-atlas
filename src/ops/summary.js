@@ -5,7 +5,9 @@ import { ALERT_EVENTS } from './events.js';
 import { recordStripeEvent } from './stripe.js';
 import { mailMode } from './auth.js';
 import { entitlementSummary, alertHealth, markEntitlement } from './owner.js';
+import { claimSummary } from '../claim.js';
 
+export const CLAIM_FUNNEL = ['claim_viewed', 'claim_started', 'claim_submitted', 'claim_verified', 'share_link_copied'];
 const FUNNEL = ['view', 'search', 'place_card', 'signin_open', 'signup', 'login', 'checkout_started', 'payment_succeeded'];
 const j = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -80,6 +82,9 @@ export async function summary(request, env) {
     health: await health(env),
     webhook_last_event_at: await getMeta(d, 'stripe_last_event_at'),
     entitlements: await entitlementSummary(d), // production only: paid → owed → delivered | refunded | disputed
+    // Claim flow: unique actors per step (production) and claims still pending automatic verification (no human review step).
+    claim_funnel: Object.fromEntries(CLAIM_FUNNEL.map(n => [n, new Set(prodRows.filter(r => r.name === n && r.actor).map(r => r.actor)).size])),
+    claims: await claimSummary(env).catch(() => null),
   });
 }
 
