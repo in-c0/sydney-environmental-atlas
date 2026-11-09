@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import worker from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
-import { resetClaimsForTests, validAbn, parseLicence, verdict, siteDomain, websiteHost, sniff, validateClaim, MAX_FILE } from '../src/claim.js';
+import { resetClaimsForTests, validAbn, parseLicence, verdict, domainCheck, siteDomain, websiteHost, sniff, validateClaim, MAX_FILE } from '../src/claim.js';
+import { sha256 } from '../src/ops/store.js';
 
 function d1() {
   const db = new DatabaseSync(':memory:');
@@ -38,6 +39,17 @@ function form(fields, file) {
 const submit = (env, fields, { file, headers = {}, host = 'https://showhaus.app' } = {}) =>
   worker.fetch(new Request(host + '/api/claim/submit', { method: 'POST', body: form({ ...base, ...fields }, file), headers: { ...UA, 'cf-connecting-ip': '203.0.113.9', ...headers } }), env, ctx());
 const events = env => env.OPS_DB._db.prepare('SELECT name, env, props FROM sh_events ORDER BY id').all();
+// A signed-in session for an address = what /api/auth/verify leaves behind after the emailed 6-digit code.
+async function signIn(env, email) {
+  const { pseudo, db } = await import('../src/ops/store.js');
+  const d = await db(env);
+  const id = await pseudo(d, 'email', email.trim().toLowerCase());
+  env.OPS_DB._db.prepare("INSERT OR IGNORE INTO sh_users (id, created_at, env) VALUES (?, '2026-11-10', 'production')").run(id);
+  const tok = 'sess-' + id;
+  env.OPS_DB._db.prepare('INSERT INTO sh_sessions (token_h, user_id, exp) VALUES (?, ?, ?)').run(await sha256(tok), id, Date.now() + 1e6);
+  return 'sh_s=' + tok;
+}
+const brandOf = async (env, code) => (await worker.fetch(new Request(`https://showhaus.app/api/claim/brand?c=${code}`), env, ctx())).json();
 const pdf = n => { const b = new Uint8Array(n); b.set([0x25, 0x50, 0x44, 0x46, 0x2d]); return b; };
 
 test('ABN checksum (ATO algorithm) and the ABN-or-licence field', () => {
@@ -51,14 +63,17 @@ test('ABN checksum (ATO algorithm) and the ABN-or-licence field', () => {
   assert.ok(parseLicence('x').error);
 });
 
-test('verification: work-email domain must match the company website; free mail never matches', () => {
+test('verification: domain must match AND the mailbox must be proven; free mail never matches', () => {
   assert.equal(siteDomain('www.raywhite.com.au'), 'raywhite.com.au');
   assert.equal(siteDomain('arncliffe.raywhite.com.au'), 'raywhite.com.au');
   assert.equal(siteDomain('mail.billbergia.com'), 'billbergia.com');
   assert.equal(websiteHost('Billbergia.com/projects?x=1'), 'billbergia.com');
   assert.equal(websiteHost('not a site'), null);
-  assert.deepEqual(verdict('jo@billbergia.com.au', 'https://www.billbergia.com.au/'), { status: 'verified', reason: 'domain_match' });
-  assert.deepEqual(verdict('jo@arncliffe.raywhite.com.au', 'raywhite.com.au'), { status: 'verified', reason: 'domain_match' });
+  assert.deepEqual(domainCheck('jo@billbergia.com.au', 'https://www.billbergia.com.au/'), { match: true, reason: 'domain_match' });
+  assert.deepEqual(verdict('jo@billbergia.com.au', 'https://www.billbergia.com.au/'), { status: 'pending', reason: 'email_unconfirmed' }, 'domain match alone is not enough');
+  assert.deepEqual(verdict('jo@billbergia.com.au', 'https://www.billbergia.com.au/', true), { status: 'verified', reason: 'email_confirmed' });
+  assert.deepEqual(verdict('jo@arncliffe.raywhite.com.au', 'raywhite.com.au', true), { status: 'verified', reason: 'email_confirmed' });
+  assert.deepEqual(verdict('jo@gmail.com', 'raywhite.com.au', true), { status: 'pending', reason: 'free_mail' }, 'a proven mailbox on another domain is still pending');
   assert.deepEqual(verdict('jo@raywhite.com', 'raywhite.com.au'), { status: 'pending', reason: 'domain_mismatch' });
   assert.deepEqual(verdict('jo@gmail.com', 'gmail.com'), { status: 'pending', reason: 'free_mail' });
   assert.deepEqual(verdict('jo@agency.com.au', 'outlook.com'), { status: 'pending', reason: 'free_mail_site' });
@@ -77,12 +92,12 @@ test('validation names every bad field; file types are sniffed from bytes, not n
   assert.equal(sniff(new TextEncoder().encode('<html>')), null);
 });
 
-test('guest claim with matching domains: verified, share link + embed, token in an HttpOnly cookie, no raw email stored', async () => {
+test('guest claim: share link + embed, token in an HttpOnly cookie, no raw email stored', async () => {
   const env = makeEnv();
   const r = await submit(env, {});
   assert.equal(r.status, 200);
   const b = await r.json();
-  assert.equal(b.claim.status, 'verified');
+  assert.equal(b.claim.status, 'pending'); assert.equal(b.claim.reason, 'email_unconfirmed');
   assert.match(b.claim.share_url, /^https:\/\/showhaus\.app\/s\/arncliffe-central\/[a-z2-9]{6}$/);
   assert.match(b.claim.embed, /data-by="[a-z2-9]{6}"/);
   assert.match(b.manage_url, /^https:\/\/showhaus\.app\/claim\/\?p=arncliffe-central#m=[0-9a-f]{48}$/);
@@ -100,12 +115,51 @@ test('guest claim with matching domains: verified, share link + embed, token in 
   const none = await (await worker.fetch(new Request('https://showhaus.app/api/claim/state?p=arncliffe-central'), env, ctx())).json();
   assert.equal(none.mine.length, 0, 'another browser sees nothing');
 
-  // the public walkthrough may show the verified company
-  const brand = await (await worker.fetch(new Request(`https://showhaus.app/api/claim/brand?c=${b.claim.code}`), env, ctx())).json();
-  assert.deepEqual(brand, { company: 'Harbour Realty', slug: 'arncliffe-central' });
-  const names = events(env).map(e => e.name);
-  assert.deepEqual(names, ['claim_submitted', 'claim_verified']);
+  assert.deepEqual(events(env).map(e => e.name), ['claim_submitted']);
   assert.equal(events(env)[0].env, 'production');
+});
+
+test('domain match without the emailed code ⇒ pending, no branding anywhere (share link still works)', async () => {
+  const env = makeEnv();
+  const b = await (await submit(env, {})).json();
+  assert.equal(b.claim.status, 'pending'); assert.equal(b.claim.reason, 'email_unconfirmed');
+  assert.deepEqual(await brandOf(env, b.claim.code), {}, 'no "Marketed by" for an unproven mailbox');
+  const r = await worker.fetch(new Request(b.claim.share_url), env, ctx());
+  assert.equal(r.status, 302, 'the share link works, unbranded');
+  // a session for a DIFFERENT address does not prove this one
+  const other = await signIn(env, 'mallory@harbourrealty.com.au');
+  const b2 = await (await submit(env, { email: 'boss@harbourrealty.com.au' }, { headers: { cookie: other } })).json();
+  assert.equal(b2.claim.status, 'pending');
+  assert.deepEqual(await brandOf(env, b2.claim.code), {});
+});
+
+test('emailed code for that address + domain match ⇒ verified and branded', async () => {
+  const env = makeEnv();
+  const cookie = await signIn(env, 'sam@harbourrealty.com.au');
+  const b = await (await submit(env, { mode: 'signup' }, { headers: { cookie } })).json();
+  assert.equal(b.claim.status, 'verified'); assert.equal(b.claim.reason, 'email_confirmed');
+  assert.deepEqual(await brandOf(env, b.claim.code), { company: 'Harbour Realty', slug: 'arncliffe-central' });
+  assert.deepEqual(events(env).map(e => e.name), ['claim_submitted', 'claim_verified']);
+});
+
+test('a pending domain-match claim upgrades the first time that address signs in; old domain-only verifications are revoked', async () => {
+  const env = makeEnv();
+  const b = await (await submit(env, {})).json();
+  const cookie = await signIn(env, 'sam@harbourrealty.com.au');
+  const st = await (await worker.fetch(new Request('https://showhaus.app/api/claim/state?p=arncliffe-central', { headers: { cookie } }), env, ctx())).json();
+  assert.equal(st.mine[0].status, 'verified');
+  assert.deepEqual(await brandOf(env, b.claim.code), { company: 'Harbour Realty', slug: 'arncliffe-central' });
+  assert.ok(events(env).some(e => e.name === 'claim_verified'));
+  // a mismatched-domain claim never upgrades by signing in
+  const m = await (await submit(env, { email: 'sam@gmail.com' })).json();
+  const gm = await signIn(env, 'sam@gmail.com');
+  await worker.fetch(new Request('https://showhaus.app/api/claim/state?p=arncliffe-central', { headers: { cookie: gm } }), env, ctx());
+  assert.deepEqual(await brandOf(env, m.claim.code), {});
+  // rows verified under the 2026-11-09 domain-only rule go back to pending on the next schema pass
+  env.OPS_DB._db.prepare("UPDATE sh_claims SET status = 'verified', reason = 'domain_match' WHERE id = ?").run(m.claim.id);
+  resetClaimsForTests();
+  assert.deepEqual(await brandOf(env, m.claim.code), {});
+  assert.equal(env.OPS_DB._db.prepare('SELECT reason FROM sh_claims WHERE id = ?').get(m.claim.id).reason, 'email_unconfirmed');
 });
 
 test('mismatched domains stay pending; the public page shows no branding; CVF summary lists it', async () => {
@@ -150,7 +204,7 @@ test('the same work email re-claiming updates one claim and keeps its share link
   const a = await (await submit(env, { website: 'other.com.au' })).json();
   assert.equal(a.claim.status, 'pending');
   const b = await (await submit(env, {})).json();
-  assert.equal(b.updated, true); assert.equal(b.claim.code, a.claim.code); assert.equal(b.claim.status, 'verified');
+  assert.equal(b.updated, true); assert.equal(b.claim.code, a.claim.code); assert.equal(b.claim.reason, 'email_unconfirmed');
   assert.equal(env.OPS_DB._db.prepare('SELECT COUNT(*) AS n FROM sh_claims').get().n, 1);
 });
 

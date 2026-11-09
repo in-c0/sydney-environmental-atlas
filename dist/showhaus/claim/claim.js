@@ -109,7 +109,12 @@
     const ed = EMAIL_RE.test(e) ? e.split('@')[1] : '', wh = /\.[a-z]{2,}/i.test(w) ? hostOf(w) : '';
     m.className = 'match';
     if (!ed || !wh) { m.textContent = ''; return; }
-    if (!FREE.test(ed) && site(ed) && site(ed) === site(wh)) { m.classList.add('ok'); m.textContent = '✓ Domains match — you’ll be verified instantly.'; }
+    if (!FREE.test(ed) && site(ed) && site(ed) === site(wh)) {
+      // Verified needs the domain match AND the emailed code for this exact address; never promise more than that.
+      const proven = state.suVerified && state.suEmail.toLowerCase() === e;
+      if (proven) { m.classList.add('ok'); m.textContent = '✓ Domains match and your email is confirmed — you’ll be verified.'; }
+      else m.textContent = state.auth.available ? '✓ Domains match — we’ll email you a code to confirm it’s you.' : '✓ Domains match — we’ll confirm by email shortly.';
+    }
     else m.textContent = FREE.test(ed) ? 'Personal email — your link works now; verification stays pending.' : 'Domains differ — your link works now; verification stays pending.';
   }
   form.email.addEventListener('input', updateMatch); form.website.addEventListener('input', updateMatch);
@@ -170,9 +175,15 @@
     const st = $('status');
     st.className = 'status ' + c.status;
     st.textContent = c.status === 'verified' ? '✓ Verified' : 'Pending verification';
+    const unconfirmed = c.status === 'pending' && c.reason === 'email_unconfirmed';
     $('statusNote').textContent = c.status === 'verified'
-      ? `Work email matches ${c.website_host}. Your link shows “Marketed by ${c.company}”.`
-      : `Your link works now. “Marketed by ${c.company}” appears on it once verified (work email on ${c.website_host}).`;
+      ? `Work email confirmed on ${c.website_host}. Your link shows “Marketed by ${c.company}”.`
+      : unconfirmed
+        ? `Domain matches — we’ll confirm by email shortly. Your link works now; “Marketed by ${c.company}” appears once confirmed.`
+        : `Your link works now. “Marketed by ${c.company}” appears on it once verified (work email on ${c.website_host}).`;
+    // Confirming the mailbox here is possible only while email codes can be sent.
+    $('confirmBox').hidden = !(unconfirmed && state.auth.available);
+    if (!$('confirmBox').hidden && !$('cfEmail').value) $('cfEmail').value = form.email.value || '';
     if (fileNote === 'storage_full') $('statusNote').textContent += ' Your file could not be stored right now; the claim is saved.';
     $('h-done').textContent = back ? 'Welcome back — you’re live.' : 'You’re live.';
     $('shareUrl').textContent = c.share_url.replace(/^https?:\/\//, '');
@@ -188,6 +199,23 @@
   };
   $('copyEmbed').onclick = async () => { await copy(state.claim.embed, 'Embed copied'); track('share_link_copied', { cta: 'embed' }); };
   $('copyManage').onclick = () => copy(state.manage, 'Manage link copied');
+  $('cfBtn').onclick = async () => {
+    const email = $('cfEmail').value.trim(), err = $('cfErr'); err.textContent = '';
+    if (!EMAIL_RE.test(email)) { err.textContent = 'Enter the work email you claimed with.'; return; }
+    $('cfBtn').disabled = true;
+    try {
+      if ($('cfCodeRow').hidden) {
+        const r = await authApi('start', { email });
+        if (!r.ok) { err.textContent = r.data.error || 'Could not send the code.'; return; }
+        $('cfCodeRow').hidden = false; $('cfBtn').textContent = 'Confirm'; $('cfCode').focus(); return;
+      }
+      const v = await authApi('verify', { email, code: $('cfCode').value.replace(/\D/g, '') });
+      if (!v.ok) { err.textContent = v.data.error || 'That code did not work.'; return; }
+      const st = await fetch(`/api/claim/state?p=${slug}`, { credentials: 'same-origin' }).then(r => r.json());
+      const mine = (st.mine || []).find(x => x.code === state.claim.code);
+      if (mine) { state.claim = mine; showDone(); toast(mine.status === 'verified' ? 'Verified' : 'Email confirmed'); }
+    } finally { $('cfBtn').disabled = false; }
+  };
   $('release').onclick = async () => {
     const token = (state.manage || '').split('#m=')[1];
     if (!token) { toast('Open your private manage link to release this claim'); return; }

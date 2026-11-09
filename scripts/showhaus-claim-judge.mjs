@@ -30,7 +30,7 @@ async function fillDetails(page, { email, website, slow = 0 }) {
   await type('[name=email]', email);
 }
 
-async function walk(browser, { name, viewport, email, website, expect, shots = true }) {
+async function walk(browser, { name, viewport, email, website, expect, hintHas, noteHas, shots = true }) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: viewport.width < 500 ? 2 : 1, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await ctx.newPage();
   const errors = [];
@@ -64,12 +64,15 @@ async function walk(browser, { name, viewport, email, website, expect, shots = t
   await fillDetails(page, { email, website });
   await page.setInputFiles('[name=file]', { name: 'authority-to-market.pdf', mimeType: 'application/pdf', buffer: pdf });
   const hint = await page.locator('#match').textContent();
-  check(expect === 'verified' ? hint.includes('match') : hint.includes('pending'), `${name}: live domain hint (“${hint.trim()}”)`);
+  check(hint.includes(hintHas) && !/instantly/.test(hint), `${name}: live domain hint (“${hint.trim()}”), never promises instant verification`);
   await shot('3-details');
   await page.click('#submit');
   await page.waitForSelector('#s-done:not([hidden])', { timeout: 15000 });
   const status = await page.locator('#status').getAttribute('class');
   check(status.includes(expect), `${name}: status is ${expect}`);
+  const note = await page.locator('#statusNote').textContent();
+  check(note.includes(noteHas), `${name}: status line (“${note.trim()}”)`);
+  check(await page.locator('#confirmBox').isHidden(), `${name}: no code box while email sending is off`);
   const share = 'https://' + (await page.locator('#shareUrl').textContent()).trim();
   check(/\/s\/arncliffe-central\/[a-z2-9]{6}$/.test(share), `${name}: share link ${share}`);
   check(await page.locator('#manageBox').isVisible(), `${name}: guest gets a private manage link`);
@@ -197,10 +200,13 @@ if (process.argv.includes('--explainer')) await explainer(browser);
 else if (process.argv.includes('--email')) await email(browser);
 else {
   const stamp = Date.now().toString(36);
-  await walk(browser, { name: 'desktop-verified', viewport: { width: 1440, height: 900 }, email: `judge.a.${stamp}@youragency.com.au`, website: 'https://www.youragency.com.au', expect: 'verified' });
-  await walk(browser, { name: 'mobile-verified', viewport: { width: 390, height: 844 }, email: `judge.b.${stamp}@youragency.com.au`, website: 'youragency.com.au', expect: 'verified' });
-  await walk(browser, { name: 'mobile-pending', viewport: { width: 390, height: 844 }, email: `judge.c.${stamp}@gmail.com`, website: 'youragency.com.au', expect: 'pending' });
-  await walk(browser, { name: 'desktop-pending', viewport: { width: 1440, height: 900 }, email: `judge.a.${stamp}@youragency-group.com.au`, website: 'youragency.com.au', expect: 'pending', shots: true });
+  // Without a confirmed mailbox (no emailed code) nothing is verified: domain match => pending "we'll confirm by email".
+  const match = { expect: 'pending', hintHas: 'Domains match', noteHas: 'Domain matches' };
+  const other = { expect: 'pending', noteHas: 'once verified' };
+  await walk(browser, { name: 'desktop-domain-match', viewport: { width: 1440, height: 900 }, email: `judge.a.${stamp}@youragency.com.au`, website: 'https://www.youragency.com.au', ...match });
+  await walk(browser, { name: 'mobile-domain-match', viewport: { width: 390, height: 844 }, email: `judge.b.${stamp}@youragency.com.au`, website: 'youragency.com.au', ...match });
+  await walk(browser, { name: 'mobile-pending', viewport: { width: 390, height: 844 }, email: `judge.c.${stamp}@gmail.com`, website: 'youragency.com.au', ...other, hintHas: 'Personal email' });
+  await walk(browser, { name: 'desktop-pending', viewport: { width: 1440, height: 900 }, email: `judge.d.${stamp}@youragency-group.com.au`, website: 'youragency.com.au', ...other, hintHas: 'Domains differ' });
   console.log(`screenshots: ${SHOTS}`);
 }
 await browser.close();
