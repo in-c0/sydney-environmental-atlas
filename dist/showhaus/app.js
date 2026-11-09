@@ -57,6 +57,12 @@
     $('live').textContent = `${R.w.length.toLocaleString('en-AU')} leases · ${fmtYm(first)}–${fmtYm(last)}`;
     $('live').title = 'Every rental bond lodged with NSW Fair Trading. Built ' + R.generatedAt.slice(0, 10) + '. ' + R.sources.map(s => s.name + ' (' + s.licence + ')').join(' · ');
   }
+  // The government file a lease came from (one spreadsheet per month), so every dot can be checked at its source.
+  function srcLink(ym) {
+    const key = `${Math.floor(ym / 100)}-${String(ym % 100).padStart(2, '0')}`, f = (R.files || []).find(x => x.month === key && x.ok);
+    const url = f ? f.url : R.sources?.[0]?.url;
+    return url ? `<br><a class="dot-src" href="${esc(url)}" target="_blank" rel="noopener">Source: NSW Fair Trading bond lodgements, ${fmtYm(ym)} ↗</a>` : '';
+  }
   function pcNodes() {
     const k = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n);
     return { type: 'FeatureCollection', features: (pcFC?.features || []).filter(f => f.properties.n > 0 && centroids[f.properties.pc])
@@ -113,7 +119,7 @@
     map.on('click', 'lease-dots', e => {
       const f = e.features[0]; if (!f) return;
       const i = f.properties.i, pc = String(R.postcodes[R.pc[i]]).padStart(4, '0');
-      dotPop.setLngLat(f.geometry.coordinates).setHTML(`<b>${C.weekly(R.w[i])}</b> · ${R.b[i] ? R.b[i] + '-bed' : 'studio / unknown beds'} ${esc(R.types[R.t[i]].toLowerCase())}<br>lodged ${fmtYm(R.months[R.m[i]])}<br><small>Placed in a neighbourhood of ${pc}, not at the home's address.</small>`).addTo(map);
+      dotPop.setLngLat(f.geometry.coordinates).setHTML(`<b>${C.weekly(R.w[i])}</b> · ${R.b[i] ? R.b[i] + '-bed' : 'studio / unknown beds'} ${esc(R.types[R.t[i]].toLowerCase())}<br>lodged ${fmtYm(R.months[R.m[i]])}<br><small>Placed in a neighbourhood of ${pc}, not at the home's address. The record has no address or photo.</small>${srcLink(R.months[R.m[i]])}`).addTo(map);
     });
     map.on('mouseenter', 'lease-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('click', 'pc-nodes', e => { const f = e.features[0]; if (f) map.easeTo({ center: f.geometry.coordinates, zoom: DOT_ZOOM + 1, duration: 700 }); });

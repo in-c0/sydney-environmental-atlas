@@ -191,6 +191,7 @@ body.pro-preview #map, body.pro-preview #overlay { filter: blur(6px) saturate(.8
 .legend .dotnote i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--terracotta); margin-top: 3px; }
 .legend .dotnote.muted { color: var(--ink-2); }
 .dot-pop .maplibregl-popup-content small { color: var(--ink-2); }
+.dot-pop .maplibregl-popup-content a.dot-src { display: inline-block; margin-top: 6px; color: var(--line); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .card-foot #compare { min-width: 0; }
 .card-foot .flag { margin-left: auto; border-color: transparent; opacity: .7; }
 .card-foot .flag[data-done] { opacity: 1; border-color: currentColor; pointer-events: none; }
