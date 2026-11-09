@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Claim this property · SHOWHAUS</title>
+<meta name="description" content="Own or market this property? Claim its 3D walkthrough on SHOWHAUS and get a share link and an embed.">
+<meta property="og:title" content="Claim this property on SHOWHAUS">
+<meta property="og:description" content="A 3D walkthrough built from public planning documents: real surrounding buildings, real sun, what each floor can see.">
+<meta property="og:image" content="https://showhaus.app/claim/media/walkthrough-poster.jpg">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./claim.css">
+</head>
+<body data-step="intro">
+
+<section class="stage" aria-label="3D walkthrough">
+  <video id="walk" src="./media/walkthrough.mp4" poster="./media/walkthrough-poster.jpg" autoplay muted loop playsinline preload="auto" aria-label="Walkthrough of a level-21 apartment, from the front door to the balcony view"></video>
+  <header class="top">
+    <a class="brand" href="../" aria-label="SHOWHAUS home">SHOWHAUS<span> Studio</span></a>
+    <a class="open3d" id="open3d" href="../studio/?p=arncliffe-central&amp;src=claim">Open the interactive 3D ↗</a>
+  </header>
+  <p class="stage-note">Arncliffe Central · Building A, level 21 · a 10-second walkthrough</p>
+</section>
+
+<main class="panel">
+  <ol class="rail" aria-label="Progress">
+    <li data-s="intro"><span>Claim</span></li>
+    <li data-s="mode"><span>You</span></li>
+    <li data-s="details"><span>Details</span></li>
+    <li data-s="done"><span>Live</span></li>
+  </ol>
+
+  <!-- 1 · the question -->
+  <section class="step" id="s-intro" aria-labelledby="h-intro">
+    <p class="eyebrow" id="paddr">Arncliffe Central · 26–42 Eden St, Arncliffe</p>
+    <h1 id="h-intro">Do you or your agency own or market this property?</h1>
+    <p class="lead">Claim it free. You get a share link and an embed for your listings, socials and site.</p>
+    <div class="cta-row">
+      <button class="btn primary big" id="yes" type="button">Yes, claim it <span aria-hidden="true">→</span></button>
+      <figure class="explainer">
+        <video id="explainer" src="./media/claim-explainer.mp4" poster="./media/claim-explainer-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="10-second recording of the claim flow"></video>
+        <figcaption>How it works · 10 s</figcaption>
+      </figure>
+    </div>
+    <a class="quiet" id="justView" href="../studio/?p=arncliffe-central&amp;src=claim-no">Not mine — just view the 3D</a>
+    <p class="fine">Made by SHOWHAUS from public planning documents. Not endorsed by the developer, architect or any agency.</p>
+  </section>
+
+  <!-- 2 · sign up or guest -->
+  <section class="step" id="s-mode" aria-labelledby="h-mode" hidden>
+    <h2 id="h-mode">How do you want to claim?</h2>
+    <div class="modes" role="radiogroup" aria-labelledby="h-mode">
+      <label class="mode" data-mode="signup">
+        <input type="radio" name="mode" value="signup">
+        <span class="mode-t">Sign up</span>
+        <span class="mode-d">Manage it from any device.</span>
+        <span class="sweep" aria-hidden="true"></span>
+      </label>
+      <label class="mode" data-mode="guest">
+        <input type="radio" name="mode" value="guest" checked>
+        <span class="mode-t">Claim as guest</span>
+        <span class="mode-d">No account. Takes 30 seconds.</span>
+        <span class="sweep" aria-hidden="true"></span>
+      </label>
+    </div>
+    <div class="signup-box" id="signupBox" hidden>
+      <label class="field"><span>Email</span><input id="suEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@agency.com.au"></label>
+      <label class="field" id="suCodeRow" hidden><span>6-digit code from the email</span><input id="suCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></label>
+    </div>
+    <p class="preview" id="modePreview" aria-live="polite"></p>
+    <p class="err" id="modeErr" role="alert"></p>
+    <div class="nav"><button class="btn ghost" type="button" data-back="intro">Back</button><button class="btn primary" id="modeNext" type="button">Continue <span aria-hidden="true">→</span></button></div>
+  </section>
+
+  <!-- 3 · documents -->
+  <form class="step" id="s-details" aria-labelledby="h-details" hidden novalidate>
+    <h2 id="h-details">A few details to verify you</h2>
+    <fieldset class="roles"><legend>Your role</legend>
+      <label><input type="radio" name="role" value="listing_agent" required><span>Listing agent</span></label>
+      <label><input type="radio" name="role" value="principal"><span>Agency principal</span></label>
+      <label><input type="radio" name="role" value="developer"><span>Developer</span></label>
+      <label><input type="radio" name="role" value="marketing"><span>Marketing agency</span></label>
+    </fieldset>
+    <p class="ferr" data-for="role"></p>
+    <label class="field"><span>Company</span><input name="company" autocomplete="organization" required maxlength="120" placeholder="Your Agency"></label>
+    <p class="ferr" data-for="company"></p>
+    <label class="field"><span>ABN or agency licence no.</span><input name="licence" required maxlength="20" inputmode="text" placeholder="51 824 753 556"></label>
+    <p class="ferr" data-for="licence"></p>
+    <label class="field"><span>Company website</span><input name="website" type="url" inputmode="url" autocomplete="url" required placeholder="youragency.com.au"></label>
+    <p class="ferr" data-for="website"></p>
+    <label class="field"><span>Work email</span><input name="email" type="email" inputmode="email" autocomplete="email" required placeholder="you@youragency.com.au"></label>
+    <p class="ferr" data-for="email"></p>
+    <p class="match" id="match" aria-live="polite"></p>
+    <label class="drop" id="drop">
+      <input type="file" name="file" accept="application/pdf,image/jpeg,image/png">
+      <span class="drop-t" id="dropT">Add evidence <em>(optional)</em></span>
+      <span class="drop-d">Authority to market, agency agreement or DA consent · PDF, JPG, PNG · max 2 MB</span>
+    </label>
+    <p class="ferr" data-for="file"></p>
+    <p class="err" id="detailsErr" role="alert"></p>
+    <div class="nav"><button class="btn ghost" type="button" data-back="mode">Back</button><button class="btn primary" id="submit" type="submit">Claim Arncliffe Central</button></div>
+    <p class="fine">We keep your email's domain to verify you, never the address itself.</p>
+  </form>
+
+  <!-- 4 · the payoff -->
+  <section class="step" id="s-done" aria-labelledby="h-done" hidden>
+    <p class="status" id="status"></p>
+    <h2 class="live" id="h-done">You're live.</h2>
+    <p class="lead">Paste this link anywhere — anyone can open the 3D walkthrough.</p>
+    <div class="share">
+      <output id="shareUrl" class="mono"></output>
+      <button class="btn primary" id="copyShare" type="button">Copy link</button>
+    </div>
+    <p class="status-note" id="statusNote"></p>
+    <details class="more">
+      <summary>Embed on your site</summary>
+      <pre id="embed" class="mono"></pre>
+      <button class="btn ghost small" id="copyEmbed" type="button">Copy embed</button>
+    </details>
+    <div class="manage" id="manageBox" hidden>
+      <p><b>Private manage link</b> — keep it. It opens this claim on any device.</p>
+      <div class="share small"><output id="manageUrl" class="mono"></output><button class="btn ghost small" id="copyManage" type="button">Copy</button></div>
+    </div>
+    <div class="nav end"><a class="btn ghost" id="openShare" href="#" target="_blank" rel="noopener">Open your link ↗</a></div>
+    <button class="quiet tiny" id="release" type="button">Release this claim</button>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script src="./claim.js"></script>
+</body>
+</html>

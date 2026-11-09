@@ -3,6 +3,7 @@
 //   showhaus.app / www.showhaus.app          → the SHOWHAUS app at the root (served from dist/showhaus/)
 import { handleOps, observeCheckout } from './ops/index.js';
 import { handleStudio } from './studio.js';
+import { handleClaim } from './claim.js';
 
 const SHOWHAUS_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);
 
@@ -19,7 +20,7 @@ export default {
   async fetch(request, env, ctx) {
     const ops = await handleOps(request, env, ctx);
     if (ops) return ops;
-    const res = (await handleStudio(request, env, ctx)) || (await route(request, env));
+    const res = (await handleClaim(request, env, ctx)) || (await handleStudio(request, env, ctx)) || (await route(request, env));
     return observeCheckout(request, res, env, ctx) || res;
   },
 };

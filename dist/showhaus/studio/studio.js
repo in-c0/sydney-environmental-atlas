@@ -48,9 +48,22 @@
     document.title = `${data.project.name} · SHOWHAUS Studio`;
     $('pilotLink').href = `./pilot.html?src=${encodeURIComponent(SRC)}`;
     $('made').href = `https://showhaus.app/studio/?p=${slug}&src=made-with`;
+    $('claimLink').href = `../claim/?p=${slug}&src=studio`;
+    if (qs.get('by')) $('claimLink').hidden = true; // a claimant's own share link does not invite others to claim
     renderTowers(); renderSources(); setDay('today', false);
     initMap();
     track('view');
+    showClaimant();
+  }
+
+  // A share link from a claimant (/s/<slug>/<code> → ?by=<code>) shows their line only once the claim is verified.
+  async function showClaimant() {
+    const by = (qs.get('by') || '').toLowerCase();
+    if (!/^[a-z0-9]{4,12}$/.test(by)) return;
+    try {
+      const b = await (await fetch(`/api/claim/brand?c=${by}`)).json();
+      if (b && b.company && b.slug === slug) { $('pby').textContent = `Marketed by ${b.company}`; $('pby').hidden = false; }
+    } catch { /* no branding is the safe default */ }
   }
 
   // ---------- map ----------
@@ -361,7 +374,8 @@
   $('srcBtn').onclick = () => { pause(); $('srcDlg').showModal(); };
   $('embedBtn').onclick = () => {
     pause();
-    $('embedCode').textContent = `<script src="https://showhaus.app/studio/embed.js" data-project="${slug}" async></` + `script>`;
+    const by = (qs.get('by') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+    $('embedCode').textContent = `<script src="https://showhaus.app/studio/embed.js" data-project="${slug}"${by ? ` data-by="${by}"` : ''} async></` + `script>`;
     $('copied').textContent = ''; $('embedDlg').showModal();
   };
   $('copyEmbed').onclick = async () => {
