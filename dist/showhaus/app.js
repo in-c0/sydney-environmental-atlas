@@ -23,6 +23,7 @@
   const TYPES = [[0, 'Unit'], [1, 'House'], [2, 'Townhouse']];
   const DARK = matchMedia('(prefers-color-scheme: dark)').matches, INK = DARK ? '#ece4d3' : '#1d2733', PAPER = DARK ? '#15181d' : '#fffaf0';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
+  const DOT_RAMP = ['#dca04e', '#d47a2e', '#bf5523', '#9c3a1d', '#702617', '#3f140c']; // same order, shifted darker: a dot must stand off the fill
 
   const state = { act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
   let PRO = false; // set from the signed-in account (/api/auth/me → pro); everyone else sees Pro previewed blurred
@@ -63,10 +64,17 @@
     const url = f ? f.url : R.sources?.[0]?.url;
     return url ? `<br><a class="dot-src" href="${esc(url)}" target="_blank" rel="noopener">Source: NSW Fair Trading bond lodgements, ${fmtYm(ym)} ↗</a>` : '';
   }
+  function pillImage() { // 64×64 stretchable rounded pill, drawn once; colours follow the theme the page loaded in
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+    g.beginPath(); g.roundRect(6, 6, 52, 52, 24); g.fillStyle = PAPER; g.fill();
+    g.shadowColor = 'transparent'; g.lineWidth = 2; g.strokeStyle = INK; g.globalAlpha = .9; g.stroke();
+    return g.getImageData(0, 0, 64, 64);
+  }
   function pcNodes() {
     const k = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n);
     return { type: 'FeatureCollection', features: (pcFC?.features || []).filter(f => f.properties.n > 0 && centroids[f.properties.pc])
-      .map(f => ({ type: 'Feature', properties: { n: f.properties.n, lab: k(f.properties.n) }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
+      .map(f => ({ type: 'Feature', properties: { n: f.properties.n, lab: '$' + Math.round(f.properties.med).toLocaleString('en-AU'), cnt: k(f.properties.n) }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
   }
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -82,29 +90,37 @@
       map.addSource('pc', { type: 'geojson', data: pcFC || { type: 'FeatureCollection', features: [] }, promoteId: 'pc' });
       map.addLayer({ id: 'pc-fill', type: 'fill', source: 'pc', paint: {
         'fill-color': ['case', ['==', ['get', 'n'], 0], 'rgba(0,0,0,0)', ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]]],
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .5, 11.2, .5, 12.4, .26, 16, .1] } }, before);
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .5, 11.2, .45, 12.2, .1, 16, .06] } }, before);
       map.addLayer({ id: 'pc-line', type: 'line', source: 'pc', paint: { 'line-color': '#2f4c7a', 'line-opacity': ['case', ['==', ['get', 'sel'], 1], .95, .25], 'line-width': ['case', ['==', ['get', 'sel'], 1], 2.4, .6] } });
       map.addLayer({ id: 'pc-3d', type: 'fill-extrusion', source: 'pc', layout: { visibility: 'none' }, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
       map.addSource('leases', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      // A faint ink ring under each dot (white halo inside it) keeps even the cheapest, palest dots crisp on a pale basemap.
+      const dotR = ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 3, 14, 4.6, 17, 8], dotIn = ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .35, DOT_ZOOM + .4, .95];
+      map.addLayer({ id: 'lease-ring', type: 'circle', source: 'leases', minzoom: DOT_ZOOM, paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 4.6, 14, 6.6, 17, 10.6],
+        'circle-color': INK, 'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .1, DOT_ZOOM + .4, .38] } });
       map.addLayer({ id: 'lease-dots', type: 'circle', source: 'leases', minzoom: DOT_ZOOM, paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 2.6, 14, 4, 17, 7],
-        'circle-color': ['interpolate', ['linear'], ['get', 'w'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
-        'circle-stroke-color': INK, 'circle-stroke-opacity': .75, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .7, 14, 1, 17, 1.4],
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, .35, DOT_ZOOM + .4, .95] } });
+        'circle-radius': dotR,
+        'circle-color': ['interpolate', ['linear'], ['get', 'w'], 350, DOT_RAMP[0], 550, DOT_RAMP[1], 750, DOT_RAMP[2], 950, DOT_RAMP[3], 1300, DOT_RAMP[4], 2000, DOT_RAMP[5]],
+        'circle-stroke-color': PAPER, 'circle-stroke-opacity': 1, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM, 1, 14, 1.4, 17, 2],
+        'circle-opacity': dotIn } });
       // Zoomed out: one bubble per postcode = how many new leases fit. Size = count, dark ink so it never melts into the rent colours.
       map.addSource('pcn', { type: 'geojson', data: pcNodes() });
       const fadeOut = ['interpolate', ['linear'], ['zoom'], DOT_ZOOM - .3, 1, DOT_ZOOM + .4, 0];
-      map.addLayer({ id: 'pc-nodes', type: 'circle', source: 'pcn', maxzoom: DOT_ZOOM + .5, layout: { 'circle-sort-key': ['get', 'n'] }, paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'],
-          8, ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 2.5, 10, 4, 40, 9, 80, 15],
-          11, ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 4, 10, 7, 40, 15, 80, 24]],
-        'circle-color': INK, 'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM - .3, .88, DOT_ZOOM + .4, 0],
-        'circle-stroke-color': PAPER, 'circle-stroke-width': 1.5, 'circle-stroke-opacity': fadeOut } });
-      map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', maxzoom: DOT_ZOOM + .5, filter: ['>=', ['get', 'n'], 30], layout: {
-        'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'symbol-sort-key': ['-', ['get', 'n']],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9, 11, 11.5] }, paint: { 'text-color': PAPER, 'text-opacity': fadeOut } });
+      // Price pills (Zillow / Airbnb / Domain pattern): MapLibre's collision pass keeps them from ever overlapping,
+      // the busiest postcodes win, and every postcode a pill had to drop still shows as a small dot.
+      map.addImage('pill', pillImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[28, 36]], content: [20, 12, 44, 52] });
+      map.addLayer({ id: 'pc-nodes', type: 'circle', source: 'pcn', maxzoom: DOT_ZOOM + .5, paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 11, 4],
+        'circle-color': INK, 'circle-opacity': ['interpolate', ['linear'], ['zoom'], DOT_ZOOM - .3, .9, DOT_ZOOM + .4, 0],
+        'circle-stroke-color': PAPER, 'circle-stroke-width': 1.2, 'circle-stroke-opacity': fadeOut } });
+      map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', maxzoom: DOT_ZOOM + .5, layout: {
+        'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 14],
+        'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
+        'symbol-sort-key': ['-', ['get', 'n']], 'text-padding': 4, 'icon-padding': 4 },
+        paint: { 'text-color': INK, 'text-opacity': fadeOut, 'icon-opacity': fadeOut } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'pick-ring', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'ring'], paint: { 'line-color': '#7d5fc7', 'line-width': 1.2, 'line-opacity': .7 } });
@@ -124,6 +140,9 @@
     map.on('mouseenter', 'lease-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('click', 'pc-nodes', e => { const f = e.features[0]; if (f) map.easeTo({ center: f.geometry.coordinates, zoom: DOT_ZOOM + 1, duration: 700 }); });
     map.on('mouseenter', 'pc-nodes', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('click', 'pc-nodes-n', e => { const f = e.features[0]; if (f) map.easeTo({ center: f.geometry.coordinates, zoom: DOT_ZOOM + 1, duration: 700 }); });
+    map.on('mouseenter', 'pc-nodes-n', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'pc-nodes-n', () => { map.getCanvas().style.cursor = ''; });
     map.on('mouseleave', 'pc-nodes', () => { map.getCanvas().style.cursor = ''; });
     const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
     map.on('mousemove', 'pc-fill', e => {
@@ -677,7 +696,7 @@
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
     const dots = state.lens === 'map' && mapReady && map.getZoom() >= DOT_ZOOM && dotStats.total
       ? `<div class="dotnote"><i></i>1 dot = 1 new lease (${dotStats.drawn.toLocaleString('en-AU')}${dotStats.capped ? ` of ${dotStats.total.toLocaleString('en-AU')}` : ''}). Records give only the postcode, so each dot sits in a neighbourhood of its postcode — not at the home's address.</div>`
-      : state.lens === 'map' && mapReady && map.getZoom() < DOT_ZOOM ? '<div class="dotnote muted">Bubble = new leases in that postcode. Tap one to zoom into its dots.</div>' : '';
+      : state.lens === 'map' && mapReady && map.getZoom() < DOT_ZOOM ? '<div class="dotnote muted">Pill = median weekly rent in that postcode. Tap one to zoom into its leases.</div>' : '';
     $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>${dots}`;
     $('legend').classList.toggle('has-dots', dots.includes('1 dot'));
   }
