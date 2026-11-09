@@ -281,3 +281,28 @@ test('checkout carries the visitor PostHog id to Stripe and to the mirror, so th
   await mirrorToPostHog({ POSTHOG_MIRROR: 'on' }, { name: 'payment_succeeded', actor: 'c:x', ph: '019f7-abc_D', env: 'production' }, fake);
   assert.equal(calls[0].distinct_id, '019f7-abc_D');
 });
+
+test('Pro: an email in the PRO_EMAILS secret becomes Pro at sign-in; others do not; the email is never stored', async () => {
+  const env = makeEnv({ PRO_EMAILS: ' Owner@Example.com ,x@y.co' });
+  const signIn = async email => {
+    await worker.fetch(post('https://showhaus.app/api/auth/start', { email }, { 'user-agent': 'Mozilla/5.0' }), env, ctx());
+    const code = env.sent.at(-1).subject.slice(0, 6);
+    const ok = await worker.fetch(post('https://showhaus.app/api/auth/verify', { email, code }, { 'user-agent': 'Mozilla/5.0' }), env, ctx());
+    const cookie = ok.headers.get('set-cookie').split(';')[0];
+    return { verify: await ok.json(), me: await (await worker.fetch(new Request('https://showhaus.app/api/auth/me', { headers: { cookie } }), env, ctx())).json() };
+  };
+  const owner = await signIn('owner@example.com');
+  assert.equal(owner.verify.pro, true); assert.equal(owner.me.pro, true);
+  const other = await signIn('someone@example.com');
+  assert.equal(other.verify.pro, false); assert.equal(other.me.pro, false);
+  const anon = await (await worker.fetch(new Request('https://showhaus.app/api/auth/me'), env, ctx())).json();
+  assert.equal(anon.pro, undefined);
+  assert.ok(!JSON.stringify(env.OPS_DB._db.prepare('SELECT * FROM sh_pro').all()).includes('example.com'));
+});
+
+test('Pro grant route refuses requests without a valid GitHub OIDC token', async () => {
+  const env = makeEnv();
+  const r = await worker.fetch(post('https://showhaus.app/api/ops/pro', { email: 'a@b.co' }), env, ctx());
+  assert.equal(r.status, 401);
+  assert.equal(env.OPS_DB._db.prepare("SELECT name FROM sqlite_master WHERE name = 'sh_pro'").all().length <= 1, true);
+});

@@ -23,6 +23,15 @@ export function cookieOf(request, name = COOKIE) {
   return m ? m[1] : null;
 }
 
+// Pro: a grant row in sh_pro, or the email listed in the Worker secret PRO_EMAILS (comma-separated, never in git).
+const proEmails = env => new Set(String(env.PRO_EMAILS || '').split(',').map(normEmail).filter(Boolean));
+export async function isPro(d, userId) {
+  return !!(await d.prepare('SELECT 1 AS x FROM sh_pro WHERE user_id = ?').bind(userId).first());
+}
+export async function grantPro(d, emailH, via) {
+  await d.prepare('INSERT OR IGNORE INTO sh_pro (user_id, at, via) VALUES (?, ?, ?)').bind(emailH, new Date().toISOString(), via).run();
+}
+
 export async function currentUser(request, env) {
   const tok = cookieOf(request);
   if (!tok) return null;
@@ -111,13 +120,15 @@ async function verify(request, env, d) {
   const existing = await d.prepare('SELECT id FROM sh_users WHERE id = ?').bind(emailH).first();
   if (existing) await d.prepare('UPDATE sh_users SET last_login_at = ? WHERE id = ?').bind(nowIso, emailH).run();
   else await d.prepare('INSERT INTO sh_users (id, created_at, env, last_login_at) VALUES (?, ?, ?, ?)').bind(emailH, nowIso, environment, nowIso).run();
+  if (proEmails(env).has(email)) await grantPro(d, emailH, 'PRO_EMAILS');
+  const pro = await isPro(d, emailH);
   const token = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
   await d.prepare('INSERT INTO sh_sessions (token_h, user_id, exp) VALUES (?, ?, ?)').bind(await sha256(token), emailH, Date.now() + SESSION_DAYS * 864e5).run();
   await track(env, { name: existing ? 'login' : 'signup', env: environment, source: 'server', actor: 'u:' + emailH, path: '/api/auth/verify', props: body.anon ? { kind: 'from_anon' } : undefined });
   // Link the anonymous browser id to the account once, so a user case can show what happened before sign-up.
   if (body.anon) await track(env, { name: 'cta', env: environment, source: 'server', actor: 'a:' + await pseudo(d, 'anon', String(body.anon).slice(0, 64)), path: '/api/auth/verify', props: { cta: 'became:u:' + emailH } });
   const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
-  return j({ ok: true, signedIn: true, since: existing ? null : nowIso, new: !existing }, 200,
+  return j({ ok: true, signedIn: true, pro, since: existing ? null : nowIso, new: !existing }, 200,
     { 'set-cookie': `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure}` });
 }
 
@@ -127,7 +138,7 @@ export async function handleAuth(request, env, path) {
   if (path === '/api/auth/me' && request.method === 'GET') {
     const u = await currentUser(request, env);
     const available = !!mailMode(env);
-    return j(u ? { signedIn: true, since: u.created_at, available } : { signedIn: false, available });
+    return j(u ? { signedIn: true, pro: await isPro(d, u.id), since: u.created_at, available } : { signedIn: false, available });
   }
   if (request.method !== 'POST') return j({ error: 'method' }, 405);
   if (path === '/api/auth/start') return start(request, env, d);
