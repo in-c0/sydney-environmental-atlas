@@ -8,6 +8,9 @@ import { DatabaseSync } from 'node:sqlite';
 import worker from '../src/worker.js';
 import { legacyRedirect, appPath, withBase, resetListingsForTests } from '../src/listing.js';
 import { resetForTests } from '../src/ops/store.js';
+import { createRequire } from 'node:module';
+
+const WS = createRequire(import.meta.url)('../dist/showhaus/l/walk-sun.js');
 
 const DIST = new URL('../dist/', import.meta.url);
 const read = p => readFileSync(new URL(p, DIST));
@@ -172,4 +175,69 @@ test('share links land on the listing page', async () => {
 
 test('withBase only adds a <base> after <head>', () => {
   assert.equal(withBase('<html><head><title>x</title>', '/l/'), '<html><head>\n<base href="/l/"><title>x</title>');
+});
+
+// ---------- the walk's light (world.json "splats": one day, a few states; the Site Walk viewer's splat mode) ----------
+const SPLATS = { frame: 'gltf', day: '2026-11-08', provenance: 'generated', label: 'generated', states: [
+  { id: 'sunset', label: 'Sunset', local_time: '19:31', t: 0.98, street: 's.spz', interior: null },
+  { id: 'sunrise', label: 'Sunrise', local_time: '05:55', t: 0.02, street: 'a.spz', interior: 'b.spz' },
+  { id: 'midday', label: 'Midday', local_time: '12:43', t: 0.5, street: 'c.spz', interior: null },
+  { id: 'golden', label: 'Golden hour', local_time: '18:40', t: 0.9, street: 'd.spz', interior: null },
+  { id: 'Bad Id', t: 0.4, street: 'x.spz' }, { id: 'late', t: 2, street: 'y.spz' },
+] };
+
+test('walk light: states are read from the world file, sorted, bad ones dropped; the day reads as a date', () => {
+  const st = WS.splatStates(SPLATS);
+  assert.deepEqual(st.map(s => s.id), ['sunrise', 'midday', 'golden', 'sunset']);
+  assert.deepEqual(WS.splatStates(null), []);
+  assert.deepEqual(WS.splatStates({ states: 'x' }), []);
+  assert.equal(WS.fmtDay('2026-11-08'), '8 Nov 2026');
+  assert.equal(WS.fmtDay('soon'), null);
+});
+
+test('walk light: the walk opens on the state nearest the hero sun dot (fraction of the day, sunrise → sunset)', () => {
+  const st = WS.splatStates(SPLATS);
+  for (const [f, id] of [[0, 'sunrise'], [0.2, 'sunrise'], [0.27, 'midday'], [0.69, 'midday'], [0.71, 'golden'], [0.93, 'golden'], [0.95, 'sunset'], [1, 'sunset']])
+    assert.equal(WS.nearestState(st, f).id, id, `f=${f}`);
+  assert.equal(WS.nearestState([], 0.5), null);
+});
+
+test('walk light: the viewer URL carries sun=<id>; the walk stays gated by hosted (or a same-origin preview) exactly as before', () => {
+  const href = 'https://showhaus.app/l/arncliffe-central';
+  const hosted = { hosted: true, viewer: '/walk/viewer/', url: '/worlds/arncliffe-central/world.json' };
+  const u = new URL(WS.walkHref(hosted, new URLSearchParams(), href, 'walk', 'golden'));
+  assert.equal(u.pathname, '/walk/viewer/');
+  assert.deepEqual([u.searchParams.get('static'), u.searchParams.get('intent'), u.searchParams.get('sun'), u.searchParams.get('noflash')],
+    ['https://showhaus.app/worlds/arncliffe-central/world.json', 'walk', 'golden', '1']);
+  assert.equal(new URL(WS.walkHref(hosted, new URLSearchParams(), href, 'inside', null)).searchParams.has('sun'), false);
+  assert.equal(new URL(WS.walkHref(hosted, new URLSearchParams(), href, 'walk', '"><x')).searchParams.has('sun'), false);
+  assert.equal(WS.walkHref({ ...hosted, hosted: false }, new URLSearchParams(), href, 'walk', 'golden'), null);
+  assert.equal(WS.walkHref({ ...hosted, viewer: 'https://elsewhere.test/v/' }, new URLSearchParams(), href, 'walk'), null);
+  const preview = new URLSearchParams('viewer=/walk/viewer/&world=/worlds/x/world.json');
+  assert.ok(WS.walkHref({ hosted: false }, preview, href, 'walk', 'sunset').includes('sun=sunset'));
+  assert.equal(WS.walkHref({ hosted: false }, new URLSearchParams('viewer=https://evil.test/&world=/w.json'), href, 'walk'), null);
+  const page = json('showhaus/l/data/arncliffe-central.json');
+  assert.equal(WS.walkHref(page.world, new URLSearchParams(), href, 'walk', 'golden'), page.world.hosted ? WS.walkHref(page.world, new URLSearchParams(), href, 'walk', 'golden') : null);
+});
+
+test('walk light: only the viewer frame on this origin is heard; the message shape matches the viewer', () => {
+  const frame = {};
+  const ok = { origin: 'https://showhaus.app', source: frame, data: { type: 'showhaus:sun', id: 'golden' } };
+  const opts = { origin: 'https://showhaus.app', source: frame };
+  assert.equal(WS.readSunMessage(ok, opts), 'golden');
+  assert.equal(WS.readSunMessage({ ...ok, origin: 'https://evil.test' }, opts), null);
+  assert.equal(WS.readSunMessage({ ...ok, source: {} }, opts), null);
+  assert.equal(WS.readSunMessage(ok, { origin: 'https://showhaus.app', source: null }), null);
+  assert.equal(WS.readSunMessage({ ...ok, data: { type: 'showhaus:sun', id: '<b>' } }, opts), null);
+  assert.equal(WS.readSunMessage({ ...ok, data: 'showhaus:sun' }, opts), null);
+  assert.deepEqual(WS.sunMessage('sunset'), { type: 'showhaus:sun', id: 'sunset' });
+});
+
+test('walk light: the listing page loads walk-sun.js before listing.js and keeps the four season buttons', () => {
+  const html = read('showhaus/l/index.html').toString();
+  assert.ok(html.indexOf('./walk-sun.js') > 0 && html.indexOf('./walk-sun.js') < html.indexOf('./listing.js'));
+  assert.match(html, /id="walkDay"/); assert.match(html, /id="walkSun"/);
+  const js = read('showhaus/l/listing.js').toString();
+  assert.match(js, /id: 'summer'[\s\S]*id: 'autumn'[\s\S]*id: 'winter'[\s\S]*id: 'spring'/);
+  assert.match(js, /readSunMessage\(e, \{ origin: location\.origin, source: \$\('walkFrame'\)\.contentWindow \}\)/);
 });

@@ -58,7 +58,9 @@
 <dialog class="walk" id="walkDlg" aria-label="Walk">
   <div class="walk-bar">
     <b id="walkTitle">Walk</b>
+    <b class="walk-sun" id="walkSun" aria-live="polite" hidden></b>
     <span class="walk-note">Shapes from open data and approved plans · surfaces generated · not a photo</span>
+    <span class="walk-day" id="walkDay" hidden></span>
     <form method="dialog"><button class="x" aria-label="Close the walk">×</button></form>
   </div>
   <iframe id="walkFrame" title="3D walk" allow="fullscreen"></iframe>
@@ -77,6 +79,7 @@
 <script src="../lib/ph.js"></script>
 <script src="../lib/ops.js"></script>
 <script src="../lib/core.js"></script>
+<script src="./walk-sun.js"></script>
 <script src="./listing.js"></script>
 </body>
 </html>

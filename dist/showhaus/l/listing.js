@@ -1,13 +1,15 @@
 /* SHOWHAUS listing page (/l/<slug>). Reads ./data/<slug>.json (scripts/showhaus_listings_build.py).
    Hero: the day from sunrise to sunset, one slot per season; every slot is labelled "generated" and nothing here is called a photo.
    Walk / Go inside: the Site Walk viewer (in-c0/spatial-world-engine) against the listing's pre-baked static world, once that
-   world is published. Until then the buttons say so. For a local preview, ?viewer=<same-origin url>&world=<same-origin url>. */
+   world is published. Until then the buttons say so. For a local preview, ?viewer=<same-origin url>&world=<same-origin url>.
+   A world with Gaussian splats (world.json "splats", one day of light in a few states) opens on the state nearest the hero's
+   sun dot (?sun=<id>), and the page follows the viewer's state through postMessage (walk-sun.js). */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
   const slug = ((location.pathname.match(/\/l\/([a-z0-9-]{3,80})(?:\/)?$/) || [])[1] || qs.get('slug') || '').replace(/[^a-z0-9-]/g, '');
-  const C = window.ShowhausCore;
+  const C = window.ShowhausCore, WS = window.ShowhausWalkSun;
   const track = (name, props = {}) => { try { window.SH && window.SH.track(name, { kind: 'listing:' + slug, ...props }); } catch { /* never breaks the page */ } };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Fixed days for the four seasons: solstices and equinoxes, Sydney time.
@@ -21,8 +23,9 @@
   const ICON = { summer: 4, autumn: 9, winter: 13, spring: 9 };
   const icon = id => `<svg viewBox="0 0 22 22" aria-hidden="true"><path class="h" d="M2 18h18"/><circle class="s" cx="11" cy="${ICON[id]}" r="3.6"/></svg>`;
   let L = null, season = null, sun = null, t0 = performance.now();
+  // The walk's light: the splat states of the world (if any), the state the viewer is showing, and where the hero's dot is.
+  let walkLight = null, walkSun = null, dotF = 0.5, pendingSun = null;
 
-  function sameOrigin(u) { if (!u) return null; try { const x = new URL(u, location.href); return x.origin === location.origin ? x.href : null; } catch { return null; } }
   function text(el, t) { el.textContent = t == null ? '' : String(t); }
   function fail(msg) { document.body.dataset.state = 'error'; text($('name'), msg); }
 
@@ -49,7 +52,10 @@
   function tick() {
     if (sun) {
       const v = $('heroVideo'), synced = slotOf(season)?.status === 'rendered' && v.duration > 0;
-      const f = synced ? v.currentTime / v.duration : reduced ? 0.5 : ((performance.now() - t0) / 10000) % 1;
+      // While the walk is open, the dot holds at the viewer's light state (same 0..1 sunrise-to-sunset scale).
+      const held = walkSun && $('walkDlg').open;
+      const f = held ? walkSun.t : synced ? v.currentTime / v.duration : reduced ? 0.5 : ((performance.now() - t0) / 10000) % 1;
+      dotF = f;
       const m = sun.rise + f * (sun.set - sun.rise), p = C.solarPosition(L.lnglat[1], L.lnglat[0], SEASONS.find(s => s.id === season).day, m);
       const cx = f * 1000, cy = 200 - Math.max(0, p.elevation) / 90 * 190;
       $('arcSun').setAttribute('cx', cx.toFixed(1)); $('arcSun').setAttribute('cy', cy.toFixed(1));
@@ -91,14 +97,37 @@
   }
 
   // ---------- the walk ----------
-  function walkTarget(intent) {
+  function walkTarget(intent, sunId) { return WS.walkHref(L.world, qs, location.href, intent, sunId); }
+  // The splat states: from the listing model when the build copies them, otherwise from the world file itself (same origin).
+  async function loadWalkLight() {
     const w = L.world || {};
-    const viewer = sameOrigin(qs.get('viewer') || '') || (w.hosted && w.viewer ? sameOrigin(w.viewer) : null);
-    const world = sameOrigin(qs.get('world') || '') || (w.hosted && w.url ? sameOrigin(w.url) : null);
-    if (!viewer || !world) return null;
-    const u = new URL(viewer); u.searchParams.set('static', world); u.searchParams.set('intent', intent); u.searchParams.set('noflash', '1');
-    return u.href;
+    let splats = w.splats || null;
+    if (!splats) {
+      const u = new URL(walkTarget('walk')).searchParams.get('static');
+      try { const r = await fetch(u); if (r.ok) splats = (await r.json()).splats || null; } catch { /* no light states: the viewer picks */ }
+    }
+    const states = WS.splatStates(splats);
+    walkLight = states.length ? { day: splats.day, states } : null;
+    const day = walkLight && WS.fmtDay(walkLight.day);
+    text($('walkDay'), day ? `Light for one day, ${day}. The season buttons change only the video.` : '');
+    $('walkDay').hidden = !day;
+    if (pendingSun) showWalkSun(pendingSun);
   }
+  const sunForWalk = () => (walkLight ? (WS.nearestState(walkLight.states, dotF) || {}).id || null : null);
+  function showWalkSun(id) {
+    if (!walkLight) { pendingSun = id; return; }
+    const s = walkLight.states.find(x => x.id === id);
+    if (!s) return;
+    pendingSun = null;
+    walkSun = s;
+    text($('walkSun'), s.local_time ? `${s.label} · ${s.local_time}` : s.label); $('walkSun').hidden = false;
+    const v = $('heroVideo');   // a real render shows the same time of day behind the dialog
+    if (slotOf(season)?.status === 'rendered' && v.duration > 0) { v.pause(); v.currentTime = s.t * v.duration; }
+  }
+  addEventListener('message', e => {
+    const id = WS.readSunMessage(e, { origin: location.origin, source: $('walkFrame').contentWindow });
+    if (id) showWalkSun(id);
+  });
   function setupWalk() {
     const w = L.world || {}, hasInside = (w.interiors || []).length > 0;
     const ready = !!walkTarget('walk');
@@ -107,11 +136,19 @@
       : w.status === 'baked' ? 'The walk is built and waiting: it opens here once it looks like the real place.'
       : 'There is no walk for this address yet.');
     for (const b of [$('walk'), $('inside')]) b.addEventListener('click', () => {
-      const href = walkTarget(b.dataset.intent); if (!href) return;
+      const href = walkTarget(b.dataset.intent, sunForWalk()); if (!href) return;
       $('walkFrame').src = href; text($('walkTitle'), b.dataset.intent === 'inside' ? `Inside · ${L.name}` : L.name);
       $('walkDlg').showModal(); track('cta', { cta: 'walk', step: b.dataset.intent });
     });
-    $('walkDlg').addEventListener('close', () => { $('walkFrame').src = 'about:blank'; });
+    $('walkDlg').addEventListener('close', () => {
+      $('walkFrame').src = 'about:blank';
+      if (walkSun) {   // the hero carries on from the walk's time of day
+        t0 = performance.now() - walkSun.t * 10000;
+        const v = $('heroVideo'); if (slotOf(season)?.status === 'rendered' && v.duration > 0) v.play().catch(() => {});
+      }
+      walkSun = null; $('walkSun').hidden = true;
+    });
+    if (ready) loadWalkLight();
   }
 
   // ---------- records ----------
@@ -167,6 +204,7 @@
     document.body.dataset.state = 'ready';
     requestAnimationFrame(tick);
   }
-  window.SHOWHAUS_LISTING = { get listing() { return L; }, get season() { return season; }, get sun() { return sun; }, walkTarget };
+  window.SHOWHAUS_LISTING = { get listing() { return L; }, get season() { return season; }, get sun() { return sun; }, walkTarget,
+    get walkLight() { return walkLight; }, get walkSun() { return walkSun; }, dayFraction: () => dotF, sunForWalk };
   boot();
 })();
