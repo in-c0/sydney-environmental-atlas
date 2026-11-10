@@ -41,6 +41,22 @@ export function funnelOf(rows) {
   return out;
 }
 
+// Where real visits came from: first-party tag (utm_source/utm_campaign) wins, else the referrer host, else 'direct'.
+// Only `view` events carry these, so this is arrivals per channel, not conversions. Pseudonymous actors only.
+export function channelsOf(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    if (r.name !== 'view') continue;
+    const p = r.props || {};
+    const source = p.utm_source || p.ref || 'direct';
+    const key = `${source}|${p.utm_medium || ''}|${p.utm_campaign || ''}`;
+    const c = by.get(key) || { source, medium: p.utm_medium || null, campaign: p.utm_campaign || null, views: 0, actors: new Set() };
+    c.views++; if (r.actor) c.actors.add(r.actor);
+    by.set(key, c);
+  }
+  return [...by.values()].map(({ actors, ...c }) => ({ ...c, visitors: actors.size })).sort((a, b) => b.views - a.views).slice(0, 25);
+}
+
 export async function health(env) {
   const d = await Promise.resolve().then(() => db(env)).catch(() => null);
   return {
@@ -73,7 +89,7 @@ export async function summary(request, env) {
   const last = await d.prepare('SELECT MIN(at) AS first, MAX(at) AS at FROM sh_events').first();
   return j({
     now: new Date().toISOString(), window: { from: fromIso, to: toIso }, store: true,
-    counts, funnel: funnelOf(prodRows),
+    counts, funnel: funnelOf(prodRows), channels: channelsOf(prodRows),
     alerts: alertRows, // all environments; the reader keeps only production for owner pings
     journeys: buildJourneys(prodRows),
     accounts: { production_total: users?.total || 0, production_new: users?.new || 0 },
