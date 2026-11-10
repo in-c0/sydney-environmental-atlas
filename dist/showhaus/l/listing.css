@@ -74,6 +74,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; }
 /* ---------- the walk ---------- */
 dialog.walk { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--night); color: #ece4d3; }
 dialog.walk[open] { display: flex; flex-direction: column; }
+body:has(dialog.walk[open]) { overflow: hidden; }   /* the page behind the walk does not scroll */
 .walk-bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; font-size: 14px; }
 .walk-note { flex: 1; font: 400 12px/1.3 var(--mono); opacity: .7; }
 .walk-sun { font: 500 12px/1 var(--mono); padding: 5px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
