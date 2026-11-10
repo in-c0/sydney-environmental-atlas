@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>How much winter sun does a Sydney apartment really get? · SHOWHAUS</title>
+<meta name="description" content="We computed ground sun on 21 June for ten Sydney addresses from public records. Only two had enough mapped building heights to give an answer. What that means when a listing says 'sunny'.">
+<link rel="canonical" href="https://showhaus.app/guides/winter-sun/">
+<style>
+  :root { --paper: #efe6d4; --ink: #1d2733; --ink-2: #4a5566; --line: #2f4c7a; --terracotta: #c4622d; --card: #e6dac3; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --paper: #15181d; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; --card: #1d2128; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 20px 16px 48px; }
+  a { color: var(--line); }
+  .brand { font: 600 13px/1 ui-monospace, monospace; letter-spacing: .14em; text-decoration: none; color: var(--ink); }
+  h1 { font: 600 clamp(28px, 5vw, 40px)/1.12 Georgia, serif; margin: 22px 0 8px; }
+  h2 { font: 600 22px/1.25 Georgia, serif; margin: 30px 0 6px; }
+  .meta { color: var(--ink-2); font-size: 14px; margin: 0 0 18px; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid color-mix(in srgb, var(--ink-2) 35%, transparent); }
+  .cta { display: inline-block; background: var(--terracotta); color: #fff; padding: 11px 18px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 6px 8px 6px 0; }
+  .note { background: var(--card); border-radius: 10px; padding: 12px 16px; font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="/?utm_source=guide&amp;utm_medium=blog&amp;utm_campaign=winter-sun-2026">SHOWHAUS</a>
+  <h1>How much winter sun does a Sydney apartment really get?</h1>
+  <p class="meta">SHOWHAUS · from public records, computed 8 Nov 2026 · every figure below comes from the page's own data file</p>
+
+  <p>Listings say "light-filled" and "sun-drenched". The honest answer to "will I get sun in June?" depends on the buildings around the block, and that is exactly the part nobody prints. We computed ground sun for ten Sydney addresses in Clovelly, Coogee, Randwick, Bronte and Maroubra, for the day we ran it and for 21 June, the shortest day.</p>
+
+  <h2>Two answers, eight "unknown"</h2>
+  <p>Sun is only computed when every building within 30 m has a mapped height in OpenStreetMap. Eight of the ten addresses did not meet that bar (unmapped heights or no mapped footprints), so SHOWHAUS shows <strong>unknown</strong> for them rather than a guess. For the two that did:</p>
+  <table>
+    <thead><tr><th>Address</th><th>Ground sun, 8 Nov</th><th>Ground sun, 21 June</th></tr></thead>
+    <tbody>
+      <tr><td>14 Ethel Street, Randwick</td><td>11 h 35 of 13 h 30</td><td>8 h 40 of 9 h 45</td></tr>
+      <tr><td>2/174-178 Brook Street, Coogee</td><td>9 h 40 of 13 h 30</td><td>5 h 20 of 9 h 45</td></tr>
+    </tbody>
+  </table>
+  <p>Median across sample points on the lot. On Brook Street the spread is wide: some points on the lot get no direct sun on 21 June, others about 6 h 20. "Sunny" on that block depends on which side you are on.</p>
+
+  <h2>What to take from it</h2>
+  <ul>
+    <li>A spring afternoon tells you little about June. The Brook Street lot loses 4 h 20 of median sun between the two dates, Ethel Street 2 h 55.</li>
+    <li>Ground sun is a lot-level estimate, not a window-level one. It does not know your floor or your balcony.</li>
+    <li>If a tool shows a confident hours figure for every address, ask which buildings it knew the heights of.</li>
+  </ul>
+  <p class="note">Method: NSW cadastre lot outline, OpenStreetMap building footprints and heights (ODbL), NOAA solar position every 10 minutes, flat-ground shadows. Estimated heights are drawn but never counted. Shortcomings are listed on each address page.</p>
+
+  <h2>Look at an address yourself</h2>
+  <p>Open the 3D street for a sample address and drag the time of day, today or 21 June. Or search your own suburb.</p>
+  <p>
+    <a class="cta" href="/p/?a=14-ethel-st-randwick&amp;src=guide-winter-sun">14 Ethel St, Randwick</a>
+    <a class="cta" href="/?utm_source=guide&amp;utm_medium=blog&amp;utm_campaign=winter-sun-2026">Search a Sydney suburb</a>
+  </p>
+</main>
+<script src="/lib/ops.js"></script>
+</body>
+</html>
