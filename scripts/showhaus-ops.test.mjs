@@ -8,7 +8,7 @@ import { resetForTests } from '../src/ops/store.js';
 import { verifyGithubOidc } from '../src/ops/oidc.js';
 import { stripeSignature, verifyStripe, classify } from '../src/ops/stripe.js';
 import { environmentOf } from '../src/ops/events.js';
-import { buildJourneys, funnelOf } from '../src/ops/summary.js';
+import { buildJourneys, funnelOf, channelsOf } from '../src/ops/summary.js';
 
 function d1() {
   const db = new DatabaseSync(':memory:');
@@ -305,4 +305,18 @@ test('Pro grant route refuses requests without a valid GitHub OIDC token', async
   const r = await worker.fetch(post('https://showhaus.app/api/ops/pro', { email: 'a@b.co' }), env, ctx());
   assert.equal(r.status, 401);
   assert.equal(env.OPS_DB._db.prepare("SELECT name FROM sqlite_master WHERE name = 'sh_pro'").all().length <= 1, true);
+});
+
+test('channelsOf groups real arrivals by utm_source, then referrer host, then direct', () => {
+  const rows = [
+    { name: 'view', actor: 'a', props: { utm_source: 'guide', utm_medium: 'blog', utm_campaign: 'winter-sun-2026' } },
+    { name: 'view', actor: 'b', props: { utm_source: 'guide', utm_medium: 'blog', utm_campaign: 'winter-sun-2026' } },
+    { name: 'view', actor: 'a', props: { utm_source: 'guide', utm_medium: 'blog', utm_campaign: 'winter-sun-2026' } },
+    { name: 'view', actor: 'c', props: { ref: 'www.google.com' } },
+    { name: 'view', actor: null, props: null },
+    { name: 'search', actor: 'a', props: { utm_source: 'guide' } },
+  ];
+  const out = channelsOf(rows);
+  assert.deepEqual(out[0], { source: 'guide', medium: 'blog', campaign: 'winter-sun-2026', views: 3, visitors: 2 });
+  assert.deepEqual(out.map(c => c.source).sort(), ['direct', 'guide', 'www.google.com']);
 });
