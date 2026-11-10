@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS for agents</title>
+<meta name="description" content="Every property on SHOWHAUS in one list: what is built for each one (day render, walk, records) and the links you can share.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./agent.css">
+</head>
+<body>
+<header class="top"><a class="brand" href="../">SHOWHAUS</a><nav aria-label="View"><a id="asAgent" href="#">Agent</a><a id="asAgency" href="#">Agency</a></nav></header>
+<main>
+  <h1 id="title">Your listings</h1>
+  <p class="lead" id="lead">Read only for now. Claim a property to add your name to its share link.</p>
+  <div class="table-wrap">
+    <table id="tbl">
+      <thead><tr><th scope="col">Property</th><th scope="col">Day render</th><th scope="col">Walk</th><th scope="col">Records</th><th scope="col">Claim</th><th scope="col">Share link</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="fine" id="fine"></p>
+</main>
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script src="./agent.js"></script>
+</body>
+</html>

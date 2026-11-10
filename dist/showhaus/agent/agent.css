@@ -1,0 +1,26 @@
+:root { --paper: #efe6d4; --paper-2: #e6dac3; --ink: #1d2733; --ink-2: #4a5566; --line: #2f4c7a; --terracotta: #c4622d;
+  --rule: color-mix(in srgb, var(--ink) 16%, transparent); --sans: 'Inter Tight', system-ui, sans-serif; --serif: 'Fraunces', Georgia, serif; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper: #15181d; --paper-2: #1d2128; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; color-scheme: dark; } }
+:root[data-theme="dark"] { --paper: #15181d; --paper-2: #1d2128; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
+a { color: var(--line); }
+:focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+.top { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; max-width: 1180px; margin: 0 auto; }
+.brand { font-weight: 600; letter-spacing: .14em; color: var(--ink); text-decoration: none; font-size: 13px; }
+.top nav { display: flex; gap: 4px; }
+.top nav a { padding: 6px 10px; border-radius: 4px; text-decoration: none; color: var(--ink); }
+.top nav a[aria-current="page"] { background: var(--ink); color: var(--paper); }
+main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 48px; }
+h1 { margin: 0; font: 600 clamp(28px, 4vw, 40px)/1.1 var(--serif); }
+.lead { margin: 6px 0 20px; color: var(--ink-2); max-width: 68ch; }
+.table-wrap { overflow-x: auto; border-top: 2px solid var(--ink); }
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
+th, td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-size: 14px; }
+th { font-weight: 600; color: var(--ink-2); }
+td .name { font-weight: 600; }
+td .sub { display: block; color: var(--ink-2); font-size: 13px; }
+.st { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 12.5px; background: var(--paper-2); }
+.st.ok { background: color-mix(in srgb, #4f7d4a 22%, var(--paper)); }
+.st.wait { background: color-mix(in srgb, var(--terracotta) 18%, var(--paper)); }
+.fine { margin-top: 14px; color: var(--ink-2); font-size: 13px; max-width: 68ch; }

@@ -1,0 +1,278 @@
+{
+ "schema": "showhaus-listing-1",
+ "slug": "arncliffe-central",
+ "kind": "off_the_plan",
+ "name": "Arncliffe Central",
+ "address": "26\u201342 Eden Street and 161\u2013179 Princes Highway, Arncliffe NSW 2205",
+ "lnglat": [
+  151.147828,
+  -33.938191
+ ],
+ "suburb": "Arncliffe",
+ "postcode": "2205",
+ "source_page": "https://www.planningportal.nsw.gov.au/major-projects/projects/eden-street-arncliffe-mixed-use-redevelopment",
+ "facts": {
+  "towers": 4,
+  "apartments_consent": "806"
+ },
+ "world": {
+  "status": "baked",
+  "photoreal": false,
+  "hosted": false,
+  "url": "/worlds/arncliffe-central/world.json",
+  "viewer": "/walk/viewer/",
+  "note": "Pre-baked open-data world (300 m \u00d7 300 m, 100 tiles, Blender CPU bake) with the four towers from the approved plans and the level-21 apartment from plan sheet 20. Not published: the files stay out of git and off the site until the walk looks like the real place.",
+  "appearance": "baked = Blender build of open data: orthophoto on ground and roofs, inferred roof forms, generated fa\u00e7ades and crowns, baked ambient occlusion",
+  "tiles": 100,
+  "bytes": 23152225,
+  "interiors": [
+   {
+    "level": 21,
+    "label": "from the approved plans \u00b7 not built",
+    "geometry": "measured_from_plan"
+   }
+  ],
+  "model": {
+   "buildings": 50,
+   "buildings_by_footprint": {
+    "osm": 22,
+    "ms_ml": 24,
+    "planning_document": 4
+   },
+   "buildings_by_height_source": {
+    "osm_levels_tag": 15,
+    "default": 10,
+    "ms_model_estimate": 21,
+    "planning_document": 4
+   },
+   "trees": 706,
+   "canopy_fraction": 0.148,
+   "terrain": "inferred (photogrammetric 5 m DEM; LiDAR not acquired)",
+   "planned": {
+    "project": "Arncliffe Central",
+    "planned": 4,
+    "replaced_on_lot": 14
+   }
+  },
+  "scene_contract": {
+   "schema_version": "0.1.0",
+   "world_id": "w-067f70827d4c",
+   "revision": 1,
+   "status": "draft",
+   "qa_report_id": null,
+   "zones": [
+    {
+     "id": "site",
+     "kind": "outdoor",
+     "level": null
+    }
+   ],
+   "portals": [],
+   "evidence": [
+    {
+     "id": "ms-footprints",
+     "kind": "gis",
+     "permission": "cleared",
+     "captured_at": null
+    },
+    {
+     "id": "nsw-dem-5m",
+     "kind": "gis",
+     "permission": "cleared",
+     "captured_at": null
+    },
+    {
+     "id": "nsw-imagery",
+     "kind": "gis",
+     "permission": "cleared",
+     "captured_at": null
+    },
+    {
+     "id": "osm",
+     "kind": "gis",
+     "permission": "cleared",
+     "captured_at": null
+    },
+    {
+     "id": "planning-document",
+     "kind": "gis",
+     "permission": "pending",
+     "captured_at": null
+    }
+   ],
+   "assets": "100 tile meshes (see world.json)"
+  },
+  "build": {
+   "engine": "in-c0/spatial-world-engine@claude/showhaus-integrated-preview",
+   "bake": "Blender 5.2.3 (bpy wheel), Cycles CPU, 100 tiles in 701 s on 2 vCPU",
+   "exported_by": "packages/world_compiler/static_export.py"
+  }
+ },
+ "renders": {
+  "hero": {
+   "status": "placeholder",
+   "label": "generated \u00b7 placeholder until the sunrise-to-sunset render exists",
+   "what": "Interior walkthrough of a level-21 apartment, ending in a balcony time-lapse from sunrise to sunset on 8 Nov 2026 (Blender Cycles, CPU). Made from public planning documents; the furniture is virtual staging.",
+   "source": "CVF revenue/sprints/showhaus-interior-bakeoff/combined (walkthrough.mp4, 240 rendered frames)",
+   "media": {
+    "video": "../claim/media/walkthrough.mp4",
+    "poster": "../claim/media/walkthrough-poster.jpg"
+   },
+   "seasons": [
+    {
+     "id": "summer",
+     "label": "Summer",
+     "day": "21 Dec",
+     "status": "not rendered"
+    },
+    {
+     "id": "autumn",
+     "label": "Autumn",
+     "day": "20 Mar",
+     "status": "not rendered"
+    },
+    {
+     "id": "winter",
+     "label": "Winter",
+     "day": "21 Jun",
+     "status": "not rendered"
+    },
+    {
+     "id": "spring",
+     "label": "Spring",
+     "day": "8 Nov",
+     "status": "placeholder",
+     "media": {
+      "video": "../claim/media/walkthrough.mp4",
+      "poster": "../claim/media/walkthrough-poster.jpg"
+     }
+    }
+   ]
+  }
+ },
+ "cards": [
+  {
+   "id": "noise",
+   "title": "Aircraft noise",
+   "approx": true,
+   "rows": [
+    {
+     "label": "ANEF 2039",
+     "value": "Outside ANEF 20 (approx.)",
+     "level": null,
+     "near_line": false,
+     "distance_to_nearest_line_m": 440
+    },
+    {
+     "label": "ANEF 2045",
+     "value": "Outside ANEF 20 (approx.)",
+     "level": null,
+     "near_line": false,
+     "distance_to_nearest_line_m": 580
+    },
+    {
+     "label": "Princes Highway frontage (L3)",
+     "value": "72 dB(A) day \u00b7 68 dB(A) night (measured by the applicant's consultant)"
+    },
+    {
+     "label": "Forest Road (L4)",
+     "value": "74 dB(A) day \u00b7 73 dB(A) night (measured by the applicant's consultant)"
+    },
+    {
+     "label": "Eden Street (L2)",
+     "value": "58 dB(A) day \u00b7 50 dB(A) night (measured by the applicant's consultant)"
+    },
+    {
+     "label": "Rail corridor (L1)",
+     "value": "65 dB(A) day \u00b7 64 dB(A) night (measured by the applicant's consultant)"
+    }
+   ],
+   "notes": [
+    "Approximate. Digitised by SHOWHAUS from a map figure in Sydney Airport's Master Plan 2045; not the official ANEF. Use the endorsed ANEF published by Sydney Airport / Airservices Australia for any decision.",
+    "Measured by the applicant's acoustic consultant, unattended loggers 3\u201312 Dec 2020 (EIS Appendix P, Tables 2 and 3). Not measured by SHOWHAUS."
+   ],
+   "source": {
+    "label": "Sydney Airport Master Plan 2045 \u2014 Section 3 Airport Planning Framework, p. 163, Map 15-2 'ANEF 2045 and ANEF 2039'",
+    "url": "https://downloads.ctfassets.net/v228i5y5k0x4/7dPzn8WhzMJPJjsYa03YPp/718247286210425c7eb4ba23429af64b/SYD_Master_Plan_2045_Section_03_Airport_Planning_Framework_FA.pdf",
+    "method": "scripts/showhaus_anef_digitise.py",
+    "uncertainty_m": 300
+   },
+   "stated": {
+    "label": "Planning document",
+    "value": "Outside the ANEF 20 contour of Sydney Airport ANEF 2039",
+    "source": {
+     "label": "Applicant's noise and vibration assessment (EIS Appendix P, 2021), section 'Aircraft Noise Assessment' and Figure 13",
+     "url": "https://majorprojects.planningportal.nsw.gov.au/prweb/PRRestService/mp/01/getContent?AttachRef=SSD-11429726%2120210706T032322.104+GMT"
+    },
+    "grade": "stated in planning document (not measured by SHOWHAUS)"
+   }
+  },
+  {
+   "id": "satellite",
+   "title": "From above",
+   "rows": [
+    {
+     "label": "Site",
+     "value": "Lot 1//DP1283907 \u00b7 13,441 m\u00b2 (cadastre)"
+    },
+    {
+     "label": "Around it",
+     "value": "131 mapped buildings within 650 m"
+    }
+   ],
+   "source": {
+    "label": "NSW Spatial Services cadastre (CC BY 4.0) \u00b7 OpenStreetMap (ODbL)",
+    "url": null
+   },
+   "image": "../studio/arncliffe-central/poster.png",
+   "notes": [
+    "The picture is SHOWHAUS's massing model among the mapped buildings, not a photo."
+   ]
+  },
+  {
+   "id": "planning",
+   "title": "Planning",
+   "rows": [
+    {
+     "label": "Consent",
+     "value": "SSD-11429726 (State significant development), approved by the Minister for Planning 1 Aug 2022; latest modification MOD-10 determined 2 Jul 2026"
+    },
+    {
+     "label": "Zoning",
+     "value": "MU1 Mixed Use \u00b7 Bayside Local Environmental Plan 2021"
+    },
+    {
+     "label": "LEP height control",
+     "value": "70.0 m"
+    },
+    {
+     "label": "Building A",
+     "value": "22 levels \u00b7 max RL 101.0 m AHD (consent)"
+    },
+    {
+     "label": "Building B",
+     "value": "23 levels \u00b7 max RL 101.3 m AHD (consent)"
+    },
+    {
+     "label": "Building C",
+     "value": "19 levels \u00b7 max RL 96.1 m AHD (consent)"
+    },
+    {
+     "label": "Building D",
+     "value": "21 levels \u00b7 max RL 93.6 m AHD (consent)"
+    }
+   ],
+   "source": {
+    "label": "NSW Planning Portal \u2014 SSD-11429726 documents",
+    "url": "https://www.planningportal.nsw.gov.au/major-projects/projects/eden-street-arncliffe-mixed-use-redevelopment"
+   }
+  }
+ ],
+ "endorsement": "None. SHOWHAUS made this independently from public planning documents; neither the developer, the architect nor any agency was involved or endorsed it.",
+ "links": {
+  "page": "/l/arncliffe-central",
+  "claim": "/l/arncliffe-central/claim",
+  "legacy": "/studio/?p=arncliffe-central",
+  "studio": "/studio/?p=arncliffe-central"
+ }
+}

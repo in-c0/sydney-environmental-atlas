@@ -195,9 +195,9 @@ test('evidence upload: ≤ 2 MB PDF stored in chunks and served to CVF only; ove
 test('share links redirect to the walkthrough (with the claimant code); synthetic traffic stays synthetic', async () => {
   const env = makeEnv();
   const r = await worker.fetch(new Request('https://showhaus.app/s/arncliffe-central/abc234'), env, ctx());
-  assert.equal(r.status, 302); assert.equal(r.headers.get('location'), 'https://showhaus.app/studio/?p=arncliffe-central&by=abc234&src=share');
+  assert.equal(r.status, 302); assert.equal(r.headers.get('location'), 'https://showhaus.app/l/arncliffe-central?by=abc234&src=share');
   const p = await worker.fetch(new Request('https://x.workers.dev/s/arncliffe-central'), env, ctx());
-  assert.equal(p.headers.get('location'), 'https://x.workers.dev/showhaus/studio/?p=arncliffe-central&src=share');
+  assert.equal(p.headers.get('location'), 'https://x.workers.dev/showhaus/l/arncliffe-central?src=share');
   await submit(env, { env: 'synthetic' });
   await submit(env, { email: 'b@harbourrealty.com.au' }, { headers: { 'user-agent': 'HeadlessChrome playwright' } });
   await submit(env, { email: 'c@harbourrealty.com.au' }, { host: 'https://x.workers.dev' });

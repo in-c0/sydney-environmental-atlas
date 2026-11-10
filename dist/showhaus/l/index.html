@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS listing</title>
+<meta name="description" content="One property on SHOWHAUS: the day from sunrise to sunset, a walk through the street and the rooms, and the noise, aerial and planning records around it, each with its source.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./listing.css">
+</head>
+<body data-state="loading">
+<header class="top">
+  <a class="brand" id="brand" href="../">SHOWHAUS</a>
+  <a class="claim-link" id="claimLink" href="#">Is this yours or your agency's?</a>
+</header>
+
+<main>
+  <section class="hero" aria-label="The day at this property">
+    <div class="frame">
+      <video id="heroVideo" muted loop playsinline preload="metadata"></video>
+      <img id="heroPoster" alt="" hidden>
+      <p class="stamp" id="heroStamp">generated</p>
+      <svg class="arc" id="arc" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true">
+        <path id="arcHorizon" d="M0 200 H1000"/>
+        <path id="arcPath" d=""/>
+        <circle id="arcSun" r="9" cx="-20" cy="-20"/>
+      </svg>
+    </div>
+    <div class="day">
+      <div class="seasons" role="radiogroup" aria-label="Season" id="seasons"></div>
+      <p class="sun-read" id="sunRead" aria-live="polite">—</p>
+    </div>
+    <p class="hero-note" id="heroNote"></p>
+  </section>
+
+  <section class="head" aria-labelledby="name">
+    <h1 id="name">Loading…</h1>
+    <p class="addr" id="addr"></p>
+    <p class="by" id="by" hidden></p>
+    <div class="go">
+      <button type="button" class="btn primary" id="walk" data-intent="walk">Walk the street</button>
+      <button type="button" class="btn" id="inside" data-intent="inside">Go inside</button>
+    </div>
+    <p class="world-note" id="worldNote"></p>
+  </section>
+
+  <section class="evidence" aria-label="Records around this property" id="cards"></section>
+
+  <footer class="foot">
+    <p id="endorse"></p>
+    <a href="../">Back to the map of Sydney</a>
+  </footer>
+</main>
+
+<dialog class="walk" id="walkDlg" aria-label="Walk">
+  <div class="walk-bar">
+    <b id="walkTitle">Walk</b>
+    <span class="walk-note">Shapes from open data and approved plans · surfaces generated · not a photo</span>
+    <form method="dialog"><button class="x" aria-label="Close the walk">×</button></form>
+  </div>
+  <iframe id="walkFrame" title="3D walk" allow="fullscreen"></iframe>
+</dialog>
+
+<template id="cardTpl">
+  <article class="card">
+    <h2></h2>
+    <dl></dl>
+    <p class="stated" hidden></p>
+    <ul class="notes"></ul>
+    <p class="src"></p>
+  </article>
+</template>
+
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script src="../lib/core.js"></script>
+<script src="./listing.js"></script>
+</body>
+</html>

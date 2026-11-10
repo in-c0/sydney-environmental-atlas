@@ -1,0 +1,93 @@
+{
+ "status": "baked",
+ "photoreal": false,
+ "hosted": false,
+ "url": "/worlds/arncliffe-central/world.json",
+ "viewer": "/walk/viewer/",
+ "note": "Pre-baked open-data world (300 m \u00d7 300 m, 100 tiles, Blender CPU bake) with the four towers from the approved plans and the level-21 apartment from plan sheet 20. Not published: the files stay out of git and off the site until the walk looks like the real place.",
+ "appearance": "baked = Blender build of open data: orthophoto on ground and roofs, inferred roof forms, generated fa\u00e7ades and crowns, baked ambient occlusion",
+ "tiles": 100,
+ "bytes": 23152225,
+ "interiors": [
+  {
+   "level": 21,
+   "label": "from the approved plans \u00b7 not built",
+   "geometry": "measured_from_plan"
+  }
+ ],
+ "model": {
+  "buildings": 50,
+  "buildings_by_footprint": {
+   "osm": 22,
+   "ms_ml": 24,
+   "planning_document": 4
+  },
+  "buildings_by_height_source": {
+   "osm_levels_tag": 15,
+   "default": 10,
+   "ms_model_estimate": 21,
+   "planning_document": 4
+  },
+  "trees": 706,
+  "canopy_fraction": 0.148,
+  "terrain": "inferred (photogrammetric 5 m DEM; LiDAR not acquired)",
+  "planned": {
+   "project": "Arncliffe Central",
+   "planned": 4,
+   "replaced_on_lot": 14
+  }
+ },
+ "scene_contract": {
+  "schema_version": "0.1.0",
+  "world_id": "w-067f70827d4c",
+  "revision": 1,
+  "status": "draft",
+  "qa_report_id": null,
+  "zones": [
+   {
+    "id": "site",
+    "kind": "outdoor",
+    "level": null
+   }
+  ],
+  "portals": [],
+  "evidence": [
+   {
+    "id": "ms-footprints",
+    "kind": "gis",
+    "permission": "cleared",
+    "captured_at": null
+   },
+   {
+    "id": "nsw-dem-5m",
+    "kind": "gis",
+    "permission": "cleared",
+    "captured_at": null
+   },
+   {
+    "id": "nsw-imagery",
+    "kind": "gis",
+    "permission": "cleared",
+    "captured_at": null
+   },
+   {
+    "id": "osm",
+    "kind": "gis",
+    "permission": "cleared",
+    "captured_at": null
+   },
+   {
+    "id": "planning-document",
+    "kind": "gis",
+    "permission": "pending",
+    "captured_at": null
+   }
+  ],
+  "assets": "100 tile meshes (see world.json)"
+ },
+ "build": {
+  "engine": "in-c0/spatial-world-engine@claude/showhaus-integrated-preview",
+  "bake": "Blender 5.2.3 (bpy wheel), Cycles CPU, 100 tiles in 701 s on 2 vCPU",
+  "exported_by": "packages/world_compiler/static_export.py"
+ }
+}

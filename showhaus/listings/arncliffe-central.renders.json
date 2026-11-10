@@ -1,0 +1,15 @@
+{
+  "hero": {
+    "status": "placeholder",
+    "label": "generated · placeholder until the sunrise-to-sunset render exists",
+    "what": "Interior walkthrough of a level-21 apartment, ending in a balcony time-lapse from sunrise to sunset on 8 Nov 2026 (Blender Cycles, CPU). Made from public planning documents; the furniture is virtual staging.",
+    "source": "CVF revenue/sprints/showhaus-interior-bakeoff/combined (walkthrough.mp4, 240 rendered frames)",
+    "media": { "video": "../claim/media/walkthrough.mp4", "poster": "../claim/media/walkthrough-poster.jpg" },
+    "seasons": [
+      { "id": "summer", "label": "Summer", "day": "21 Dec", "status": "not rendered" },
+      { "id": "autumn", "label": "Autumn", "day": "20 Mar", "status": "not rendered" },
+      { "id": "winter", "label": "Winter", "day": "21 Jun", "status": "not rendered" },
+      { "id": "spring", "label": "Spring", "day": "8 Nov", "status": "placeholder", "media": { "video": "../claim/media/walkthrough.mp4", "poster": "../claim/media/walkthrough-poster.jpg" } }
+    ]
+  }
+}

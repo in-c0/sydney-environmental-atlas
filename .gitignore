@@ -2,3 +2,6 @@
 node_modules
 .wrangler/
 .dev.vars
+
+# ANEF contours are private (in-c0/spatial-world-engine data/anef/); never commit them here
+dist/showhaus/data/anef-*.geojson

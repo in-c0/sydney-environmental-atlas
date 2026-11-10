@@ -214,3 +214,32 @@ body.signed-in .acct { color: var(--leaf); }
 .acct-fine { margin: 0; font: 400 10.5px var(--mono); color: var(--ink-2); }
 .acct-done p { margin: 0; }
 @media (max-width: 760px) { .acct { margin-left: auto; padding: 7px 10px; } .acct-dlg { top: 56px; } }
+
+/* ---------- listing pins + aircraft-noise lens (lib/pins.js) ---------- */
+.noise-lens { position: fixed; z-index: 9; right: var(--pad); bottom: 56px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink); background: var(--glass); color: var(--ink); border-radius: 999px; padding: 7px 12px; font: 500 12px var(--mono); box-shadow: var(--shadow); }
+.noise-lens[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.noise-key { position: fixed; z-index: 9; right: var(--pad); bottom: 96px; width: min(300px, calc(100vw - 2 * var(--pad))); background: var(--glass); border-radius: 6px; padding: 10px 12px; box-shadow: var(--shadow); font-size: 12.5px; line-height: 1.4; }
+.noise-key p { margin: 8px 0 0; }
+.noise-key .nk-src { font-size: 12px; }
+.noise-key .nk-scale { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; }
+.noise-key .nk-scale i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+.nk-years { display: flex; gap: 4px; }
+.nk-years button { flex: 1; border: 1px solid var(--ink); background: none; border-radius: 4px; padding: 5px 8px; font: 500 12px var(--mono); }
+.nk-years button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.pin-card { position: fixed; z-index: 11; left: 50%; top: 76px; transform: translateX(-50%); width: min(360px, calc(100vw - 2 * var(--pad))); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 14px 16px 16px; box-shadow: var(--shadow); border-top: 4px solid var(--terracotta); }
+.pin-card h2 { margin: 2px 0 2px; font: 600 22px/1.15 var(--serif); padding-right: 28px; }
+.pin-card .pc-kind { margin: 0; font-size: 13px; color: var(--ink-2); }
+.pin-card .pc-addr { margin: 0 0 8px; font-size: 13.5px; color: var(--ink-2); }
+.pin-card dl { margin: 0 0 12px; }
+.pin-card dl div { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); font-size: 13.5px; }
+.pin-card dt { color: var(--ink-2); }
+.pin-card dd { margin: 0; }
+.pin-card .pc-open { display: inline-block; background: var(--terracotta); color: #fff8ee; text-decoration: none; padding: 9px 14px; border-radius: 4px; font-weight: 600; }
+.pin-card .pc-x { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; border: 0; background: none; font-size: 22px; line-height: 1; color: var(--ink-2); }
+@media (max-width: 700px) {
+  /* the place card owns the bottom half on a phone: the lens and its key move to the top right, under the steps */
+  .noise-lens { top: 118px; bottom: auto; padding: 6px 10px; }
+  .noise-key { top: 156px; bottom: auto; }
+  body[data-act="1"] .noise-lens, body[data-act="2"] .noise-lens, body[data-act="1"] .noise-key, body[data-act="2"] .noise-key { display: none; }
+  .pin-card { top: 64px; }
+}

@@ -1,0 +1,155 @@
+{
+ "schema": "showhaus-listing-1",
+ "slug": "7-walsh-ave-maroubra",
+ "kind": "rental_kit",
+ "name": "7 Walsh Avenue",
+ "address": "7 Walsh Avenue, Maroubra NSW 2035",
+ "lnglat": [
+  151.236742,
+  -33.941962
+ ],
+ "suburb": "Maroubra",
+ "postcode": "2035",
+ "source_page": "https://www.ppdre.com.au/properties/7-walsh-avenue-maroubra-nsw/",
+ "facts": {
+  "rent_median_week": 900,
+  "rent_postcode": 2035,
+  "kit_date": "2026-11-08"
+ },
+ "world": {
+  "status": "none",
+  "photoreal": false,
+  "url": null,
+  "note": "No world built for this address yet."
+ },
+ "renders": {
+  "hero": {
+   "status": "placeholder",
+   "label": "generated \u00b7 3D street scene from public map data, not a photo",
+   "media": {
+    "video": "../p/7-walsh-ave-maroubra/walkthrough.mp4",
+    "poster": "../p/7-walsh-ave-maroubra/poster.png"
+   },
+   "seasons": [
+    {
+     "id": "summer",
+     "label": "Summer",
+     "day": "21 Dec",
+     "status": "not rendered"
+    },
+    {
+     "id": "autumn",
+     "label": "Autumn",
+     "day": "20 Mar",
+     "status": "not rendered"
+    },
+    {
+     "id": "winter",
+     "label": "Winter",
+     "day": "21 Jun",
+     "status": "not rendered"
+    },
+    {
+     "id": "spring",
+     "label": "Spring",
+     "day": "23 Sep",
+     "status": "not rendered"
+    }
+   ]
+  }
+ },
+ "cards": [
+  {
+   "id": "noise",
+   "title": "Aircraft noise",
+   "approx": true,
+   "rows": [
+    {
+     "label": "ANEF 2039",
+     "value": "Outside ANEF 20 (approx.)",
+     "level": null,
+     "near_line": false,
+     "distance_to_nearest_line_m": 1030
+    },
+    {
+     "label": "ANEF 2045",
+     "value": "Outside ANEF 20 (approx.)",
+     "level": null,
+     "near_line": false,
+     "distance_to_nearest_line_m": 1290
+    }
+   ],
+   "notes": [
+    "Approximate. Digitised by SHOWHAUS from a map figure in Sydney Airport's Master Plan 2045; not the official ANEF. Use the endorsed ANEF published by Sydney Airport / Airservices Australia for any decision."
+   ],
+   "source": {
+    "label": "Sydney Airport Master Plan 2045 \u2014 Section 3 Airport Planning Framework, p. 163, Map 15-2 'ANEF 2045 and ANEF 2039'",
+    "url": "https://downloads.ctfassets.net/v228i5y5k0x4/7dPzn8WhzMJPJjsYa03YPp/718247286210425c7eb4ba23429af64b/SYD_Master_Plan_2045_Section_03_Airport_Planning_Framework_FA.pdf",
+    "method": "scripts/showhaus_anef_digitise.py",
+    "uncertainty_m": 300
+   }
+  },
+  {
+   "id": "road",
+   "title": "Main road",
+   "rows": [
+    {
+     "label": "Nearest main road",
+     "value": "Anzac Parade \u00b7 223 m (map distance)"
+    }
+   ],
+   "source": {
+    "label": "OpenStreetMap road centrelines via OpenFreeMap vector tiles (z14)",
+    "url": null
+   },
+   "notes": [
+    "Distance on the map, not a noise measurement."
+   ]
+  },
+  {
+   "id": "satellite",
+   "title": "From above",
+   "rows": [
+    {
+     "label": "Tree canopy (H3 cell)",
+     "value": "14 % canopy"
+    }
+   ],
+   "source": {
+    "label": "NSW Government 2024\u201325 urban canopy H3 grid (GSR_2024_VegStrata_H3Z11)",
+    "url": "https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/UHGC/GSR_2024_VegStrata_H3Z11/MapServer/0/query?where=1%3D1&geometry=151.2367417%2C-33.9419619&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=h3_index%2CCanopy_pc%2CAll_veg_pc%2CSuburb&returnGeometry=false&f=json"
+   },
+   "image": "../p/7-walsh-ave-maroubra/poster.png",
+   "notes": [
+    "The picture is SHOWHAUS's 3D street scene (public map data), not a photo."
+   ]
+  },
+  {
+   "id": "planning",
+   "title": "Planning",
+   "rows": [
+    {
+     "label": "Zoning",
+     "value": "R2 Low Density Residential \u00b7 Randwick Local Environmental Plan 2012"
+    },
+    {
+     "label": "Flood planning",
+     "value": "Not mapped here"
+    },
+    {
+     "label": "Bush fire prone",
+     "value": "Not mapped here"
+    }
+   ],
+   "source": {
+    "label": "NSW Planning Portal (EPI Primary Planning Layers, hazard layers)",
+    "url": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/EPI_Primary_Planning_Layers/MapServer/2/query?where=1%3D1&geometry=151.2367417%2C-33.9419619&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=SYM_CODE%2CLAY_CLASS%2CEPI_NAME&returnGeometry=false&f=json"
+   }
+  }
+ ],
+ "links": {
+  "page": "/l/7-walsh-ave-maroubra",
+  "claim": "/l/7-walsh-ave-maroubra/claim",
+  "legacy": "/p/?a=7-walsh-ave-maroubra"
+ }
+}

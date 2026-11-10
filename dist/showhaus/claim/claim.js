@@ -4,7 +4,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
-  const slug = (qs.get('p') || 'arncliffe-central').replace(/[^a-z0-9-]/g, '');
+  const slug = (qs.get('p') || (location.pathname.match(/\/l\/([a-z0-9-]{3,80})\/claim/) || [])[1] || 'arncliffe-central').replace(/[^a-z0-9-]/g, '');
   const src = (qs.get('ref') || qs.get('utm_source') || (document.referrer ? 'ref' : 'direct')).replace(/[^\w.-]/g, '').slice(0, 60);
   const REC = qs.get('rec') === '1';
   if (REC) document.body.classList.add('rec');

@@ -5,7 +5,7 @@
 //   POST /api/claim/manage {token}   the claim behind a private manage link (also re-sets the browser cookie)
 //   POST /api/claim/release {token}  the claimant withdraws the claim (share link stops showing their branding)
 //   GET  /api/claim/brand?c=<code>   { company } only for a verified claim — what the public walkthrough may show
-//   GET  /s/<slug>[/<code>]          the share link → the walkthrough page (with the claimant's line when verified)
+//   GET  /s/<slug>[/<code>]          the share link → the listing page /l/<slug> (with the claimant's line when verified)
 // Verification is automatic and never waits on a person: the work-email domain must match the company website's
 // domain (free-mail domains never match). Anything else stays "pending" and is listed for CVF in /api/ops/summary.
 // Stored: business details the claimant typed (company, ABN/licence, website host), the work-email DOMAIN and an
@@ -129,11 +129,17 @@ async function propertyOf(request, env, slug) {
   if (!/^[a-z0-9-]{3,80}$/.test(slug || '')) return null;
   const u = new URL(request.url);
   try {
-    const r = await env.ASSETS.fetch(new Request(`${u.origin}/showhaus/studio/data/${slug}.json`));
+    // A studio project first (its own data file), then any listing in the shared model (dist/showhaus/l/data/).
+    let r = await env.ASSETS.fetch(new Request(`${u.origin}/showhaus/studio/data/${slug}.json`));
+    if (r.ok) {
+      const data = await r.json().catch(() => null);
+      const p = data && data.project;
+      return { slug, name: (p && p.name) || slug, address: (p && p.address) || '' };
+    }
+    r = await env.ASSETS.fetch(new Request(`${u.origin}/showhaus/l/data/${slug}.json`));
     if (!r.ok) return null;
-    const data = await r.json().catch(() => null);
-    const p = data && data.project;
-    return { slug, name: (p && p.name) || slug, address: (p && p.address) || '' };
+    const L = await r.json().catch(() => null);
+    return L && L.slug === slug ? { slug, name: L.name || slug, address: L.address || '' } : null;
   } catch { return null; }
 }
 
@@ -266,7 +272,7 @@ export async function handleClaim(request, env, ctx) {
   const url = new URL(request.url), path = url.pathname;
   const share = path.match(/^\/s\/([a-z0-9-]{3,80})(?:\/([a-z0-9]{4,12}))?\/?$/);
   if (share) {
-    const to = `${url.origin}${prefix(url)}/studio/?p=${share[1]}${share[2] ? '&by=' + share[2] : ''}&src=share`;
+    const to = `${url.origin}${prefix(url)}/l/${share[1]}?${share[2] ? 'by=' + share[2] + '&' : ''}src=share`;
     return new Response(null, { status: 302, headers: { location: to, 'cache-control': 'no-store' } });
   }
   if (!path.startsWith('/api/claim/')) return null;

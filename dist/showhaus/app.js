@@ -153,6 +153,7 @@
     });
     map.on('mouseleave', 'pc-fill', () => { map.getCanvas().style.cursor = ''; pop.remove(); });
     map.on('click', e => {
+      if (e.originalEvent && e.originalEvent.__showhausPin) return; // a listing pin (lib/pins.js) handled this tap
       if (state.act < 3) {
         const f = map.queryRenderedFeatures(e.point, { layers: ['pc-fill'] })[0];
         if (f && state.act === 1) { const s = suburbs.filter(x => x.pci === f.properties.pci).sort((a, b) => b.n - a.n)[0]; if (s) choosePlace(s); }

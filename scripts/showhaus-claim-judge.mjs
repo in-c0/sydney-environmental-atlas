@@ -95,9 +95,11 @@ async function walk(browser, { name, viewport, email, website, expect, shots = t
   const pub = await browser.newPage({ viewport });
   const local = share.replace(/^https?:\/\/[^/]+/, BASE);
   await pub.goto(local, { waitUntil: 'domcontentloaded' });
-  await pub.waitForFunction(() => document.getElementById('pname').textContent !== 'Loading…', null, { timeout: 30000 }).catch(() => {});
+  // The share link lands on the listing page /l/<slug> (src/listing.js); the claimant line is #by there.
+  await pub.waitForFunction(() => document.body.dataset.state === 'ready', null, { timeout: 30000 }).catch(() => {});
+  check(new URL(pub.url()).pathname === '/l/arncliffe-central', `${name}: share link opens the listing page (${new URL(pub.url()).pathname})`);
   await pub.waitForTimeout(1500);
-  const by = await pub.locator('#pby').isVisible() ? await pub.locator('#pby').textContent() : '';
+  const by = await pub.locator('#by').isVisible() ? await pub.locator('#by').textContent() : '';
   check(expect === 'verified' ? by === 'Marketed by Your Agency' : by === '', `${name}: public page branding ${by ? '“' + by + '”' : 'hidden'} (${expect})`);
   if (shots) await pub.screenshot({ path: join(SHOTS, `${name}-5-share-link.png`) });
   await pub.close();
