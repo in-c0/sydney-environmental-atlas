@@ -137,6 +137,10 @@ for (const [w, h] of VIEWPORTS) {
 
   await page.click('[data-go="3"]'); await page.waitForFunction(() => document.body.dataset.act === '3');
   await noOverflow(page, `${tag} act 3`);
+  check(`${tag} preferences action stays visible without scrolling`, await page.locator('#act3 .next').evaluate(el => {
+    const b = el.getBoundingClientRect(), stage = document.querySelector('.explore-stage').getBoundingClientRect();
+    return b.top >= stage.top - 1 && b.bottom <= stage.bottom + 1;
+  }));
   if (shotsDir) await page.screenshot({ path: `${shotsDir}/act3-${w}x${h}.png` });
   const c3before = (await page.locator('#c3').innerText()).replace(/,/g, '');
   check(`${tag} act 3 count starts equal to act 2`, c3before === c2, `${c3before} vs ${c2}`);

@@ -79,6 +79,11 @@
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
   // ---------- map ----------
+  function mapUnavailable(message = 'The interactive map is unavailable in this browser. Rent search, counts and postcode evidence still work; try a WebGL-capable browser for map interaction.') {
+    const status = $('mapStatus');
+    status.dataset.state = 'error';
+    status.textContent = message;
+  }
   function syncMapPadding() {
     if (!map) return;
     const mobile = innerWidth <= 760;
@@ -88,10 +93,18 @@
           bottom: 28, left: innerWidth <= 1100 ? 362 : Math.min(442, Math.round(innerWidth * .29) + 58) });
   }
   function initMap() {
-    map = new maplibregl.Map({
-      container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
-      attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
-    });
+    try {
+      map = new maplibregl.Map({
+        container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
+        attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
+      });
+    } catch (e) {
+      map = null;
+      mapUnavailable();
+      console.warn('SHOWHAUS map initialization unavailable:', e.message);
+      return;
+    }
+    setTimeout(() => { if (!mapReady) mapUnavailable(); }, 12000);
     map.on('load', () => {
       $('mapStatus').dataset.state = 'ready';
       tintBasemap();
@@ -172,9 +185,7 @@
     });
     map.on('move', drawOverlay);
     map.on('error', e => {
-      const status = $('mapStatus');
-      status.dataset.state = 'error';
-      status.textContent = 'Some map tiles are unavailable. Rental records and filters still work; try reloading the map later.';
+      mapUnavailable('Some map tiles are unavailable. Rental records and filters still work; try reloading the map later.');
       if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown'));
     });
   }
@@ -412,9 +423,14 @@
     state.point = p;
     const fw = $('flagWrong'); if (fw && fw.dataset.done) { delete fw.dataset.done; fw.textContent = 'Looks wrong?'; }
     if (state.act !== 4) go(4);
-    map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16.2), duration: 600 });
     const k = keyOf(p);
     if (!evidence.has(k)) evidence.set(k, { road: { s: 'load' }, sun: { s: 'load' }, canopy: { s: 'load' }, land: { s: 'load' }, plan: { s: 'load' } });
+    if (!map || !mapReady) {
+      evidence.set(k, { road: { s: 'err', why: 'Interactive map unavailable' }, sun: { s: 'err', why: 'Interactive map unavailable' }, canopy: { s: 'none' }, land: { s: 'none' }, plan: { s: 'none' } });
+      renderCard();
+      return;
+    }
+    map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16.2), duration: 600 });
     renderCard(); drawPick();
     window.SH && SH.track('place_card', p.pci != null ? { postcode: String(R.postcodes[p.pci]).padStart(4, '0') } : undefined);
     map.once('idle', () => { measureLocal(p); renderCard(); drawPick(); drawOverlay(); });

@@ -6,7 +6,7 @@
   --ink: #202c2b;
   --ink-2: #636b67;
   --line: #657d75;
-  --terracotta: #bf6845;
+  --terracotta: #af5237;
   --jacaranda: #7864a5;
   --leaf: #637f67;
   /* Map labels must never show through reading panels. */
@@ -164,6 +164,25 @@ body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
 .explore-stage .readout { font-size: 11px; }
 .explore-stage .commute { grid-template-columns: 1fr; }
 .explore-stage .commute .hint { grid-column: 1; }
+.explore-stage #act3 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.explore-stage #act3 > #wants {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: flex-start;
+  padding: 1px 3px 8px 1px;
+  scrollbar-width: thin;
+}
+.explore-stage #act3 > .commute,
+.explore-stage #act3 > .readout,
+.explore-stage #act3 > .hint,
+.explore-stage #act3 > .next { flex-shrink: 0; }
+.explore-stage #act3 > .next { width: 100%; margin-top: 10px; }
 .explore-foot {
   display: flex;
   justify-content: space-between;
