@@ -121,15 +121,16 @@
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
       // Cluster postcode aggregates, NEVER individual lease locations: the source has only
       // postcode centroids. Sum actual lease records, not the number of source postcodes.
-      map.addSource('pcn', { type: 'geojson', data: pcNodes(), cluster: true, clusterRadius: 68,
-        clusterMaxZoom: 11, clusterProperties: { leases: ['+', ['get', 'n']] } });
+      // Show more postcode nodes at overview zoom without restoring individual lease dots.
+      map.addSource('pcn', { type: 'geojson', data: pcNodes(), cluster: true, clusterRadius: 46,
+        clusterMaxZoom: 10, clusterProperties: { leases: ['+', ['get', 'n']] } });
       // Collision-managed quantity capsules: one readable marker per cluster at this zoom.
       map.addImage('pill', pillImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[28, 36]], content: [20, 12, 44, 52] });
       map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', layout: {
         'text-field': roundedLeases, 'text-font': ['Noto Sans Bold'],
         'text-size': ['step', leases, 12, 10, 13, 100, 14, 1000, 15, 10000, 17],
         'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
-        'symbol-sort-key': ['-', leases], 'text-padding': 24, 'icon-padding': 24 },
+        'symbol-sort-key': ['-', leases], 'text-padding': 15, 'icon-padding': 15 },
         paint: { 'text-color': INK } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });

@@ -51,6 +51,13 @@ Ji's subsequent feedback (verbatim):
 - A tap zooms into the grouped region; at detailed zoom, one capsule remains per postcode. Colour continues to encode **postcode median weekly rent**; exact counts and median prices stay in filters and evidence cards. Changing budgets/bedrooms recomputes clusters.
 - Explore typography uses **Manrope** for headings and **Inter** for prose, controls, and data. Increase tiny labels and use tabular numeric alignment without shrinking the touch targets. Font loading must be verified at desktop and mobile sizes.
 
+Ji's next visual feedback (verbatim):
+
+> 걍 노드 보여줘 좀더
+
+- Let more postcode/count nodes remain visible at overview zoom: reduce cluster radius from 68 to 46 pixels, symbol collision padding from 24 to 15 pixels, and stop clustering one zoom level earlier (max cluster zoom 10 rather than 11).
+- Do **not** restore individual lease dots or invent property locations. Keep legible amount-labelled capsules instead of a micro-dot texture; visually verify desktop and mobile screenshots before merging.
+
 ## 2. Acts (one decision at a time)
 
 1. **Where?** One input (suburb, postcode or region). Hero colours Sydney postcodes by the median rent of new leases; the recorded-lease counter reacts per keystroke. Min 3 chars; typo → closest suburb (Tab to accept); a price typed here is offered to act 2.
