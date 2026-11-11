@@ -180,9 +180,14 @@ for (const [w, h] of VIEWPORTS) {
   await page.click('#proClose');
   check(`${tag} closing the Pro preview returns to the map`, await page.locator('#proLens').isHidden() && await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
   await page.evaluate(() => { const S = window.SHOWHAUS, p = S.state.point; S.map.jumpTo({ center: [p.lng, p.lat], zoom: 13.5 }); });
-  await page.waitForFunction(() => window.SHOWHAUS.dots.drawn > 0, null, { timeout: 8000 }).catch(() => {});
-  const dots = await page.evaluate(() => window.SHOWHAUS.dots);
-  check(`${tag} leases appear as dots when zoomed in, with an honest legend`, dots.drawn > 0 && (await page.locator('#legend').innerText()).includes('not at the home'), JSON.stringify(dots));
+  const calm = await page.evaluate(() => {
+    const m = window.SHOWHAUS.map;
+    return { labels: !!m.getLayer('pc-nodes-n'), labelVisibility: m.getLayoutProperty('pc-nodes-n', 'visibility'),
+      noLeaseDots: !m.getLayer('lease-dots') && !m.getLayer('lease-ring') && !m.getSource('leases'),
+      noFallbackDots: !m.getLayer('pc-nodes') };
+  });
+  check(`${tag} zoomed map uses price labels, not dense circular lease markers`, calm.labels && calm.labelVisibility !== 'none' && calm.noLeaseDots && calm.noFallbackDots, JSON.stringify(calm));
+  check(`${tag} map legend describes postcode-level evidence accurately`, (await page.locator('#legend').innerText()).includes('not individual home locations'));
   // Every live request has a 15 s timeout, so each lens must leave 'load' within ~20 s (ok, none or err).
   await page.waitForFunction(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return e && Object.values(e).every(v => v.s !== 'load'); }, null, { timeout: 22000 }).catch(() => {});
   const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });

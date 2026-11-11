@@ -286,7 +286,6 @@ body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
   .lenses { flex-direction: row; left: 9px; top: 69px; padding: 3px; }
   .lenses button { padding: 6px; font-size: 10px; }
   .legend { display: none; }
-  .legend.has-dots { display: block; top: 113px; bottom: auto; right: 10px; left: auto; }
   .selection { left: 10px; right: 10px; top: 113px; bottom: auto; min-height: 30px; }
   .selection .tok { padding: 4px 5px 4px 9px; }
   .card { top: auto; left: 8px; right: 8px; bottom: calc(72px + env(safe-area-inset-bottom)); width: auto; height: 49dvh; border-radius: 17px 17px 11px 11px; }

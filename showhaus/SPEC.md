@@ -25,10 +25,19 @@ Ji's visual architecture decision: **A · Living Atlas** is the default map-firs
 - Source-linked rental aggregates must remain legible even when map/WebGL support is unavailable. The map and exact-point evidence can be unavailable, but should fail explicitly rather than leaving empty controls.
 - Treat `dist/showhaus/explore.css` as the Explore design layer. Do not introduce placeholder vector art, faux 3D scenes or unsupported certainty claims to decorate it.
 
+### 2026-11-11 visual comfort correction
+
+Ji's direct feedback on the dense lease-point map: **"환공포증.."**
+
+- **No dense circular data clouds in the default map, including after zooming/searching.** Do not assume that thousands of small lease markers are an acceptable visual representation.
+- Render postcode-level rental medians through restrained area shading and collision-managed price labels. A postcode is the truthful geographic resolution of the rental records; individual bond lodgements have no address and must not look like exact property locations.
+- Preserve source data, filters, counts and evidence cards. This changes only the map's visual encoding, with no fabricated map geometry or placeholder assets.
+- Keep the selected-place marker singular and use legible text for evidence. Reintroducing a dense-dot mode would require explicit user opt-in and independent visual verification.
+
 ## 2. Acts (one decision at a time)
 
-1. **Where?** One input (suburb, postcode or address). Hero is already alive: every recorded Sydney sale as a dot; the counter of sales in the last 12 months reacts per keystroke. Min 3 chars; typo → closest suburb (Tab to accept); a price typed here is offered to act 2.
-2. **Buy, rent or just looking — and up to how much?** One control (mode + budget slider). Dots outside budget sink; count and median react instantly.
+1. **Where?** One input (suburb, postcode or region). Hero colours Sydney postcodes by the median rent of new leases; the recorded-lease counter reacts per keystroke. Min 3 chars; typo → closest suburb (Tab to accept); a price typed here is offered to act 2.
+2. **Buy, rent or just looking — and up to how much?** One control (mode + budget slider). Postcode shading and price labels update with the filter; counts and median react instantly. Buying prices remain unavailable until licensing is resolved.
 3. **What matters at home?** Chips with include/exclude: quiet street · morning sun · afternoon shade · trees · away from flight path · no flood/bushfire overlay · near station. Each chip turns on its evidence lens on the map; selection line states everything in words, every token removable.
 4. **The HUD.** Map (2D/3D) + one place card: sale history, road geometry, canopy, sun now/at chosen time, land records, planning overlays; A/B compare; presets remembered.
 
