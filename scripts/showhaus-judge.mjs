@@ -20,6 +20,7 @@ const server = createServer(async (req, res) => {
 const base = `http://127.0.0.1:${server.address().port}/showhaus/`;
 const rents = JSON.parse(await readFile(join(ROOT, 'showhaus/data/rents.json'), 'utf8'));
 const places = JSON.parse(await readFile(join(ROOT, 'showhaus/data/places.json'), 'utf8'));
+const mappedPostcodes = new Set(places.postcodes.map(p => p.pc));
 const amen = await readFile(join(ROOT, 'showhaus/data/amenities.json'), 'utf8').then(JSON.parse).catch(() => null);
 function monthsWithLeases(pci, beds, maxRent) {
   const seen = new Set();
@@ -28,11 +29,12 @@ function monthsWithLeases(pci, beds, maxRent) {
 }
 
 // Independent recount from the raw file (not from the app's code).
-function recount({ postcode = null, maxRent = null, beds = null } = {}) {
+function recount({ postcode = null, maxRent = null, beds = null, mappedOnly = false } = {}) {
   const pi = postcode == null ? null : rents.postcodes.indexOf(Number(postcode));
   let n = 0;
   for (let i = 0; i < rents.w.length; i++) {
     if (pi != null && rents.pc[i] !== pi) continue;
+    if (mappedOnly && !mappedPostcodes.has(rents.postcodes[rents.pc[i]])) continue;
     if (maxRent != null && rents.w[i] > maxRent) continue;
     if (beds != null && !beds.includes(rents.b[i] >= 4 ? 4 : rents.b[i])) continue;
     n++;
@@ -201,7 +203,9 @@ for (const [w, h] of VIEWPORTS) {
   });
   check(`${tag} zoomed map uses approximate count capsules, not dense lease dots`, calm.labels && calm.labelVisibility !== 'none' && calm.noLeaseDots && calm.noFallbackDots && calm.countLabel.includes('leases') && calm.countLabel.includes('≈'), JSON.stringify(calm));
   const cityFiltered = await page.evaluate(() => window.SHOWHAUS.pc.features.reduce((n, f) => n + f.properties.n, 0));
-  check(`${tag} clustered data preserves actual filtered lease counts`, cityFiltered === recount({ maxRent: 1000, beds: [2] }), `${cityFiltered} vs ${recount({ maxRent: 1000, beds: [2] })}`);
+  const geoCount = recount({ maxRent: 1000, beds: [2], mappedOnly: true });
+  const missingGeometry = recount({ maxRent: 1000, beds: [2] }) - geoCount;
+  check(`${tag} map clusters preserve all geocoded filtered leases`, cityFiltered === geoCount, `${cityFiltered} vs ${geoCount} mapped; ${missingGeometry} record(s) have no postcode geometry and remain in counters`);
   const clusters = await page.evaluate(async () => {
     const m = window.SHOWHAUS.map;
     m.jumpTo({ center: [151.05, -33.86], zoom: 9.5 });
