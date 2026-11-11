@@ -9,7 +9,8 @@
   --terracotta: #bf6845;
   --jacaranda: #7864a5;
   --leaf: #637f67;
-  --glass: rgba(250, 248, 243, .97);
+  /* Map labels must never show through reading panels. */
+  --glass: #faf8f3;
   --shadow: 0 12px 42px rgba(35, 45, 41, .12);
   color-scheme: light;
 }

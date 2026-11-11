@@ -99,8 +99,8 @@
       map.addSource('pc', { type: 'geojson', data: pcFC || { type: 'FeatureCollection', features: [] }, promoteId: 'pc' });
       map.addLayer({ id: 'pc-fill', type: 'fill', source: 'pc', paint: {
         'fill-color': ['case', ['==', ['get', 'n'], 0], 'rgba(0,0,0,0)', ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]]],
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .5, 11.2, .45, 12.2, .1, 16, .06] } }, before);
-      map.addLayer({ id: 'pc-line', type: 'line', source: 'pc', paint: { 'line-color': '#2f4c7a', 'line-opacity': ['case', ['==', ['get', 'sel'], 1], .95, .25], 'line-width': ['case', ['==', ['get', 'sel'], 1], 2.4, .6] } });
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .32, 11.2, .34, 12.2, .1, 16, .06] } }, before);
+      map.addLayer({ id: 'pc-line', type: 'line', source: 'pc', paint: { 'line-color': '#2f4c7a', 'line-opacity': ['case', ['==', ['get', 'sel'], 1], .95, .16], 'line-width': ['case', ['==', ['get', 'sel'], 1], 2.4, .6] } });
       map.addLayer({ id: 'pc-3d', type: 'fill-extrusion', source: 'pc', layout: { visibility: 'none' }, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
@@ -128,7 +128,7 @@
       map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', maxzoom: DOT_ZOOM + .5, layout: {
         'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 14],
         'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
-        'symbol-sort-key': ['-', ['get', 'n']], 'text-padding': 4, 'icon-padding': 4 },
+        'symbol-sort-key': ['-', ['get', 'n']], 'text-padding': 16, 'icon-padding': 16 },
         paint: { 'text-color': INK, 'text-opacity': fadeOut, 'icon-opacity': fadeOut } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
