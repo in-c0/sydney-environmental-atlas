@@ -180,6 +180,10 @@ for (const [w, h] of VIEWPORTS) {
   await page.click('#proClose');
   check(`${tag} closing the Pro preview returns to the map`, await page.locator('#proLens').isHidden() && await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
   await page.evaluate(() => { const S = window.SHOWHAUS, p = S.state.point; S.map.jumpTo({ center: [p.lng, p.lat], zoom: 13.5 }); });
+  if (shotsDir) {
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: `${shotsDir}/act4-zoomed-${w}x${h}.png` });
+  }
   const calm = await page.evaluate(() => {
     const m = window.SHOWHAUS.map;
     return { labels: !!m.getLayer('pc-nodes-n'), labelVisibility: m.getLayoutProperty('pc-nodes-n', 'visibility'),
