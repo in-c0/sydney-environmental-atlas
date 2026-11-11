@@ -34,10 +34,27 @@ Ji's direct feedback on the dense lease-point map: **"환공포증.."**
 - Preserve source data, filters, counts and evidence cards. This changes only the map's visual encoding, with no fabricated map geometry or placeholder assets.
 - Keep the selected-place marker singular and use legible text for evidence. Reintroducing a dense-dot mode would require explicit user opt-in and independent visual verification.
 
+### 2026-11-11 quantity clusters and modern type
+
+Ji's subsequent feedback (verbatim):
+
+> 근데 그러면 그냥 한개인거랑 구분이 안되자네
+>
+> 음... 미니멀하면서도 좀더 대략 몇개가 클러스터에 있는지 직관적으로 표시되면 좋겠어
+>
+> 응
+>
+> 그리고 폰트 좀 모던하고 가독성 좋은걸로
+
+- One collision-managed rounded capsule per visible postcode cluster, **not a dot cloud**. The main number is an approximate count of **lease records** (e.g. `≈20`, `≈600`, `≈7.1k`), and font scale increases gently with count. A single record reads `1` and remains distinguishable from a cluster.
+- Clusters sum the `n` count of postcode rent records with `clusterProperties.leases`. Never mistake the default MapLibre `point_count` (number of grouped postcode features) for the number of leases; never fabricate property locations. The marker means records in nearby postcodes at the current zoom.
+- A tap zooms into the grouped region; at detailed zoom, one capsule remains per postcode. Colour continues to encode **postcode median weekly rent**; exact counts and median prices stay in filters and evidence cards. Changing budgets/bedrooms recomputes clusters.
+- Explore typography uses **Manrope** for headings and **Inter** for prose, controls, and data. Increase tiny labels and use tabular numeric alignment without shrinking the touch targets. Font loading must be verified at desktop and mobile sizes.
+
 ## 2. Acts (one decision at a time)
 
 1. **Where?** One input (suburb, postcode or region). Hero colours Sydney postcodes by the median rent of new leases; the recorded-lease counter reacts per keystroke. Min 3 chars; typo → closest suburb (Tab to accept); a price typed here is offered to act 2.
-2. **Buy, rent or just looking — and up to how much?** One control (mode + budget slider). Postcode shading and price labels update with the filter; counts and median react instantly. Buying prices remain unavailable until licensing is resolved.
+2. **Buy, rent or just looking — and up to how much?** One control (mode + budget slider). Postcode shading and approximate lease-count clusters update with the filter; exact counts and median react instantly. Buying prices remain unavailable until licensing is resolved.
 3. **What matters at home?** Chips with include/exclude: quiet street · morning sun · afternoon shade · trees · away from flight path · no flood/bushfire overlay · near station. Each chip turns on its evidence lens on the map; selection line states everything in words, every token removable.
 4. **The HUD.** Map (2D/3D) + one place card: sale history, road geometry, canopy, sun now/at chosen time, land records, planning overlays; A/B compare; presets remembered.
 

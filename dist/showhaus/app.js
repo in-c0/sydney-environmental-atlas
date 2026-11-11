@@ -65,10 +65,19 @@
     return g.getImageData(0, 0, 64, 64);
   }
   function pcNodes() {
-    const k = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n);
     return { type: 'FeatureCollection', features: (pcFC?.features || []).filter(f => f.properties.n > 0 && centroids[f.properties.pc])
-      .map(f => ({ type: 'Feature', properties: { n: f.properties.n, lab: '$' + Math.round(f.properties.med).toLocaleString('en-AU'), cnt: k(f.properties.n) }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
+      .map(f => ({ type: 'Feature', properties: { pc: f.properties.pc, n: f.properties.n, med: f.properties.med }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
   }
+  // One capsule per visible cluster, labelled with its summed *lease* count, not
+  // MapLibre's point_count (which would count postcodes). Round only the label.
+  const leases = ['case', ['has', 'leases'], ['get', 'leases'], ['get', 'n']];
+  const roundedLeases = ['case',
+    ['<', leases, 10], ['to-string', leases],
+    ['<', leases, 100], ['concat', '≈', ['to-string', ['*', 10, ['round', ['/', leases, 10]]]]],
+    ['<', leases, 1000], ['concat', '≈', ['to-string', ['*', 100, ['round', ['/', leases, 100]]]]],
+    ['<', leases, 10000], ['concat', '≈', ['to-string', ['/', ['round', ['/', leases, 100]], 10]], 'k'],
+    ['concat', '≈', ['to-string', ['round', ['/', leases, 1000]]], 'k']
+  ];
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
   // ---------- map ----------
@@ -110,16 +119,17 @@
       map.addLayer({ id: 'pc-3d', type: 'fill-extrusion', source: 'pc', layout: { visibility: 'none' }, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
-      // Calm map: avoid repeating thousands of circular lease marks. The underlying records
-      // remain available to filters, counts and evidence cards; visual density stays postcode-level.
-      map.addSource('pcn', { type: 'geojson', data: pcNodes() });
-      // Price pills (Zillow / Airbnb / Domain pattern): MapLibre's collision pass keeps them from ever overlapping,
-      // the busiest postcodes win; all other areas remain readable by their fill and on hover.
+      // Cluster postcode aggregates, NEVER individual lease locations: the source has only
+      // postcode centroids. Sum actual lease records, not the number of source postcodes.
+      map.addSource('pcn', { type: 'geojson', data: pcNodes(), cluster: true, clusterRadius: 68,
+        clusterMaxZoom: 11, clusterProperties: { leases: ['+', ['get', 'n']] } });
+      // Collision-managed quantity capsules: one readable marker per cluster at this zoom.
       map.addImage('pill', pillImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[28, 36]], content: [20, 12, 44, 52] });
       map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', layout: {
-        'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 14],
+        'text-field': roundedLeases, 'text-font': ['Noto Sans Bold'],
+        'text-size': ['step', leases, 12, 10, 13, 100, 14, 1000, 15, 10000, 17],
         'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
-        'symbol-sort-key': ['-', ['get', 'n']], 'text-padding': 24, 'icon-padding': 24 },
+        'symbol-sort-key': ['-', leases], 'text-padding': 24, 'icon-padding': 24 },
         paint: { 'text-color': INK } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
@@ -132,7 +142,15 @@
       applyFilter();
     });
     map.on('moveend', renderLegend);
-    map.on('click', 'pc-nodes-n', e => { const f = e.features[0]; if (f) map.easeTo({ center: f.geometry.coordinates, zoom: Math.max(map.getZoom(), 12.5), duration: 700 }); });
+    map.on('click', 'pc-nodes-n', async e => {
+      const f = e.features[0]; if (!f) return;
+      let zoom = Math.max(map.getZoom(), 12.5);
+      if (f.properties.cluster && Number.isInteger(f.properties.cluster_id)) {
+        try { zoom = Math.max(map.getZoom() + 1, await map.getSource('pcn').getClusterExpansionZoom(f.properties.cluster_id)); }
+        catch (err) { console.warn('Cluster expansion unavailable:', err.message); }
+      }
+      map.easeTo({ center: f.geometry.coordinates, zoom, duration: 650 });
+    });
     map.on('mouseenter', 'pc-nodes-n', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'pc-nodes-n', () => { map.getCanvas().style.cursor = ''; });
     const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
@@ -144,6 +162,8 @@
     });
     map.on('mouseleave', 'pc-fill', () => { map.getCanvas().style.cursor = ''; pop.remove(); });
     map.on('click', e => {
+      // A quantity capsule drills into the aggregation; it is not an exact-address pin.
+      if (map.queryRenderedFeatures(e.point, { layers: ['pc-nodes-n'] }).length) return;
       if (state.act < 3) {
         const f = map.queryRenderedFeatures(e.point, { layers: ['pc-fill'] })[0];
         if (f && state.act === 1) { const s = suburbs.filter(x => x.pci === f.properties.pci).sort((a, b) => b.n - a.n)[0]; if (s) choosePlace(s); }
@@ -595,8 +615,8 @@
     $('compare').innerHTML = `<b>${esc(placeLabel(pin))}</b> ${C.weekly(a?.med)} · <b>${esc(placeLabel(p))}</b> ${C.weekly(b?.med)}${diff != null ? ` <span class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : ''}${diff}%</span>` : ''}`;
   }
 
-  // Avoid dense dots entirely in Explore; show one collision-managed price label
-  // per postcode and preserve the full underlying rental records for evidence.
+  // Avoid dense dots entirely in Explore; show one collision-managed count capsule
+  // per visible cluster, preserving the full rental records for exact evidence.
   function syncPriceLabels() {
     if (!mapReady) return;
     const visibility = state.lens === 'map' && state.mode !== 'buy' ? 'visible' : 'none';
@@ -638,7 +658,7 @@
   }
   function renderLegend() {
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
-    const detail = state.lens === 'map' ? '<div class="dotnote muted">Areas show postcode-level rents, not individual home locations. Select a place to inspect the records.</div>' : '';
+    const detail = state.lens === 'map' ? '<div class="dotnote muted">Capsules ≈ new leases grouped at this zoom; tap to explore. Areas show postcode-level rents, not individual home locations. Exact counts appear in the place details.</div>' : '';
     $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>${detail}`;
   }
 
@@ -660,12 +680,12 @@
     const idx = C.filterRents(R, { ...filters(false), beds: null, pcSet: new Set([p.pci]) });
     const cells = new Map();
     for (const i of idx) { const b = R.b[i] >= 4 ? 4 : R.b[i] < 0 ? -1 : R.b[i]; if (b < 0) continue; const k = R.m[i] * 10 + b; (cells.get(k) || cells.set(k, []).get(k)).push(R.w[i]); }
-    g.strokeStyle = ink; g.fillStyle = ink; g.font = '11px IBM Plex Mono'; g.textAlign = 'center';
+    g.strokeStyle = ink; g.fillStyle = ink; g.font = '11px Inter, sans-serif'; g.textAlign = 'center';
     for (let m = 0; m < M; m++) { const r = Rmax * (M - m) / M; g.globalAlpha = .18; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); g.globalAlpha = .65; if (m % 3 === 0 || m === M - 1) g.fillText(fmtYm(R.months[m]), cx, cy - r - 4); }
     g.globalAlpha = 1;
     BEDS.forEach(([b, label], s) => {
       const a0 = -Math.PI / 2 + (s + .5) * 2 * Math.PI / BEDS.length;
-      g.fillStyle = ink; g.font = '600 12px IBM Plex Mono'; g.fillText(label, cx + Math.cos(a0) * (Rmax + 22), cy + Math.sin(a0) * (Rmax + 22) + 4);
+      g.fillStyle = ink; g.font = '600 12px Inter, sans-serif'; g.fillText(label, cx + Math.cos(a0) * (Rmax + 22), cy + Math.sin(a0) * (Rmax + 22) + 4);
       for (let m = 0; m < M; m++) {
         const v = cells.get(m * 10 + b); if (!v) continue;
         const med = C.quantile(v.sort((x, y) => x - y), .5), r = Rmax * (M - m - .5) / M;
@@ -702,8 +722,8 @@
       g.restore();
       const cx = x0 + w / 2 + h * .3, cy = y + h * .225;
       if (k < layers.length - 1) { g.setLineDash([3, 4]); g.strokeStyle = ink; g.globalAlpha = .45; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx, cy + dy); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; }
-      g.fillStyle = ink; g.font = '600 12px IBM Plex Mono'; g.fillText(L.name, x0 + w + h * .6 + 18, y + 14);
-      g.font = '400 12px IBM Plex Mono'; g.fillText(L.val, x0 + w + h * .6 + 18, y + 30);
+      g.fillStyle = ink; g.font = '600 12px Inter, sans-serif'; g.fillText(L.name, x0 + w + h * .6 + 18, y + 14);
+      g.font = '400 12px Inter, sans-serif'; g.fillText(L.val, x0 + w + h * .6 + 18, y + 30);
     });
   }
 

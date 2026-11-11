@@ -20,6 +20,7 @@ const server = createServer(async (req, res) => {
 const base = `http://127.0.0.1:${server.address().port}/showhaus/`;
 const rents = JSON.parse(await readFile(join(ROOT, 'showhaus/data/rents.json'), 'utf8'));
 const places = JSON.parse(await readFile(join(ROOT, 'showhaus/data/places.json'), 'utf8'));
+const mappedPostcodes = new Set(places.postcodes.map(p => p.pc));
 const amen = await readFile(join(ROOT, 'showhaus/data/amenities.json'), 'utf8').then(JSON.parse).catch(() => null);
 function monthsWithLeases(pci, beds, maxRent) {
   const seen = new Set();
@@ -28,11 +29,12 @@ function monthsWithLeases(pci, beds, maxRent) {
 }
 
 // Independent recount from the raw file (not from the app's code).
-function recount({ postcode = null, maxRent = null, beds = null } = {}) {
+function recount({ postcode = null, maxRent = null, beds = null, mappedOnly = false } = {}) {
   const pi = postcode == null ? null : rents.postcodes.indexOf(Number(postcode));
   let n = 0;
   for (let i = 0; i < rents.w.length; i++) {
     if (pi != null && rents.pc[i] !== pi) continue;
+    if (mappedOnly && !mappedPostcodes.has(rents.postcodes[rents.pc[i]])) continue;
     if (maxRent != null && rents.w[i] > maxRent) continue;
     if (beds != null && !beds.includes(rents.b[i] >= 4 ? 4 : rents.b[i])) continue;
     n++;
@@ -87,6 +89,12 @@ for (const [w, h] of VIEWPORTS) {
   check(`${tag} Living Atlas opens in Explore`, await page.locator('.views .view.on').innerText() === 'Explore' && await page.locator('.explore-shell').isVisible());
   check(`${tag} unreleased experiences are clearly unavailable`, await page.locator('.views .view[disabled]').count() === 2);
   check(`${tag} reading panel is opaque over map`, await page.locator('.explore-shell').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(250, 248, 243)'));
+  const typography = await page.evaluate(() => ({
+    body: getComputedStyle(document.body).fontFamily,
+    heading: getComputedStyle(document.querySelector('.explore-head h1')).fontFamily,
+    brand: getComputedStyle(document.querySelector('.bar .brand')).fontFamily,
+  }));
+  check(`${tag} modern readable type is applied`, typography.body.includes('Inter') && typography.heading.includes('Manrope') && typography.brand.includes('Manrope'), JSON.stringify(typography));
   await noOverflow(page, `${tag} act 1`);
   if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.waitForTimeout(1200); await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` }); }
 
@@ -188,10 +196,32 @@ for (const [w, h] of VIEWPORTS) {
     const m = window.SHOWHAUS.map;
     return { labels: !!m.getLayer('pc-nodes-n'), labelVisibility: m.getLayoutProperty('pc-nodes-n', 'visibility'),
       noLeaseDots: !m.getLayer('lease-dots') && !m.getLayer('lease-ring') && !m.getSource('leases'),
-      noFallbackDots: !m.getLayer('pc-nodes') };
+      noFallbackDots: !m.getLayer('pc-nodes'),
+      countLabel: JSON.stringify(m.getLayoutProperty('pc-nodes-n', 'text-field')),
+      clusterSource: m.getSource('pcn')._options?.cluster,
+    };
   });
-  check(`${tag} zoomed map uses price labels, not dense circular lease markers`, calm.labels && calm.labelVisibility !== 'none' && calm.noLeaseDots && calm.noFallbackDots, JSON.stringify(calm));
-  check(`${tag} map legend describes postcode-level evidence accurately`, (await page.locator('#legend').innerText()).includes('not individual home locations'));
+  check(`${tag} zoomed map uses approximate count capsules, not dense lease dots`, calm.labels && calm.labelVisibility !== 'none' && calm.noLeaseDots && calm.noFallbackDots && calm.countLabel.includes('leases') && calm.countLabel.includes('≈'), JSON.stringify(calm));
+  const cityFiltered = await page.evaluate(() => window.SHOWHAUS.pc.features.reduce((n, f) => n + f.properties.n, 0));
+  const geoCount = recount({ maxRent: 1000, beds: [2], mappedOnly: true });
+  const missingGeometry = recount({ maxRent: 1000, beds: [2] }) - geoCount;
+  check(`${tag} map clusters preserve all geocoded filtered leases`, cityFiltered === geoCount, `${cityFiltered} vs ${geoCount} mapped; ${missingGeometry} record(s) have no postcode geometry and remain in counters`);
+  const clusters = await page.evaluate(async () => {
+    const m = window.SHOWHAUS.map;
+    m.jumpTo({ center: [151.05, -33.86], zoom: 9.5 });
+    await new Promise(resolve => setTimeout(resolve, 550));
+    const seen = new Set();
+    const agg = m.querySourceFeatures('pcn').filter(f => f.properties.cluster && !seen.has(f.properties.cluster_id) && seen.add(f.properties.cluster_id));
+    const sample = agg.find(f => f.properties.point_count > 1 && f.properties.point_count < 500);
+    if (!sample) return { available: agg.length, valid: false };
+    const leaves = await m.getSource('pcn').getClusterLeaves(sample.properties.cluster_id, sample.properties.point_count, 0);
+    const sum = leaves.reduce((n, f) => n + Number(f.properties.n), 0);
+    const expansionZoom = await m.getSource('pcn').getClusterExpansionZoom(sample.properties.cluster_id);
+    return { available: agg.length, postcodes: sample.properties.point_count, sum, leaseTotal: sample.properties.leases, expansionZoom,
+      valid: sum === Number(sample.properties.leases) && sum >= sample.properties.point_count && expansionZoom > 9.5 };
+  });
+  check(`${tag} clusters sum leases (not postcode points) and expand on tap`, clusters.valid, JSON.stringify(clusters));
+  check(`${tag} legend distinguishes grouped lease counts from rent shading`, (await page.locator('#legend').innerText()).includes('Capsules ≈ new leases') && (await page.locator('#legend').innerText()).includes('not individual home locations'));
   // Every live request has a 15 s timeout, so each lens must leave 'load' within ~20 s (ok, none or err).
   await page.waitForFunction(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return e && Object.values(e).every(v => v.s !== 'load'); }, null, { timeout: 22000 }).catch(() => {});
   const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });
