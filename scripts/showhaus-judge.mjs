@@ -50,7 +50,8 @@ function median(post, beds, maxRent) {
 }
 
 const { chromium } = await import('playwright');
-const browser = await chromium.launch();
+// Use an already-installed Chromium in restricted session executors; default to Playwright's browser elsewhere.
+const browser = await chromium.launch({ executablePath: process.env.SHOWHAUS_CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
 const VIEWPORTS = [[1440, 900], [1280, 720], [390, 844]];
@@ -83,6 +84,8 @@ for (const [w, h] of VIEWPORTS) {
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SHOWHAUS?.rents, null, { timeout: 30000 });
   const tag = `${w}×${h}`;
+  check(`${tag} Living Atlas opens in Explore`, await page.locator('.views .view.on').innerText() === 'Explore' && await page.locator('.explore-shell').isVisible());
+  check(`${tag} unreleased experiences are clearly unavailable`, await page.locator('.views .view[disabled]').count() === 2);
   await noOverflow(page, `${tag} act 1`);
 
   // Act 1: counter = recount for the whole window, then per-keystroke.

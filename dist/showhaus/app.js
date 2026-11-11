@@ -21,7 +21,7 @@
   const ROAD_RANK = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2, minor: 1, service: 0 };
   const BEDS = [[0, 'Studio'], [1, '1 bed'], [2, '2 bed'], [3, '3 bed'], [4, '4+ bed']];
   const TYPES = [[0, 'Unit'], [1, 'House'], [2, 'Townhouse']];
-  const DARK = matchMedia('(prefers-color-scheme: dark)').matches, INK = DARK ? '#ece4d3' : '#1d2733', PAPER = DARK ? '#15181d' : '#fffaf0';
+  const DARK = document.documentElement.dataset.theme === 'dark', INK = DARK ? '#ece4d3' : '#202c2b', PAPER = DARK ? '#15181d' : '#f6f3ec';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
   const DOT_RAMP = ['#dca04e', '#d47a2e', '#bf5523', '#9c3a1d', '#702617', '#3f140c']; // same order, shifted darker: a dot must stand off the fill
 
@@ -79,12 +79,21 @@
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
   // ---------- map ----------
+  function syncMapPadding() {
+    if (!map) return;
+    const mobile = innerWidth <= 760;
+    map.setPadding(mobile
+      ? { top: 64, right: 10, bottom: Math.round(innerHeight * (state.act === 4 ? .49 : Math.min(.56, 520 / innerHeight))) + 78, left: 10 }
+      : { top: 85, right: state.act === 4 ? Math.min(380, Math.round(innerWidth * .3)) : 18,
+          bottom: 28, left: innerWidth <= 1100 ? 362 : Math.min(442, Math.round(innerWidth * .29) + 58) });
+  }
   function initMap() {
     map = new maplibregl.Map({
       container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
       attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
     });
     map.on('load', () => {
+      $('mapStatus').dataset.state = 'ready';
       tintBasemap();
       const before = map.getLayer('building') ? 'building' : undefined;
       map.addSource('pc', { type: 'geojson', data: pcFC || { type: 'FeatureCollection', features: [] }, promoteId: 'pc' });
@@ -128,6 +137,7 @@
       map.addLayer({ id: 'pick-pin', type: 'circle', source: 'pick', filter: ['==', ['get', 'k'], 'pin'], paint: { 'circle-radius': 8, 'circle-color': '#7d5fc7', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } });
       map.addLayer({ id: 'pick-sun', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'sun'], paint: { 'line-color': '#e2a234', 'line-width': 3, 'line-dasharray': [1.5, 1.5] } });
       mapReady = true;
+      syncMapPadding();
       applyFilter();
     });
     map.on('moveend', () => { drawLeases(); renderLegend(); });
@@ -161,11 +171,16 @@
       selectPoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
     });
     map.on('move', drawOverlay);
-    map.on('error', e => { if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown')); });
+    map.on('error', e => {
+      const status = $('mapStatus');
+      status.dataset.state = 'error';
+      status.textContent = 'Some map tiles are unavailable. Rental records and filters still work; try reloading the map later.';
+      if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown'));
+    });
   }
   function tintBasemap() {
     const css = getComputedStyle(document.documentElement);
-    const paper = css.getPropertyValue('--paper').trim(), dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const paper = css.getPropertyValue('--paper').trim(), dark = DARK;
     const set = (id, p, v) => { try { if (map.getLayer(id)) map.setPaintProperty(id, p, v); } catch { /* layer differs */ } };
     set('background', 'background-color', paper);
     set('water', 'fill-color', dark ? '#1c2a36' : '#c9d8de');
@@ -227,6 +242,8 @@
     $('c2').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
     $('m2').textContent = state.mode === 'buy' ? 'licence pending' : C.weekly(C.quantile(rents, .5));
     $('c3').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
+    $('summaryCount').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
+    $('summaryMedian').textContent = state.mode === 'buy' ? 'licence pending' : C.weekly(C.quantile(rents, .5));
     drawLeases(); renderLegend();
     renderSelection();
     drawOverlay();
@@ -354,6 +371,8 @@
     }
     if (n === 3) { renderWants(); setTimeout(demoChip, 400); }
     if (n === 4) {
+      $('q4').textContent = state.place?.kind === 'suburb'
+        ? `${state.place.name} NSW ${state.place.postcode}` : (state.place?.name || 'Explore Sydney');
       if (!state.point && state.place) {
         if (state.place.kind === 'suburb') selectPoint({ lng: state.place.lng, lat: state.place.lat });
         else { // a broad area: start at its busiest postcode's centre
@@ -362,6 +381,7 @@
         }
       } else renderCard();
     }
+    syncMapPadding();
     cue(); renderSelection();
   }
 
@@ -826,7 +846,7 @@
   $('commuteKm').addEventListener('input', () => { if (state.commute) { state.commute.km = Number($('commuteKm').value); $('commuteKmLabel').textContent = state.commute.km + ' km'; applyFilter(); renderWants(); } else geocodeCommute(); });
   $('proClose').addEventListener('click', () => setLens('map'));
   if ($('proWant')) $('proWant').addEventListener('click', () => { if (window.SH && (SH.signedIn || !SH.canSignIn)) { SH.track('pro_interest', { cta: 'count_me_in' }); toast('Counted. Thank you.'); setLens('map'); return; } setLens('map'); window.SH && SH.openSignIn('pro'); });
-  addEventListener('resize', drawOverlay);
+  addEventListener('resize', () => { map?.resize(); syncMapPadding(); drawOverlay(); });
 
   // ---------- boot ----------
   window.SHOWHAUS = { state, C, get amen() { return A; }, allowed, get pc() { return pcFC; }, get rents() { return R; }, get places() { return P; }, get map() { return map; }, get dots() { return dotStats; }, evidence, currentIdx, keyOf };

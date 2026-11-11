@@ -10,20 +10,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./explore.css">
 </head>
 <body data-act="1">
 <div id="map" aria-label="Map of Sydney rents by postcode"></div>
 <canvas id="overlay" aria-hidden="true"></canvas>
+<div class="map-status" id="mapStatus" role="status" aria-live="polite">Loading the Sydney rent atlas…</div>
 
 <header class="bar">
   <a class="brand" href="./" aria-label="SHOWHAUS home">SHOWHAUS<span>Sydney, before you sign</span></a>
-  <ol class="cuts" aria-label="Steps">
-    <li data-cut="1"><button type="button">01<span> Where</span></button></li>
-    <li data-cut="2"><button type="button">02<span> Budget</span></button></li>
-    <li data-cut="3"><button type="button">03<span> Matters</span></button></li>
-    <li data-cut="4"><button type="button">04<span> Place</span></button></li>
-  </ol>
-  <div class="live" id="live" title="When the sales records were built">records —</div>
+  <nav class="views" aria-label="Ways to explore SHOWHAUS">
+    <button type="button" class="view on" aria-current="page">Explore</button>
+    <button type="button" class="view" disabled title="Discover neighbourhood stories is planned">Discover <small>planned</small></button>
+    <button type="button" class="view" disabled title="Urban Intelligence analysis is planned">Analyse <small>planned</small></button>
+  </nav>
+  <div class="live" id="live" title="Rental bond records and date coverage">records —</div>
   <button type="button" class="acct" id="acct" aria-haspopup="dialog" aria-controls="acctDlg" hidden>Sign in</button>
 </header>
 
@@ -49,10 +50,23 @@
   <p class="acct-fine">We keep a scrambled id, not your email address.</p>
 </div>
 
+<aside class="explore-shell" aria-label="Explore Sydney housing">
+  <div class="explore-head">
+    <p class="eyebrow">THE CITY, BEFORE YOU SIGN</p>
+    <h1>Find your place in the city.</h1>
+    <p>See what new leases cost, explore Sydney and check the evidence before you commit.</p>
+  </div>
+  <ol class="cuts" aria-label="Explore steps">
+    <li data-cut="1"><button type="button">01<span> Where</span></button></li>
+    <li data-cut="2"><button type="button">02<span> Budget</span></button></li>
+    <li data-cut="3"><button type="button">03<span> Matters</span></button></li>
+    <li data-cut="4"><button type="button">04<span> Place</span></button></li>
+  </ol>
+  <div class="explore-stage">
 <section class="act" id="act1" aria-labelledby="q1">
-  <h1 id="q1">Where do you want to live?</h1>
+  <h2 id="q1">Where would you like to live?</h2>
   <div class="field">
-    <input id="where" autocomplete="off" spellcheck="false" placeholder="Suburb, postcode, council, CBD, Sydney, NSW…" aria-describedby="whereHint">
+    <input id="where" autocomplete="off" spellcheck="false" placeholder="Suburb, postcode or region" aria-describedby="whereHint">
     <span class="count"><b id="c1">—</b> <em id="c1label">new leases lodged, last 12 months</em></span>
   </div>
   <p class="hint" id="whereHint"></p>
@@ -61,7 +75,7 @@
 </section>
 
 <section class="act" id="act2" aria-labelledby="q2">
-  <h1 id="q2">Buying, renting, or just looking?</h1>
+  <h2 id="q2">What fits your budget?</h2>
   <div class="modes" role="radiogroup">
     <button type="button" role="radio" data-mode="rent" aria-checked="true">Renting</button>
     <button type="button" role="radio" data-mode="buy" aria-checked="false">Buying</button>
@@ -77,7 +91,7 @@
 </section>
 
 <section class="act" id="act3" aria-labelledby="q3">
-  <h1 id="q3">What matters at home?</h1>
+  <h2 id="q3">What matters at home?</h2>
   <div class="chips" id="wants"></div>
   <div class="commute" id="commuteBox" hidden>
     <input id="commuteWhere" autocomplete="off" placeholder="Work or school — e.g. Macquarie University, Parramatta" aria-describedby="commuteHint">
@@ -88,6 +102,20 @@
   <p class="hint" id="wantsHint"></p>
   <button class="next" type="button" data-go="4">Show the place</button>
 </section>
+<section class="act" id="act4" aria-labelledby="q4">
+  <p class="eyebrow">YOU'RE EXPLORING</p>
+  <h2 id="q4">A place in Sydney</h2>
+  <p class="explore-description">Select any point on the map to inspect evidence about that location.</p>
+  <div class="summary-metrics">
+    <div><strong id="summaryMedian">—</strong><span>Median weekly rent</span></div>
+    <div><strong id="summaryCount">—</strong><span>Matching leases</span></div>
+  </div>
+  <button class="next" type="button" data-go="2">Refine your filters</button>
+  <p class="explore-evidence">Rental records are grouped by postcode, not individual addresses. Tap a place for available evidence and its source.</p>
+</section>
+  </div>
+  <div class="explore-foot"><span>NSW rental bond lodgements</span><span>Source-linked data</span></div>
+</aside>
 
 <aside class="card" id="card" aria-live="polite">
   <div class="card-head">
