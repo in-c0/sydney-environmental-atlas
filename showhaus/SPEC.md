@@ -14,6 +14,17 @@ Owner request (verbatim): "realestate.com.au, domain, homely 등을 대체할 �
 
 This app looks like a **surveyor's cadastral plan on Sydney sandstone** because the subject is land, title and light in Sydney: sandstone paper ground, ink-blue linework, terracotta for roofs and price, jacaranda for selection, harbour blue for water/flood, auction-sticker red used only for SOLD. Units are real (m, m², AUD, dB never invented, minutes of sun).
 
+### 2026-11-11 experience direction — A as default, B/C by function
+
+Ji's visual architecture decision: **A · Living Atlas** is the default map-first experience. **B · Architectural Journal (Discover)** and **C · Urban Intelligence (Analyse)** are separate functional destinations, not visual modes mixed into Explore.
+
+- **Explore (A):** the city map stays visible while an opaque editorial panel guides area, budget, preferences and evidence. The existing four acts are now steps within this panel rather than centred map-blocking dialogs. On mobile, use a bottom-sheet layout.
+- **Discover (B):** future neighbourhood stories, architecture, local character and human-scale discovery; unreleased until real content and functionality exist.
+- **Analyse (C):** future comparative urban data, planning and research tools; unreleased until real analytical workflows exist.
+- Keep Discover/Analyse visibly marked as **planned** and noninteractive until shipped; do not imply these destinations already function.
+- Source-linked rental aggregates must remain legible even when map/WebGL support is unavailable. The map and exact-point evidence can be unavailable, but should fail explicitly rather than leaving empty controls.
+- Treat `dist/showhaus/explore.css` as the Explore design layer. Do not introduce placeholder vector art, faux 3D scenes or unsupported certainty claims to decorate it.
+
 ## 2. Acts (one decision at a time)
 
 1. **Where?** One input (suburb, postcode or address). Hero is already alive: every recorded Sydney sale as a dot; the counter of sales in the last 12 months reacts per keystroke. Min 3 chars; typo → closest suburb (Tab to accept); a price typed here is offered to act 2.

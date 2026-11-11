@@ -50,7 +50,8 @@ function median(post, beds, maxRent) {
 }
 
 const { chromium } = await import('playwright');
-const browser = await chromium.launch();
+// Use an already-installed Chromium in restricted session executors; default to Playwright's browser elsewhere.
+const browser = await chromium.launch({ executablePath: process.env.SHOWHAUS_CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
 const VIEWPORTS = [[1440, 900], [1280, 720], [390, 844]];
@@ -83,7 +84,11 @@ for (const [w, h] of VIEWPORTS) {
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SHOWHAUS?.rents, null, { timeout: 30000 });
   const tag = `${w}×${h}`;
+  check(`${tag} Living Atlas opens in Explore`, await page.locator('.views .view.on').innerText() === 'Explore' && await page.locator('.explore-shell').isVisible());
+  check(`${tag} unreleased experiences are clearly unavailable`, await page.locator('.views .view[disabled]').count() === 2);
+  check(`${tag} reading panel is opaque over map`, await page.locator('.explore-shell').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(250, 248, 243)'));
   await noOverflow(page, `${tag} act 1`);
+  if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.waitForTimeout(1200); await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` }); }
 
   // Act 1: counter = recount for the whole window, then per-keystroke.
   const total = await page.locator('#c1').innerText();
@@ -112,6 +117,7 @@ for (const [w, h] of VIEWPORTS) {
   await page.fill('#where', busiest); await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.body.dataset.act === '2');
   await noOverflow(page, `${tag} act 2`);
+  if (shotsDir) await page.screenshot({ path: `${shotsDir}/act2-${w}x${h}.png` });
 
   // Act 2: budget slider + bedrooms recount, median.
   await page.locator('#budget').fill('30'); // index 30 → $1,000/wk
@@ -131,6 +137,11 @@ for (const [w, h] of VIEWPORTS) {
 
   await page.click('[data-go="3"]'); await page.waitForFunction(() => document.body.dataset.act === '3');
   await noOverflow(page, `${tag} act 3`);
+  check(`${tag} preferences action stays visible without scrolling`, await page.locator('#act3 .next').evaluate(el => {
+    const b = el.getBoundingClientRect(), stage = document.querySelector('.explore-stage').getBoundingClientRect();
+    return b.top >= stage.top - 1 && b.bottom <= stage.bottom + 1;
+  }));
+  if (shotsDir) await page.screenshot({ path: `${shotsDir}/act3-${w}x${h}.png` });
   const c3before = (await page.locator('#c3').innerText()).replace(/,/g, '');
   check(`${tag} act 3 count starts equal to act 2`, c3before === c2, `${c3before} vs ${c2}`);
   await page.click('[data-want="quiet"]');

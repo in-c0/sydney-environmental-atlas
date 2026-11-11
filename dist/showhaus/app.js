@@ -21,7 +21,7 @@
   const ROAD_RANK = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2, minor: 1, service: 0 };
   const BEDS = [[0, 'Studio'], [1, '1 bed'], [2, '2 bed'], [3, '3 bed'], [4, '4+ bed']];
   const TYPES = [[0, 'Unit'], [1, 'House'], [2, 'Townhouse']];
-  const DARK = matchMedia('(prefers-color-scheme: dark)').matches, INK = DARK ? '#ece4d3' : '#1d2733', PAPER = DARK ? '#15181d' : '#fffaf0';
+  const DARK = document.documentElement.dataset.theme === 'dark', INK = DARK ? '#ece4d3' : '#202c2b', PAPER = DARK ? '#15181d' : '#f6f3ec';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
   const DOT_RAMP = ['#dca04e', '#d47a2e', '#bf5523', '#9c3a1d', '#702617', '#3f140c']; // same order, shifted darker: a dot must stand off the fill
 
@@ -79,19 +79,41 @@
   const fmtYm = ym => new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
   // ---------- map ----------
+  function mapUnavailable(message = 'The interactive map is unavailable in this browser. Rent search, counts and postcode evidence still work; try a WebGL-capable browser for map interaction.') {
+    const status = $('mapStatus');
+    status.dataset.state = 'error';
+    status.textContent = message;
+  }
+  function syncMapPadding() {
+    if (!map) return;
+    const mobile = innerWidth <= 760;
+    map.setPadding(mobile
+      ? { top: 64, right: 10, bottom: Math.round(innerHeight * (state.act === 4 ? .49 : Math.min(.56, 520 / innerHeight))) + 78, left: 10 }
+      : { top: 85, right: state.act === 4 ? Math.min(380, Math.round(innerWidth * .3)) : 18,
+          bottom: 28, left: innerWidth <= 1100 ? 362 : Math.min(442, Math.round(innerWidth * .29) + 58) });
+  }
   function initMap() {
-    map = new maplibregl.Map({
-      container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
-      attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
-    });
+    try {
+      map = new maplibregl.Map({
+        container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: SYD, zoom: 9.6, pitch: 0,
+        attributionControl: { compact: true }, maxBounds: [[139.5, -38.5], [155.5, -27.0]],
+      });
+    } catch (e) {
+      map = null;
+      mapUnavailable();
+      console.warn('SHOWHAUS map initialization unavailable:', e.message);
+      return;
+    }
+    setTimeout(() => { if (!mapReady) mapUnavailable(); }, 12000);
     map.on('load', () => {
+      $('mapStatus').dataset.state = 'ready';
       tintBasemap();
       const before = map.getLayer('building') ? 'building' : undefined;
       map.addSource('pc', { type: 'geojson', data: pcFC || { type: 'FeatureCollection', features: [] }, promoteId: 'pc' });
       map.addLayer({ id: 'pc-fill', type: 'fill', source: 'pc', paint: {
         'fill-color': ['case', ['==', ['get', 'n'], 0], 'rgba(0,0,0,0)', ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]]],
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .5, 11.2, .45, 12.2, .1, 16, .06] } }, before);
-      map.addLayer({ id: 'pc-line', type: 'line', source: 'pc', paint: { 'line-color': '#2f4c7a', 'line-opacity': ['case', ['==', ['get', 'sel'], 1], .95, .25], 'line-width': ['case', ['==', ['get', 'sel'], 1], 2.4, .6] } });
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, .32, 11.2, .34, 12.2, .1, 16, .06] } }, before);
+      map.addLayer({ id: 'pc-line', type: 'line', source: 'pc', paint: { 'line-color': '#2f4c7a', 'line-opacity': ['case', ['==', ['get', 'sel'], 1], .95, .16], 'line-width': ['case', ['==', ['get', 'sel'], 1], 2.4, .6] } });
       map.addLayer({ id: 'pc-3d', type: 'fill-extrusion', source: 'pc', layout: { visibility: 'none' }, paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'med'], 350, RAMP[0], 550, RAMP[1], 750, RAMP[2], 950, RAMP[3], 1300, RAMP[4], 2000, RAMP[5]],
         'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': .82 } });
@@ -119,7 +141,7 @@
       map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', maxzoom: DOT_ZOOM + .5, layout: {
         'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 14],
         'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
-        'symbol-sort-key': ['-', ['get', 'n']], 'text-padding': 4, 'icon-padding': 4 },
+        'symbol-sort-key': ['-', ['get', 'n']], 'text-padding': 16, 'icon-padding': 16 },
         paint: { 'text-color': INK, 'text-opacity': fadeOut, 'icon-opacity': fadeOut } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
@@ -128,6 +150,7 @@
       map.addLayer({ id: 'pick-pin', type: 'circle', source: 'pick', filter: ['==', ['get', 'k'], 'pin'], paint: { 'circle-radius': 8, 'circle-color': '#7d5fc7', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 } });
       map.addLayer({ id: 'pick-sun', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'sun'], paint: { 'line-color': '#e2a234', 'line-width': 3, 'line-dasharray': [1.5, 1.5] } });
       mapReady = true;
+      syncMapPadding();
       applyFilter();
     });
     map.on('moveend', () => { drawLeases(); renderLegend(); });
@@ -161,11 +184,14 @@
       selectPoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
     });
     map.on('move', drawOverlay);
-    map.on('error', e => { if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown')); });
+    map.on('error', e => {
+      mapUnavailable('Some map tiles are unavailable. Rental records and filters still work; try reloading the map later.');
+      if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown'));
+    });
   }
   function tintBasemap() {
     const css = getComputedStyle(document.documentElement);
-    const paper = css.getPropertyValue('--paper').trim(), dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const paper = css.getPropertyValue('--paper').trim(), dark = DARK;
     const set = (id, p, v) => { try { if (map.getLayer(id)) map.setPaintProperty(id, p, v); } catch { /* layer differs */ } };
     set('background', 'background-color', paper);
     set('water', 'fill-color', dark ? '#1c2a36' : '#c9d8de');
@@ -227,6 +253,8 @@
     $('c2').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
     $('m2').textContent = state.mode === 'buy' ? 'licence pending' : C.weekly(C.quantile(rents, .5));
     $('c3').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
+    $('summaryCount').textContent = state.mode === 'buy' ? '—' : idx.length.toLocaleString('en-AU');
+    $('summaryMedian').textContent = state.mode === 'buy' ? 'licence pending' : C.weekly(C.quantile(rents, .5));
     drawLeases(); renderLegend();
     renderSelection();
     drawOverlay();
@@ -354,6 +382,8 @@
     }
     if (n === 3) { renderWants(); setTimeout(demoChip, 400); }
     if (n === 4) {
+      $('q4').textContent = state.place?.kind === 'suburb'
+        ? `${state.place.name} NSW ${state.place.postcode}` : (state.place?.name || 'Explore Sydney');
       if (!state.point && state.place) {
         if (state.place.kind === 'suburb') selectPoint({ lng: state.place.lng, lat: state.place.lat });
         else { // a broad area: start at its busiest postcode's centre
@@ -362,6 +392,7 @@
         }
       } else renderCard();
     }
+    syncMapPadding();
     cue(); renderSelection();
   }
 
@@ -392,9 +423,14 @@
     state.point = p;
     const fw = $('flagWrong'); if (fw && fw.dataset.done) { delete fw.dataset.done; fw.textContent = 'Looks wrong?'; }
     if (state.act !== 4) go(4);
-    map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16.2), duration: 600 });
     const k = keyOf(p);
     if (!evidence.has(k)) evidence.set(k, { road: { s: 'load' }, sun: { s: 'load' }, canopy: { s: 'load' }, land: { s: 'load' }, plan: { s: 'load' } });
+    if (!map || !mapReady) {
+      evidence.set(k, { road: { s: 'err', why: 'Interactive map unavailable' }, sun: { s: 'err', why: 'Interactive map unavailable' }, canopy: { s: 'none' }, land: { s: 'none' }, plan: { s: 'none' } });
+      renderCard();
+      return;
+    }
+    map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16.2), duration: 600 });
     renderCard(); drawPick();
     window.SH && SH.track('place_card', p.pci != null ? { postcode: String(R.postcodes[p.pci]).padStart(4, '0') } : undefined);
     map.once('idle', () => { measureLocal(p); renderCard(); drawPick(); drawOverlay(); });
@@ -826,7 +862,7 @@
   $('commuteKm').addEventListener('input', () => { if (state.commute) { state.commute.km = Number($('commuteKm').value); $('commuteKmLabel').textContent = state.commute.km + ' km'; applyFilter(); renderWants(); } else geocodeCommute(); });
   $('proClose').addEventListener('click', () => setLens('map'));
   if ($('proWant')) $('proWant').addEventListener('click', () => { if (window.SH && (SH.signedIn || !SH.canSignIn)) { SH.track('pro_interest', { cta: 'count_me_in' }); toast('Counted. Thank you.'); setLens('map'); return; } setLens('map'); window.SH && SH.openSignIn('pro'); });
-  addEventListener('resize', drawOverlay);
+  addEventListener('resize', () => { map?.resize(); syncMapPadding(); drawOverlay(); });
 
   // ---------- boot ----------
   window.SHOWHAUS = { state, C, get amen() { return A; }, allowed, get pc() { return pcFC; }, get rents() { return R; }, get places() { return P; }, get map() { return map; }, get dots() { return dotStats; }, evidence, currentIdx, keyOf };
