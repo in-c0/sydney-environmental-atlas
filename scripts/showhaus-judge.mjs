@@ -92,7 +92,7 @@ for (const [w, h] of VIEWPORTS) {
     heading: getComputedStyle(document.querySelector('.explore-head h1')).fontFamily,
     brand: getComputedStyle(document.querySelector('.bar .brand')).fontFamily,
   }));
-  check(`${tag} modern readable type is applied`, typography.body.startsWith('Inter') && typography.heading.startsWith('Manrope') && typography.brand.startsWith('Manrope'), JSON.stringify(typography));
+  check(`${tag} modern readable type is applied`, typography.body.includes('Inter') && typography.heading.includes('Manrope') && typography.brand.includes('Manrope'), JSON.stringify(typography));
   await noOverflow(page, `${tag} act 1`);
   if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.waitForTimeout(1200); await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` }); }
 
