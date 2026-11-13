@@ -233,12 +233,19 @@
       state.property = st.property; state.auth = st.auth || state.auth;
       const street = st.property.address.split(/ and |,/)[0].replace(/ Street\b/, ' St').replace(/ Road\b/, ' Rd');
       const suburb = (st.property.address.match(/,\s*([A-Za-z' -]+?)\s+(NSW|VIC|QLD|ACT|SA|WA|TAS|NT)\b/) || [])[1];
-      $('paddr').textContent = [st.property.name, [street, suburb].filter(Boolean).join(', ')].join(' · ');
+      $('paddr').textContent = [st.property.name, [street, suburb].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+      if (st.property.kind === 'walk') { // the hero clip is the Studio demo; a walk listing shows its own still instead
+        const v = $('walk'); if (v) { v.pause(); v.removeAttribute('src'); v.removeAttribute('autoplay'); v.poster = `../walk/data/${slug}/poster.jpg`; v.setAttribute('aria-label', `Still from the ${st.property.name} walkthrough`); v.load(); }
+        const note = document.querySelector('.stage-note'); if (note) note.textContent = `${st.property.name} · base walkthrough`;
+        const fine = [...document.querySelectorAll('p.fine')].find(e => /^Made by SHOWHAUS/.test(e.textContent));
+        if (fine) fine.textContent = 'Made by SHOWHAUS as an AI visualisation. Not endorsed by the builder, owner or any agency until it is claimed.';
+      }
       $('submit').textContent = `Claim ${st.property.name}`;
       $('h-intro').textContent = 'Do you or your agency own or market this property?';
     }
-    $('open3d').href = `../studio/?p=${slug}&src=claim`;
-    $('justView').href = `../studio/?p=${slug}&src=claim-no`;
+    const view = st && st.property.kind === 'walk' ? 'walk' : 'studio';
+    $('open3d').href = `../${view}/?p=${slug}&src=claim`;
+    $('justView').href = `../${view}/?p=${slug}&src=claim-no`;
     if (m) {
       const r = await fetch('/api/claim/manage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: m[1] }), credentials: 'same-origin' });
       const data = await r.json().catch(() => ({}));

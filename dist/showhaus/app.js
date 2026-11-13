@@ -161,6 +161,7 @@
       applyFilter();
       setDisplay(state.display);
       renderNearby();
+      addWalkPins();
     });
     map.on('moveend', () => { renderLegend(); renderNearby(); });
     const expandNode = async e => {
@@ -200,6 +201,20 @@
       mapUnavailable('Some map tiles are unavailable. Rental records and filters still work; try reloading the map later.');
       if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown'));
     });
+  }
+  // Homes with a walkthrough (dist/showhaus/walk/data/index.json). Only items with a real location get a pin;
+  // home designs with no address stay in the Walk gallery.
+  function addWalkPins() {
+    fetch('./walk/data/index.json').then(r => (r.ok ? r.json() : null)).then(idx => {
+      for (const it of (idx && idx.items) || []) {
+        if (!Array.isArray(it.lngLat)) continue;
+        const a = document.createElement('a');
+        a.className = 'walk-pin'; a.href = './walk/' + it.href.replace(/^\.\//, '') + (it.href.includes('?') ? '&' : '?') + 'src=map-pin';
+        a.textContent = '▶ Walk'; a.title = `${it.name} — ${it.tier}`; a.setAttribute('aria-label', `Walk through ${it.name}`);
+        a.addEventListener('click', e => { e.stopPropagation(); if (window.SH) window.SH.track('cta', { cta: 'walk-pin:' + it.slug }); });
+        new maplibregl.Marker({ element: a, anchor: 'bottom' }).setLngLat(it.lngLat).addTo(map);
+      }
+    }).catch(() => {});
   }
   function tintBasemap() {
     const css = getComputedStyle(document.documentElement);
