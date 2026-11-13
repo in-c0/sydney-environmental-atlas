@@ -344,3 +344,13 @@ body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
   .explore-stage .nearby { margin-top: 10px; }
   .nearby-list button { min-height: 42px; padding: 6px 8px; }
 }
+
+/* Recent searches remain visible and keyboard/touch removable beneath map suggestions.
+   Fixed hit targets also avoid hover-width reflow while an inner panel scrolls. */
+.explore-stage .presets { max-height: none; overflow: visible; padding-bottom: 8px; }
+.explore-stage .presets button.x,
+.explore-stage .presets li:hover button.x,
+.explore-stage .presets li:focus-within button.x {
+  width: 26px; min-width: 26px; min-height: 32px; padding: 0;
+  transition: none; overflow: visible;
+}
