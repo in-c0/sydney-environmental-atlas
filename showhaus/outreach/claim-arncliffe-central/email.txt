@@ -4,7 +4,7 @@ Subject: Arncliffe Central in 3D — is it yours to claim?
 
 Hi {{first_name}},
 
-We built a 3D walkthrough of a Sydney project, Arncliffe Central, from public planning documents: real surrounding buildings, real sun, what each floor can see.
+We built a 3D model of a Sydney project, Arncliffe Central, from public planning documents: real surrounding buildings, real sun, what each floor can see.
 
 Watch it (10 s): https://showhaus.app/claim/media/walkthrough-email.gif
 
@@ -13,7 +13,7 @@ Do you own or market this property? Claim it on SHOWHAUS.
 Claim this property — one click:
 https://showhaus.app/claim/?p=arncliffe-central&utm_source=email&utm_medium=outreach&utm_campaign=claim-arncliffe-central&ref={{ref}}
 
-Register it as yours and you get a link. Paste it anywhere and anyone can open the 3D walkthrough.
+Register it as yours and you get a link. Paste it anywhere and anyone can open the 3D model.
 How claiming works (10 s video): https://showhaus.app/claim/media/claim-explainer.mp4
 
 — SHOWHAUS Studio

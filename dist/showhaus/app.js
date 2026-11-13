@@ -202,7 +202,7 @@
       if (!mapReady) toast('Map tiles could not load: ' + (e.error?.message || 'unknown'));
     });
   }
-  // Homes with a walkthrough (dist/showhaus/walk/data/index.json). Only items with a real location get a pin;
+  // Homes with a walkthrough or an exterior 3D model (dist/showhaus/walk/data/index.json). Only items with a real location get a pin;
   // home designs with no address stay in the Walk gallery.
   function addWalkPins() {
     fetch('./walk/data/index.json').then(r => (r.ok ? r.json() : null)).then(idx => {
@@ -210,7 +210,8 @@
         if (!Array.isArray(it.lngLat)) continue;
         const a = document.createElement('a');
         a.className = 'walk-pin'; a.href = './walk/' + it.href.replace(/^\.\//, '') + (it.href.includes('?') ? '&' : '?') + 'src=map-pin';
-        a.textContent = '▶ Walk'; a.title = `${it.name} — ${it.tier}`; a.setAttribute('aria-label', `Walk through ${it.name}`);
+        const walk = it.kind === 'walk'; // an exterior model you orbit is not a walk
+        a.textContent = walk ? '▶ Walk' : '◆ 3D model'; a.title = `${it.name} — ${it.tier}`; a.setAttribute('aria-label', walk ? `Walk through ${it.name}` : `Open the 3D model of ${it.name}`);
         a.addEventListener('click', e => { e.stopPropagation(); if (window.SH) window.SH.track('cta', { cta: 'walk-pin:' + it.slug }); });
         new maplibregl.Marker({ element: a, anchor: 'bottom' }).setLngLat(it.lngLat).addTo(map);
       }

@@ -30,7 +30,7 @@
       frameBox.style.height = Math.max(420, Math.min(h, 820)) + 'px';
     }
     var iframe = document.createElement('iframe');
-    iframe.title = 'SHOWHAUS 3D walkthrough';
+    iframe.title = 'SHOWHAUS 3D model';
     iframe.setAttribute('loading', 'lazy');
     iframe.setAttribute('allow', 'fullscreen');
     iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');

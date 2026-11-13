@@ -41,6 +41,7 @@ async function run(name, viewport, touch) {
   // gallery
   await page.goto(`${WALK}?synthetic=1`, { waitUntil: 'networkidle' });
   check(await page.locator('.g-card').count() >= 1, `${name}: gallery lists walkthroughs`);
+  check(!/Arncliffe|Massing/i.test(await page.locator('#cards').innerText()), `${name}: gallery holds no exterior model`);
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${name}: gallery has no horizontal scroll`);
   check(await page.evaluate(() => [...document.querySelectorAll('.g-card .shot')].every(s => { const u = getComputedStyle(s).backgroundImage; return u && u !== 'none'; })), `${name}: every card has a poster`);
   await shot('0-gallery');
@@ -80,11 +81,16 @@ async function run(name, viewport, touch) {
   const s1 = await st();
   check(s1.photoOn === views - 1, `${name}: last photoreal viewpoint is revealed after the glide (photoOn=${s1.photoOn})`);
   check(await page.locator('#wipe').isVisible(), `${name}: divider is shown on a photoreal view`);
-  const clipBefore = await page.locator('#photo').evaluate(e => e.style.clipPath);
+  const layerSel = await page.evaluate(() => (document.getElementById('clip').getAttribute('src') ? '#clip' : '#photo'));
+  if (layerSel === '#clip') { const a = await st(); await page.waitForTimeout(1200); const b = await st();
+    check(b.clipTime !== a.clipTime, `${name}: AI walk clip is playing (${a.clipTime.toFixed(2)} → ${b.clipTime.toFixed(2)} s)`);
+    check(Math.hypot(b.px - a.px, b.py - a.py) > 0.1, `${name}: base camera walks the clip's path in step (moved ${Math.hypot(b.px - a.px, b.py - a.py).toFixed(2)} m)`);
+    check(/not a video/.test(await page.locator('#tag').textContent()), `${name}: clip is labelled as AI, not a video of the home`); }
+  const clipBefore = await page.locator(layerSel).evaluate(e => e.style.clipPath);
   const wb = await page.locator('#wipe').boundingBox();
   if (touch) { await finger('touchStart', wb.x + 22, 300); for (const x of [160, 120, 80]) await finger('touchMove', x, 300); await finger('touchEnd'); }
   else { await page.mouse.move(wb.x + 22, 300); await page.mouse.down(); await page.mouse.move(viewport.width * 0.2, 300, { steps: 6 }); await page.mouse.up(); }
-  const clipAfter = await page.locator('#photo').evaluate(e => e.style.clipPath);
+  const clipAfter = await page.locator(layerSel).evaluate(e => e.style.clipPath);
   check(clipBefore !== clipAfter && parseFloat(clipAfter.split(' ').pop()) < 30, `${name}: dragging the divider reveals more of the photo (${clipAfter})`);
   await shot('3-photo-wipe');
 
@@ -141,6 +147,8 @@ async function run(name, viewport, touch) {
   await page.goto(`${BASE}${root}/?synthetic=1`, { waitUntil: 'domcontentloaded' });
   check(await page.locator('#walkNav').isVisible(), `${name}: map header has the Walk link`);
   await page.waitForTimeout(2500);
+  const pins = await page.locator('.walk-pin').allTextContents();
+  check(pins.length >= 1 && pins.every(t => !/Walk/.test(t) || false) , `${name}: exterior model pin is not called a walk (${pins.join(', ')})`);
   await shot('8-map');
   check(errors.length === 0, `${name}: no page errors${errors.length ? ' — ' + errors.slice(0, 3).join(' | ') : ''}`);
   await ctx.close();

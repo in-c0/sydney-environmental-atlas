@@ -1,4 +1,4 @@
-# SHOWHAUS Studio — 3D walkthrough for project-marketing teams
+# SHOWHAUS Studio — 3D model for project-marketing teams
 
 Live: https://showhaus.app/studio/?p=arncliffe-central · pilot: https://showhaus.app/studio/pilot.html
 

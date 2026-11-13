@@ -36,7 +36,7 @@
 
   async function boot() {
     const res = await fetch(`./data/${slug}.json`);
-    if (!res.ok) { $('pname').textContent = 'Project not found'; $('plabel').textContent = `No walkthrough recorded for “${slug}”.`; document.body.dataset.state = 'error'; return; }
+    if (!res.ok) { $('pname').textContent = 'Project not found'; $('plabel').textContent = `No 3D model recorded for “${slug}”.`; document.body.dataset.state = 'error'; return; }
     data = await res.json();
     ctx = C.context(data);
     floors = C.floorFeatures(data);
@@ -345,7 +345,7 @@
   function play(auto = false) {
     if (!keyframes.length) return;
     state.playing = true; document.body.dataset.state = 'playing';
-    $('playBtn').textContent = '❚❚'; $('playBtn').setAttribute('aria-label', 'Pause walkthrough');
+    $('playBtn').textContent = '❚❚'; $('playBtn').setAttribute('aria-label', 'Pause flyover');
     state.t0 = performance.now() - (state.tPlay || 0) * 1000;
     cancelAnimationFrame(raf); raf = requestAnimationFrame(frameLoop);
     track('play', { auto: auto ? 1 : 0 });
@@ -354,7 +354,7 @@
     if (!state.playing) return;
     state.playing = false; state.tPlay = (performance.now() - state.t0) / 1000;
     document.body.dataset.state = 'paused'; cancelAnimationFrame(raf);
-    $('playBtn').textContent = '▶'; $('playBtn').setAttribute('aria-label', 'Play walkthrough');
+    $('playBtn').textContent = '▶'; $('playBtn').setAttribute('aria-label', 'Play flyover');
     $('caption').classList.remove('on');
   }
 
@@ -384,5 +384,5 @@
   };
   addEventListener('keydown', e => { if (e.key === ' ' && e.target === document.body) { e.preventDefault(); state.playing ? pause() : play(); } });
 
-  boot().catch(err => { console.error(err); $('pname').textContent = 'Could not load the walkthrough'; });
+  boot().catch(err => { console.error(err); $('pname').textContent = 'Could not load the 3D model'; });
 })();
