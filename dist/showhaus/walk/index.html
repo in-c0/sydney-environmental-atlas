@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Walk a home · SHOWHAUS</title>
+<meta name="description" content="Walk through a home in your browser before you visit. Base walkthroughs are free; any home can be upgraded to a photoreal walk.">
+<meta property="og:title" content="Walk a home · SHOWHAUS">
+<meta property="og:image" content="https://showhaus.app/walk/data/buildtec-avalon/poster.jpg">
+<link rel="stylesheet" href="./walk.css">
+<script type="importmap">{"imports":{"three":"./three.module.js"}}</script>
+</head>
+<body data-mode="boot">
+
+<!-- gallery: /walk/ -->
+<main id="gallery" hidden>
+  <header class="g-top">
+    <a class="brand" href="../" aria-label="SHOWHAUS map">SHOWHAUS<span>Sydney, before you sign</span></a>
+    <a class="g-map" href="../">← Map</a>
+  </header>
+  <h1>Walk it before you visit.</h1>
+  <p class="g-lead">Every home starts with a free base walk. Photoreal upgrades are opening soon — open a home and tell us which one first.</p>
+  <div id="cards" class="g-cards"></div>
+  <p class="g-foot">Own, build or market one of these? Open it and claim it — free.</p>
+</main>
+
+<!-- viewer: /walk/?p=<slug> -->
+<img id="photo" alt="">
+<video id="clip" muted playsinline preload="none"></video>
+<div id="title" hidden>
+  <a id="back" href="./" aria-label="All walkthroughs">←</a>
+  <b id="tname"></b><span id="tby"></span><span id="trooms"></span>
+  <span id="claim"></span><span id="basis"></span>
+  <a id="claimLink" href="#">Is this yours? Claim it</a>
+</div>
+<div id="side" hidden><div id="map"></div><button id="up" type="button">Make this walk photoreal</button></div>
+<div id="tag">◀ Base walk &nbsp;·&nbsp; AI render, not a photo ▶</div>
+<div id="wipe"></div>
+<div id="veil"><div id="card" role="dialog" aria-labelledby="cardH">
+  <button id="x" type="button" aria-label="Close">×</button>
+  <h2 id="cardH">Want a better walk?</h2>
+  <p>Upgrade this home to a photoreal walkthrough — for everyone who visits it.</p>
+  <div class="need"><div class="ic" id="needPlanIc">1</div><div><b>Floor plan</b><span id="needPlan"></span></div></div>
+  <div class="need"><div class="ic">2</div><div><b>Credits</b><span>You see the cost and the time limit before anything starts.</span></div></div>
+  <ul>
+    <li>Requests over the size limit are declined up front — nothing is charged.</li>
+    <li>Every render has a time cap. If it stops at the cap, your credits are refunded.</li>
+    <li id="cardbasis"></li>
+  </ul>
+  <p class="fine" id="wantFine">Not open yet — no payment. One tap tells us to build it for this home first.</p>
+  <div class="row"><button id="see" type="button">See the sample</button><button id="want" type="button">I'd upgrade this home</button></div>
+</div></div>
+<div id="chips"></div>
+<div id="stick"><div id="knob"></div></div>
+<div id="hint">Drag to look · WASD or tap the plan to walk</div>
+<div id="load">Opening…</div>
+
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script type="module" src="./walk.js"></script>
+</body>
+</html>

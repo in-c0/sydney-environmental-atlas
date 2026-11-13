@@ -1,0 +1,19 @@
+{
+  "project": { "name": "Avalon", "address": "" },
+  "listing": {
+    "slug": "buildtec-avalon",
+    "name": "Avalon",
+    "by": "Buildtec",
+    "type": "Home design",
+    "rooms": "Kitchen · Dining · Family · Alfresco",
+    "source": "plan",
+    "source_url": "https://www.buildtechomes.com.au/wp-content/uploads/2026/07/avalon-floorplan.png",
+    "assumptions": [
+      "Ceiling: not on the plan. Assumed raked, 2.6 m at the hall wall rising to 3.5 m at the alfresco wall.",
+      "Windows: heights not on the plan. Sliding doors 0–2.4 m, windows 0.6–2.4 m.",
+      "Alfresco assumed to face north.",
+      "Finishes and furniture are placeholders."
+    ],
+    "lngLat": null
+  }
+}

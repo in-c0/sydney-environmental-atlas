@@ -135,18 +135,24 @@ const onShowhaus = url => url.hostname === 'showhaus.app' || url.hostname === 'w
 const prefix = url => (onShowhaus(url) ? '' : '/showhaus');
 export const shareUrl = (url, slug, code) => `${onShowhaus(url) ? 'https://showhaus.app' : url.origin}/s/${slug}${code ? '/' + code : ''}`;
 const manageUrl = (url, slug, token) => `${onShowhaus(url) ? 'https://showhaus.app' : url.origin + '/showhaus'}/claim/?p=${slug}#m=${token}`;
-const embedOf = (url, slug, code) => `<script src="${onShowhaus(url) ? 'https://showhaus.app' : url.origin + '/showhaus'}/studio/embed.js" data-project="${slug}"${code ? ` data-by="${code}"` : ''} async></` + 'script>';
+const walkEmbed = (url, slug, code) => `<iframe src="${onShowhaus(url) ? 'https://showhaus.app' : url.origin + '/showhaus'}/walk/?p=${slug}${code ? '&by=' + code : ''}&src=embed" title="3D walkthrough on SHOWHAUS" loading="lazy" allowfullscreen style="width:100%;aspect-ratio:16/10;border:0;border-radius:14px"></iframe>`;
+const embedOf = (url, slug, code, kind) => kind === 'walk' ? walkEmbed(url, slug, code) : `<script src="${onShowhaus(url) ? 'https://showhaus.app' : url.origin + '/showhaus'}/studio/embed.js" data-project="${slug}"${code ? ` data-by="${code}"` : ''} async></` + 'script>';
 
 async function propertyOf(request, env, slug) {
   if (!/^[a-z0-9-]{3,80}$/.test(slug || '')) return null;
   const u = new URL(request.url);
-  try {
-    const r = await env.ASSETS.fetch(new Request(`${u.origin}/showhaus/studio/data/${slug}.json`));
-    if (!r.ok) return null;
-    const data = await r.json().catch(() => null);
-    const p = data && data.project;
-    return { slug, name: (p && p.name) || slug, address: (p && p.address) || '' };
-  } catch { return null; }
+  // A slug is either a Studio project (massing model) or a walk listing (interior walkthrough, dist/showhaus/walk).
+  for (const kind of ['studio', 'walk']) {
+    try {
+      const r = await env.ASSETS.fetch(new Request(`${u.origin}/showhaus/${kind}/data/${slug}.json`));
+      if (!r.ok) continue;
+      const data = await r.json().catch(() => null);
+      const p = data && data.project;
+      if (!p) continue;
+      return { slug, kind, name: p.name || slug, address: p.address || '' };
+    } catch { /* try the next kind */ }
+  }
+  return null;
 }
 
 function tokensOf(request) { return (cookieOf(request, COOKIE) || '').split('.').filter(t => /^[0-9a-f]{48}$/.test(t)).slice(-MAX_TOKENS); }
@@ -155,11 +161,11 @@ function tokenCookie(request, tokens) {
   return `${COOKIE}=${[...new Set(tokens)].slice(-MAX_TOKENS).join('.')}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_DAYS * 86400}${secure}`;
 }
 
-export function publicClaim(url, c) {
+export function publicClaim(url, c, kind) {
   return {
     id: c.id, slug: c.slug, code: c.code, status: c.status, reason: c.reason, mode: c.mode, role: c.role, role_label: ROLES[c.role],
     company: c.company, website_host: c.website_host, email_domain: c.email_domain, file: c.file_name ? { name: c.file_name, bytes: c.file_bytes } : null,
-    at: c.at, share_url: shareUrl(url, c.slug, c.code), embed: embedOf(url, c.slug, c.code),
+    at: c.at, share_url: shareUrl(url, c.slug, c.code), embed: embedOf(url, c.slug, c.code, kind),
   };
 }
 
@@ -250,7 +256,7 @@ async function submit(request, env, ctx, d) {
   if (ctx && ctx.waitUntil) ctx.waitUntil(p); else await p;
 
   const row = await d.prepare('SELECT * FROM sh_claims WHERE id = ?').bind(id).first();
-  return j({ ok: true, claim: publicClaim(url, row), manage_url: manageUrl(url, prop.slug, token), file_note: fileNote, updated: !!prev }, 200,
+  return j({ ok: true, claim: publicClaim(url, row, prop.kind), manage_url: manageUrl(url, prop.slug, token), file_note: fileNote, updated: !!prev }, 200,
     { 'set-cookie': tokenCookie(request, [...tokensOf(request), token]) });
 }
 
@@ -283,14 +289,15 @@ async function state(request, env, d) {
   const mine = conds.length
     ? (await d.prepare(`SELECT * FROM sh_claims WHERE slug = ? AND status != 'released' AND (${conds.join(' OR ')}) ORDER BY updated_at DESC LIMIT 5`).bind(...args).all()).results
     : [];
-  return j({ property: prop, mine: mine.map(c => publicClaim(url, c)), auth: { signedIn: !!user, available: !!mailMode(env) } });
+  return j({ property: prop, mine: mine.map(c => publicClaim(url, c, prop.kind)), auth: { signedIn: !!user, available: !!mailMode(env) } });
 }
 
 export async function handleClaim(request, env, ctx) {
   const url = new URL(request.url), path = url.pathname;
   const share = path.match(/^\/s\/([a-z0-9-]{3,80})(?:\/([a-z0-9]{4,12}))?\/?$/);
   if (share) {
-    const to = `${url.origin}${prefix(url)}/studio/?p=${share[1]}${share[2] ? '&by=' + share[2] : ''}&src=share`;
+    const kind = ((await propertyOf(request, env, share[1])) || {}).kind === 'walk' ? 'walk' : 'studio';
+    const to = `${url.origin}${prefix(url)}/${kind}/?p=${share[1]}${share[2] ? '&by=' + share[2] : ''}&src=share`;
     return new Response(null, { status: 302, headers: { location: to, 'cache-control': 'no-store' } });
   }
   if (!path.startsWith('/api/claim/')) return null;
@@ -300,6 +307,11 @@ export async function handleClaim(request, env, ctx) {
     const d = await cdb(env);
     if (!d) return j({ error: 'Claiming is not available here yet.' }, 503);
     if (path === '/api/claim/state' && request.method === 'GET') return await state(request, env, d);
+    if (path === '/api/claim/public' && request.method === 'GET') { // is this property claimed? Drives the page badge; names only verified claimants.
+      const slug = url.searchParams.get('p') || '';
+      const row = /^[a-z0-9-]{3,80}$/.test(slug) ? await d.prepare("SELECT company FROM sh_claims WHERE slug = ? AND status = 'verified' ORDER BY updated_at DESC LIMIT 1").bind(slug).first() : null;
+      return j({ claimed: !!row, company: row ? row.company : null }, 200, { 'cache-control': 'public, max-age=60' });
+    }
     if (path === '/api/claim/brand' && request.method === 'GET') {
       const code = (url.searchParams.get('c') || '').toLowerCase();
       const row = /^[a-z0-9]{4,12}$/.test(code) ? await d.prepare("SELECT company, slug FROM sh_claims WHERE code = ? AND status = 'verified'").bind(code).first() : null;
@@ -311,7 +323,8 @@ export async function handleClaim(request, env, ctx) {
     const row = await byToken(d, body.token);
     if (path === '/api/claim/manage') {
       if (!row || row.status === 'released') return j({ error: 'This manage link is not valid any more.' }, 404);
-      return j({ ok: true, claim: publicClaim(url, row) }, 200, { 'set-cookie': tokenCookie(request, [...tokensOf(request), body.token]) });
+      const kind = ((await propertyOf(request, env, row.slug)) || {}).kind;
+      return j({ ok: true, claim: publicClaim(url, row, kind) }, 200, { 'set-cookie': tokenCookie(request, [...tokensOf(request), body.token]) });
     }
     if (path === '/api/claim/release') {
       if (!row) return j({ error: 'This manage link is not valid any more.' }, 404);
