@@ -9,8 +9,9 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   'play', 'floor', 'embed_copy',
   // Claim flow (dist/showhaus/claim): props.kind = 'claim:<slug>'. claim_submitted / claim_verified are server-only.
   // Walk listings (dist/showhaus/walk): props.kind = 'walk:<slug>', props.step = room name, props.cta = which button.
-  // upgrade_interest is the demand signal for the photoreal tier while it has no price.
-  'walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest',
+  // upgrade_interest is the demand signal for the photoreal tier while it has no price; upgrade_interest_cancel takes one vote back
+  // (demand = interest − cancels).
+  'walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest', 'upgrade_interest_cancel',
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
   'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified']);

@@ -15,6 +15,10 @@ ANCH = {
            ["I refuse to claim this and want it taken down.", "I would rather not claim this.", "I might claim this later.", "I would likely claim this.", "I am claiming this immediately."],
            ["Claiming this is out of the question.", "Claiming this does not appeal to me.", "I am undecided about claiming this.", "Claiming this makes sense for us.", "Claiming this is an obvious yes."],
            ["I will not sign up for this.", "I doubt I will sign up for this.", "I may sign up for this.", "I expect to sign up for this.", "I will sign up for this now."]],
+ 'vote': [["I would definitely not tap the vote button.", "I would probably not tap the vote button.", "I am not sure whether I would tap the vote button.", "I would probably tap the vote button.", "I would definitely tap the vote button."],
+          ["No, I don't tap it and I close the card.", "I doubt I would tap it.", "I might tap it, I might not.", "Yes, I'd probably tap it since it is free.", "Yes, I tap it straight away."],
+          ["Voting here is out of the question for me.", "Voting here does not appeal to me.", "I am undecided about voting.", "Voting here seems harmless, so I would.", "Voting here is an easy yes."],
+          ["I refuse to vote for this home.", "I would rather not vote for this home.", "I may or may not vote for this home.", "I would vote for this home.", "I vote for this home without hesitation."]],
  'pay': [["I would definitely not pay for this.", "I would probably not pay for this.", "I am not sure whether I would pay for this.", "I would probably pay for this.", "I would definitely pay for this."],
          ["There is no way I am spending money on this.", "I doubt I would spend money on this.", "I might spend money on this, it depends.", "I am fairly likely to spend money on this.", "I will certainly spend money on this."],
          ["Paying for this is out of the question.", "Paying for this does not appeal to me.", "I am undecided about paying for this.", "Paying for this seems worthwhile.", "Paying for this is an easy yes."],
@@ -31,7 +35,7 @@ for path in sys.argv[1:]:
     rows = [l.rstrip('\n').split('|', 3) for l in open(path) if l.strip()]
     V = emb([r[3] for r in rows]); agg = defaultdict(lambda: np.zeros(5)); n = defaultdict(int); per = {}
     for (p, m, q, _), v in zip(rows, V):
-        key = 'pay' if q == 'B' else ('claim' if p[0] == 'B' else 'use'); d = dist(v, key)
+        key = 'vote' if q == 'V' else 'pay' if q == 'B' else ('claim' if p[0] == 'B' else 'use'); d = dist(v, key)
         per[(p, m, q)] = d @ np.arange(1, 6)
         for k in [(key, 'all', m), (key, group(p), m), (key, group(p), 'both'), (key, 'all', 'both')]: agg[k] += d; n[k] += 1
     print(f'== {path}')

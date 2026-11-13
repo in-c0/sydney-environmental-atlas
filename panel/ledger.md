@@ -1,6 +1,6 @@
 # Synthetic panel ledger
 
-Predictions are recorded before real traffic and checked against it afterwards. Running hit rate: 0 of 0 checked (no real traffic compared yet).
+Predictions are recorded before real traffic and checked against it afterwards. Running hit rate: 0 of 0 checked (8 predictions open, no real traffic compared yet).
 
 ## 2026-11-13 · SHOWHAUS walk: viewer, upgrade card, claim (Quick, 12 personas × 2 models)
 
@@ -14,3 +14,18 @@ Predictions to check against PostHog / D1 events (`walk_open`, `walk_room`, `upg
 4. Ranking of who would pay once a price exists: small custom builder > builder marketing > home seeker with own plan > home seeker browsing a catalogue design > renter.
 
 Not yet checked. SSR note: with `bge-small-en-v1.5` the distributions bunch around the middle and did not separate clear refusals from clear yeses, so the counts above come from the stated actions in the text, not from SSR means.
+
+## 2026-11-13 · SHOWHAUS walk: cancel vote (Quick, 12 personas × 2 models, between-subjects)
+
+Variants: N = card without cancel (live at the time), C = "You can cancel it any time" before voting and "Cancel vote" after. Each persona saw one variant per model; 6 per variant per model. Responses: `r3.txt`; 4-persona re-check of the changed wording: `r4.txt`.
+
+Stated actions: 8 of 12 would tap the vote in N, 8 of 12 in C (Sonnet 5/6 and 5/6, Haiku 3/6 and 3/6). 4 of the 8 C voters gave "I can cancel" as a reason. Nobody said they would cancel. SSR means: Sonnet 2.76 vs 2.76, Haiku 2.84 vs 2.93 (same flat shape as before).
+
+Predictions to check against `upgrade_interest` and `upgrade_interest_cancel`:
+
+5. Adding cancel does not change the share of card openers who vote (ranking: C ≈ N).
+6. Cancels are rare: well under one cancel per ten votes.
+7. Predicted weakest step after voting: "nothing happens next". Voters leave the card without claiming or returning unless a price or a date appears.
+8. Builder-side visitors do not vote on an unclaimed home; they go to claim (or to legal).
+
+Not yet checked.

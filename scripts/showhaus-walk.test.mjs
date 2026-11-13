@@ -104,7 +104,7 @@ test('worker: the public badge flips only for a verified claim, and a walk claim
 });
 
 test('events: upgrade interest is a page event carrying the listing and nothing personal', async () => {
-  for (const n of ['walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest']) assert.ok(CLIENT_EVENTS.has(n));
+  for (const n of ['walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest', 'upgrade_interest_cancel']) assert.ok(CLIENT_EVENTS.has(n));
   const env = makeEnv(), c = ctx();
   const r = await worker.fetch(new Request('https://showhaus.app/api/e', { method: 'POST', headers: { ...UA, 'content-type': 'application/json' },
     body: JSON.stringify({ name: 'upgrade_interest', anon: 'b7', path: '/walk/?p=buildtec-avalon', props: { kind: 'walk:buildtec-avalon', cta: 'has-plan', email: 'a@b.co' } }) }), env, c);
