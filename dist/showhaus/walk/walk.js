@@ -10,6 +10,7 @@ const track = (name, props = {}) => { try { window.SH && window.SH.track(name, {
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const getJSON = u => fetch(u, { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
 
+const SAMPLE = { gif: './data/buildtec-avalon/sample.gif', name: 'Avalon' };
 export const BASIS = {
   plan: 'Layout follows the published floor plan. Ceiling heights, finishes and furniture are estimated.',
   estimate: 'Interior layout is estimated from satellite imagery and a world model.',
@@ -145,7 +146,10 @@ async function openWalk() {
     function shut() { veil.style.display = 'none'; }
     const wanted = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
     const paintWant = () => { if (!wanted() && !want.classList.contains('done')) return; want.classList.add('done'); want.textContent = 'Counted ✓'; want.disabled = true; $('wantFine').textContent = 'Thanks — counted for this home.'; };
-    $('up').onclick = () => { veil.style.display = 'grid'; paintWant(); track('upgrade_open', { cta: 'button' }); };
+    // The sample GIF loads when the card opens. A home without its own AI walk shows the sample from another home, and says so.
+    const own = L.sample ? base + L.sample : null;
+    const showSample = () => { const im = $('sampleGif'); if (im.getAttribute('src')) return; im.src = own || SAMPLE.gif; im.alt = own ? `AI walk sample of the ${L.name}` : `AI walk sample from the ${SAMPLE.name}`; $('sampleCap').textContent = own ? 'AI walk of this home — sample' : `Sample from another home (${SAMPLE.name})`; };
+    $('up').onclick = () => { veil.style.display = 'grid'; showSample(); paintWant(); track('upgrade_open', { cta: 'button' }); };
     $('x').onclick = shut; veil.addEventListener('pointerdown', e => { if (e.target === veil) shut(); });
     const sample = V.findIndex(v => v.real);
     if (sample < 0) $('see').hidden = true; else $('see').onclick = () => { shut(); go(sample, 'sample'); };
