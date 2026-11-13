@@ -30,7 +30,8 @@ if (typeof document !== 'undefined') (slug ? openWalk() : openGallery());
 async function openGallery() {
   document.body.dataset.mode = 'gallery'; $('gallery').hidden = false;
   const idx = await getJSON('./data/index.json');
-  $('cards').innerHTML = ((idx && idx.items) || []).map(it => `
+  // Only interiors you can walk belong here. Exterior models (Studio) are pinned on the map as 3D models, not walks.
+  $('cards').innerHTML = ((idx && idx.items) || []).filter(it => it.kind === 'walk').map(it => `
     <a class="g-card" href="${esc(it.href)}${it.href.includes('?') ? '&' : '?'}src=walk-gallery" data-slug="${esc(it.slug)}">
       <div class="shot" style="background-image:url('${esc(it.poster)}')"><span class="tier">${esc(it.tier)}</span><span class="go">▶ Walk</span></div>
       <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by, it.by && it.kind === 'walk' && 'not affiliated'].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
@@ -83,7 +84,7 @@ async function openWalk() {
     for (const v of R.views) if (v.photo) { const im = new Image(); im.src = base + v.photo; }
 
     // ---- state (plan coords: x east, y north; three = x, -z)
-    const V = R.views.map(v => ({ ...v, real: v.clip || v.photo || null, yaw: Math.atan2(-(v.look[0] - v.pos[0]), v.look[1] - v.pos[1]) }));
+    const V = R.views.map(v => { const dx = v.look[0] - v.pos[0], dy = v.look[1] - v.pos[1], l = Math.hypot(dx, dy) || 1; return { ...v, real: v.clip || v.photo || null, dir: [dx / l, dy / l], label: v.clip ? '▶ ' + v.name.replace(/^Photo\b/, 'AI walk') : v.photo ? '◉ ' + v.name.replace(/^Photo\b/, 'AI render') : v.name }; }).map(v => ({ ...v, yaw: Math.atan2(-(v.look[0] - v.pos[0]), v.look[1] - v.pos[1]) }));
     let px = V[0].pos[0], py = V[0].pos[1], yaw = V[0].yaw, pitch = V[0].pitch, glide = null, photoOn = -1;
     const ok = (x, y) => { if (!R.walk.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])) return false;
       for (const k of R.boxes) if (x > k[0] && x < k[2] && y > k[1] && y < k[3]) return false; return true; };
@@ -93,16 +94,17 @@ async function openWalk() {
     const photo = $('photo'), clip = $('clip');
     let wipeAnim = null, layer = photo;
     const setWipe = w => { w = Math.max(0.03, Math.min(0.97, w)); layer.style.clipPath = `inset(0 0 0 ${(w * 100).toFixed(2)}%)`; $('wipe').style.left = (w * 100).toFixed(2) + '%'; };
-    function photoOff() { if (photoOn < 0) return; photoOn = -1; wipeAnim = null; photo.style.opacity = 0; clip.style.opacity = 0; clip.pause(); $('tag').style.opacity = 0; $('wipe').style.display = 'none'; setFov(baseFov()); mark(-1); }
+    function photoOff() { if (photoOn < 0) return; if (V[photoOn].clip) { px = V[photoOn].pos[0]; py = V[photoOn].pos[1]; } photoOn = -1; wipeAnim = null; photo.style.opacity = 0; clip.style.opacity = 0; clip.pause(); $('tag').style.opacity = 0; $('wipe').style.display = 'none'; setFov(baseFov()); mark(-1); }
     function photoShow(i) { const v = V[i]; photoOn = i; layer = v.clip ? clip : photo;
-      if (v.clip) { clip.src = base + v.clip; clip.loop = true; clip.currentTime = 0; clip.play().catch(() => {}); } else photo.src = base + v.photo;
+      $('tag').innerHTML = v.clip ? '◀ Base walk &nbsp;·&nbsp; AI walk, not a video of the home ▶' : '◀ Base walk &nbsp;·&nbsp; AI render, not a photo ▶';
+      if (v.clip) { if (v.photo) clip.poster = base + v.photo; clip.src = base + v.clip; clip.currentTime = 0; clip.play().catch(() => {}); } else photo.src = base + v.photo;
       setWipe(0.97); $('wipe').style.display = 'block'; wipeAnim = { t: 0 }; layer.style.opacity = 1; $('tag').style.opacity = 1; }
     function mark(i) { [...$('chips').children].forEach((b, k) => b.setAttribute('aria-pressed', k === i)); }
     function go(i, why) { const v = V[i]; photoOff(); mark(i); $('hint').style.opacity = 0;
       if (why) track('walk_room', { step: v.name, cta: why });
       let dy = v.yaw - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
       glide = { t: 0, d: Math.min(2.2, 0.7 + Math.hypot(v.pos[0] - px, v.pos[1] - py) * 0.16), x0: px, y0: py, w0: yaw, p0: pitch, x1: v.pos[0], y1: v.pos[1], w1: yaw + dy, p1: v.pitch, f0: camera.fov, f1: v.real ? photoFov() : baseFov(), i }; }
-    V.forEach((v, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.real ? '◉ ' + v.name.replace(/^Photo\b/, 'AI render') : v.name; if (v.real) b.className = 'ph'; b.onclick = () => go(i, 'chip'); $('chips').append(b); });
+    V.forEach((v, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.label; if (v.real) b.className = 'ph'; b.onclick = () => go(i, 'chip'); $('chips').append(b); });
 
     // ---- mini plan, sized from the room outline
     const P = R.plan, S = innerWidth <= 560 ? 8 : 11, pad = 0.5;
@@ -169,6 +171,8 @@ async function openWalk() {
         px = g.x0 + (g.x1 - g.x0) * k; py = g.y0 + (g.y1 - g.y0) * k; yaw = g.w0 + (g.w1 - g.w0) * k; pitch = g.p0 + (g.p1 - g.p0) * k; setFov(g.f0 + (g.f1 - g.f0) * k);
         if (g.t >= 1) { glide = null; if (g.i >= 0 && V[g.i].real) photoShow(g.i); } }
       if (wipeAnim) { wipeAnim.t = Math.min(1, wipeAnim.t + Math.min(0.25, rdt) / 1.6); setWipe(0.97 - 0.47 * ease(wipeAnim.t)); if (wipeAnim.t >= 1) wipeAnim = null; }
+      // A clip follows a fixed path: the base camera walks the same path in step, so both sides of the divider move together.
+      if (photoOn >= 0 && V[photoOn].clip && clip.duration > 0) { const v = V[photoOn], d = (v.clipDist || 0) * Math.min(1, clip.currentTime / clip.duration); px = v.pos[0] + v.dir[0] * d; py = v.pos[1] + v.dir[1] * d; }
       camera.position.set(px, 1.5, -py); camera.rotation.set(pitch, yaw, 0);
       me.setAttribute('transform', `translate(${mx(px)} ${my(py)}) rotate(${(-yaw * 180 / Math.PI).toFixed(1)})`);
       renderer.render(scene, camera);
@@ -176,6 +180,6 @@ async function openWalk() {
     await Promise.all(pending);
     setFov(baseFov()); mark(0); $('load').remove(); renderer.setAnimationLoop(step);
     track('walk_open', { step: L.source, cta: claim && claim.claimed ? 'claimed' : 'unclaimed' });
-    window.__sh = { go, state: () => ({ px, py, yaw, pitch, photoOn, views: V.length }) };
+    window.__sh = { go, state: () => ({ px, py, yaw, pitch, photoOn, views: V.length, clipTime: clip.currentTime }) };
   } catch (err) { fail('Could not open the walkthrough: ' + ((err && err.message) || err)); console.error(err); }
 }

@@ -219,7 +219,7 @@
   $('release').onclick = async () => {
     const token = (state.manage || '').split('#m=')[1];
     if (!token) { toast('Open your private manage link to release this claim'); return; }
-    if (!confirm('Release this claim? Your share link will keep opening the walkthrough, without your company name.')) return;
+    if (!confirm('Release this claim? Your share link will keep opening the 3D view, without your company name.')) return;
     const r = await fetch('/api/claim/release', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }), credentials: 'same-origin' });
     if (r.ok) { state.claim = null; state.manage = null; history.replaceState(null, '', location.pathname + location.search); toast('Claim released'); go('intro'); }
   };
