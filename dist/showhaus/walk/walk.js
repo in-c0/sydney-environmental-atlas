@@ -147,7 +147,12 @@ async function openWalk() {
     const veil = $('veil'), want = $('want'), key = 'sh_want_' + slug;
     function shut() { veil.style.display = 'none'; }
     const wanted = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
-    const paintWant = () => { if (!wanted() && !want.classList.contains('done')) return; want.classList.add('done'); want.textContent = 'Counted ✓'; want.disabled = true; $('wantFine').textContent = 'Thanks — your vote is counted for this home.'; };
+    // Voted and not-voted are the two states of one button; "Cancel vote" takes the vote back and sends upgrade_interest_cancel,
+    // so the demand count is interest minus cancels.
+    const NOT_VOTED = 'Not open yet. A free vote says you want this home made photoreal: no payment, no sign-up, and nothing starts. You can cancel it any time.';
+    let voted = wanted();
+    const paintWant = () => { want.classList.toggle('done', voted); want.disabled = voted; want.textContent = voted ? 'Voted ✓' : 'Vote for this home — free';
+      $('wantFine').textContent = voted ? 'Thanks — your vote is counted. Nothing is charged and nobody will contact you.' : NOT_VOTED; $('unvote').hidden = !voted; };
     // The sample GIF loads when the card opens. A home without its own AI walk shows the sample from another home, and says so.
     const own = L.sample ? base + L.sample : null;
     const showSample = () => { const im = $('sampleGif'); if (im.getAttribute('src')) return; im.src = own || SAMPLE.gif; im.alt = own ? `AI walk sample of the ${L.name}` : `AI walk sample from the ${SAMPLE.name}`; $('sampleCap').textContent = own ? 'AI walk of this home — sample' : `Sample from another home (${SAMPLE.name})`; };
@@ -155,7 +160,8 @@ async function openWalk() {
     $('x').onclick = shut; veil.addEventListener('pointerdown', e => { if (e.target === veil) shut(); });
     const sample = V.findIndex(v => v.real);
     if (sample < 0) $('see').hidden = true; else $('see').onclick = () => { shut(); go(sample, 'sample'); };
-    want.onclick = () => { if (want.disabled) return; track('upgrade_interest', { cta: L.source === 'plan' ? 'has-plan' : 'needs-plan' }); try { localStorage.setItem(key, '1'); } catch { /* private mode: still counted once */ } want.classList.add('done'); paintWant(); };
+    want.onclick = () => { if (voted) return; voted = true; track('upgrade_interest', { cta: L.source === 'plan' ? 'has-plan' : 'needs-plan' }); try { localStorage.setItem(key, '1'); } catch { /* private mode: counted for this visit */ } paintWant(); };
+    $('unvote').onclick = () => { if (!voted) return; voted = false; track('upgrade_interest_cancel', { cta: 'card' }); try { localStorage.removeItem(key); } catch { /* nothing stored */ } paintWant(); };
 
     const st = $('stick'), kn = $('knob');
     const stick = e => { const b = st.getBoundingClientRect(); let x = (e.clientX - b.left - 52) / 38, y = (e.clientY - b.top - 52) / 38; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } jx = x; jy = y; kn.style.left = 32 + x * 32 + 'px'; kn.style.top = 32 + y * 32 + 'px'; };
