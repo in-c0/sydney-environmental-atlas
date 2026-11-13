@@ -24,7 +24,7 @@
   const DARK = document.documentElement.dataset.theme === 'dark', INK = DARK ? '#ece4d3' : '#202c2b', PAPER = DARK ? '#15181d' : '#f6f3ec';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
-  const state = { act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
+  const state = { display: store.get().display === 'numbers' ? 'numbers' : 'visual', act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
   let PRO = false; // set from the signed-in account (/api/auth/me → pro); everyone else sees Pro previewed blurred
   let A = null, centroids = {}, R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
   const evidence = new Map();
@@ -64,6 +64,18 @@
     g.shadowColor = 'transparent'; g.lineWidth = 2; g.strokeStyle = INK; g.globalAlpha = .9; g.stroke();
     return g.getImageData(0, 0, 64, 64);
   }
+  // Discrete, source-backed quantity bars. Not individual property positions.
+  function meterImage(level) {
+    const c = document.createElement('canvas'); c.width = 160; c.height = 48;
+    const g = c.getContext('2d');
+    g.fillStyle = PAPER; g.strokeStyle = INK; g.lineWidth = 1.3;
+    g.beginPath(); g.roundRect(2, 2, 156, 44, 11); g.fill(); g.stroke();
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle = i < level ? (DARK ? '#b6cbbe' : '#48695f') : (DARK ? '#444e52' : '#d7dcd6');
+      g.beginPath(); g.roundRect(13 + i * 27, 12, 21, 24, 3); g.fill();
+    }
+    return g.getImageData(0, 0, c.width, c.height);
+  }
   function pcNodes() {
     return { type: 'FeatureCollection', features: (pcFC?.features || []).filter(f => f.properties.n > 0 && centroids[f.properties.pc])
       .map(f => ({ type: 'Feature', properties: { pc: f.properties.pc, n: f.properties.n, med: f.properties.med }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
@@ -71,6 +83,7 @@
   // One capsule per visible cluster, labelled with its summed *lease* count, not
   // MapLibre's point_count (which would count postcodes). Round only the label.
   const leases = ['case', ['has', 'leases'], ['get', 'leases'], ['get', 'n']];
+  const meterLevel = ['step', leases, 1, 2, 2, 10, 3, 100, 4, 1000, 5];
   const roundedLeases = ['case',
     ['<', leases, 10], ['to-string', leases],
     ['<', leases, 100], ['concat', '≈', ['to-string', ['*', 10, ['round', ['/', leases, 10]]]]],
@@ -125,13 +138,18 @@
       map.addSource('pcn', { type: 'geojson', data: pcNodes(), cluster: true, clusterRadius: 46,
         clusterMaxZoom: 10, clusterProperties: { leases: ['+', ['get', 'n']] } });
       // Collision-managed quantity capsules: one readable marker per cluster at this zoom.
+      for (let n = 1; n <= 5; n++) map.addImage('lease-meter-' + n, meterImage(n), { pixelRatio: 2 });
       map.addImage('pill', pillImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[28, 36]], content: [20, 12, 44, 52] });
       map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', layout: {
         'text-field': roundedLeases, 'text-font': ['Noto Sans Bold'],
         'text-size': ['step', leases, 12, 10, 13, 100, 14, 1000, 15, 10000, 17],
         'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
-        'symbol-sort-key': ['-', leases], 'text-padding': 15, 'icon-padding': 15 },
+        'symbol-sort-key': ['-', leases], 'text-padding': 15, 'icon-padding': 15, visibility: 'none' },
         paint: { 'text-color': INK } });
+      map.addLayer({ id: 'pc-nodes-v', type: 'symbol', source: 'pcn', layout: {
+        'icon-image': ['concat', 'lease-meter-', ['to-string', meterLevel]],
+        'icon-padding': 13, 'symbol-sort-key': ['-', leases]
+      } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'pick-ring', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'ring'], paint: { 'line-color': '#7d5fc7', 'line-width': 1.2, 'line-opacity': .7 } });
@@ -141,9 +159,11 @@
       mapReady = true;
       syncMapPadding();
       applyFilter();
+      setDisplay(state.display);
+      renderNearby();
     });
-    map.on('moveend', renderLegend);
-    map.on('click', 'pc-nodes-n', async e => {
+    map.on('moveend', () => { renderLegend(); renderNearby(); });
+    const expandNode = async e => {
       const f = e.features[0]; if (!f) return;
       let zoom = Math.max(map.getZoom(), 12.5);
       if (f.properties.cluster && Number.isInteger(f.properties.cluster_id)) {
@@ -151,9 +171,12 @@
         catch (err) { console.warn('Cluster expansion unavailable:', err.message); }
       }
       map.easeTo({ center: f.geometry.coordinates, zoom, duration: 650 });
-    });
-    map.on('mouseenter', 'pc-nodes-n', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'pc-nodes-n', () => { map.getCanvas().style.cursor = ''; });
+    };
+    for (const layer of ['pc-nodes-n', 'pc-nodes-v']) {
+      map.on('click', layer, expandNode);
+      map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
+    }
     const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
     map.on('mousemove', 'pc-fill', e => {
       const f = e.features[0]; if (!f) return;
@@ -164,7 +187,7 @@
     map.on('mouseleave', 'pc-fill', () => { map.getCanvas().style.cursor = ''; pop.remove(); });
     map.on('click', e => {
       // A quantity capsule drills into the aggregation; it is not an exact-address pin.
-      if (map.queryRenderedFeatures(e.point, { layers: ['pc-nodes-n'] }).length) return;
+      if (map.queryRenderedFeatures(e.point, { layers: ['pc-nodes-n', 'pc-nodes-v'] }).length) return;
       if (state.act < 3) {
         const f = map.queryRenderedFeatures(e.point, { layers: ['pc-fill'] })[0];
         if (f && state.act === 1) { const s = suburbs.filter(x => x.pci === f.properties.pci).sort((a, b) => b.n - a.n)[0]; if (s) choosePlace(s); }
@@ -251,6 +274,40 @@
   }
 
   // ---------- act 1 ----------
+  function setDisplay(which) {
+    state.display = which === 'numbers' ? 'numbers' : 'visual';
+    const next = store.get(); next.display = state.display; store.set(next);
+    document.querySelectorAll('[data-display]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.display === state.display)));
+    if (mapReady) {
+      map.setLayoutProperty('pc-nodes-n', 'visibility', state.display === 'numbers' ? 'visible' : 'none');
+      map.setLayoutProperty('pc-nodes-v', 'visibility', state.display === 'visual' ? 'visible' : 'none');
+    }
+    renderLegend();
+  }
+  function renderNearby() {
+    const wrapper = $('nearby'), list = $('nearbyList');
+    if (!mapReady || !R || $('where').value.trim() || state.act !== 1) { wrapper.hidden = true; return; }
+    // Use the visible map (excluding the panel), never device geolocation.
+    const shell = document.querySelector('.explore-shell').getBoundingClientRect();
+    const canvas = map.getCanvas().getBoundingClientRect();
+    const mobile = innerWidth <= 760;
+    const x = mobile ? canvas.width / 2 : (Math.min(canvas.width, shell.right - canvas.left + 18) + canvas.width) / 2;
+    const y = mobile ? Math.max(80, (shell.top - canvas.top + 68) / 2) : canvas.height / 2;
+    const left = mobile ? 8 : shell.right - canvas.left + 8;
+    const bottom = mobile ? shell.top - canvas.top - 8 : canvas.height - 12;
+    const visible = suburbs.filter(s => s.kind === 'suburb' && s.n > 0 && Number.isFinite(s.lng) && Number.isFinite(s.lat))
+      .map(s => { const p = map.project([s.lng, s.lat]); return { s, x: p.x, y: p.y, d: Math.hypot(p.x - x, p.y - y) }; })
+      .filter(v => v.x >= left && v.x <= canvas.width - 10 && v.y >= 78 && v.y <= bottom)
+      .sort((a, b) => a.d - b.d || b.s.n - a.s.n);
+    const used = new Set(), picks = [];
+    for (const v of visible) {
+      if (used.has(v.s.postcode)) continue;
+      used.add(v.s.postcode); picks.push(v.s);
+      if (picks.length === 4) break;
+    }
+    wrapper.hidden = !picks.length;
+    list.innerHTML = picks.map(s => `<button type="button" data-i="${s.i}" title="Nearby in your current map view, not a quality ranking"><strong>${esc(s.name)}</strong><small>NSW ${esc(s.postcode)}</small></button>`).join('');
+  }
   let sugg = [], suggPick = 0, suggestion = null;
   function onWhere() {
     const raw = $('where').value, r = C.searchSuburbs(suburbs, raw), q = r.query;
@@ -265,6 +322,7 @@
     else if (q.kind === 'postcode' && !sugg.length) hint.textContent = `Postcode ${q.value} has no NSW rental bond records.`;
     else if (sugg.length) hint.textContent = r.scope === 'postcode' ? `Postcode ${q.value}: ${sugg.length} suburb${sugg.length > 1 ? 's' : ''}` : r.scope === 'exact' ? 'Exact match' : 'Close matches';
     $('suggest').innerHTML = sugg.map((s, k) => `<li><button type="button" role="option" data-i="${s.i}" aria-selected="${k === 0}">${esc(s.name)}<small>${placeTag(s)}</small></button></li>`).join('');
+    renderNearby();
     const top = sugg[0];
     state.place = top || null;
     applyFilter();
@@ -280,7 +338,7 @@
     map.fitBounds([[w - pad, so - pad], [e + pad, n + pad]], { padding: { top: 90, bottom: 280, left: 40, right: 40 }, maxZoom: 13, duration: 600 });
   }
   function choosePlace(s) {
-    state.place = s; $('where').value = s.name; remember(s); applyFilter(); go(2);
+    state.place = s; $('where').value = s.name; remember(s); applyFilter(); if (mapReady) flyToPlace(s); go(2);
     window.SH && SH.track('search', { kind: s.kind, postcode: s.postcode });
   }
   function remember(s) {
@@ -363,7 +421,7 @@
       const c = Number(li.dataset.cut);
       li.classList.toggle('on', c === n); li.classList.toggle('done', c < n); li.classList.toggle('locked', c > 1 && !state.place);
     });
-    if (n === 1) setTimeout(() => $('where').focus(), 50);
+    if (n === 1) { renderNearby(); setTimeout(() => $('where').focus(), 50); }
     if (n === 2) {
       renderFacets();
       if (state.pendingBudget) { const k = RENT_STEPS.findIndex(v => v >= state.pendingBudget); $('budget').value = String(k < 0 ? RENT_STEPS.length - 1 : k); state.pendingBudget = null; setBudgetFromSlider(); }
@@ -659,7 +717,10 @@
   }
   function renderLegend() {
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
-    const detail = state.lens === 'map' ? '<div class="dotnote muted">Capsules ≈ new leases grouped at this zoom; tap to explore. Areas show postcode-level rents, not individual home locations. Exact counts appear in the place details.</div>' : '';
+    const visualKey = '<div class="lease-scale">' + ['1', '2–9', '10–99', '100–999', '1k+'].map((label, i) => `<span><i style="width:${12 + i * 12}px"></i>${label}</span>`).join('') + '</div>';
+    const detail = state.lens === 'map' ? (state.display === 'visual'
+      ? '<div class="dotnote muted">Bars = orders of magnitude of new leases grouped at this zoom (not individual homes). Exact counts in Numbers mode and place details.</div>' + visualKey
+      : '<div class="dotnote muted">Capsules ≈ new leases grouped at this zoom; tap to explore. Areas show postcode-level rents, not individual home locations. Exact counts appear in the place details.</div>') : '';
     $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>${detail}`;
   }
 
@@ -743,6 +804,11 @@
 
   // ---------- events ----------
   $('where').addEventListener('input', onWhere);
+  document.querySelectorAll('[data-display]').forEach(b => b.addEventListener('click', () => setDisplay(b.dataset.display)));
+  $('nearbyList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-i]');
+    if (b) { const s = suburbs.find(v => v.i === Number(b.dataset.i)); if (s) choosePlace(s); }
+  });
   $('where').addEventListener('keydown', e => {
     const q = C.classifyWhere($('where').value);
     if (e.key === 'Tab' && suggestion && !sugg.length) { e.preventDefault(); $('where').value = suggestion.name; onWhere(); return; }
@@ -795,7 +861,7 @@
   body.dataset.lens = 'map';
   $('budget').max = String(RENT_STEPS.length); $('budget').value = String(RENT_STEPS.length);
   document.querySelectorAll('#tabs button').forEach(b => { b.dataset.label = b.textContent.trim(); });
-  renderLegend();
+  setDisplay(state.display);
   loadData().then(() => { initMap(); go(1); renderPresets(true); onWhere(); setMode('rent'); })
     .catch(e => { initMap(); go(1); $('c1').textContent = '—'; $('whereHint').textContent = 'Records could not load: ' + e.message; });
 })();
