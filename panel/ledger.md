@@ -1,6 +1,6 @@
 # Synthetic panel ledger
 
-Predictions are recorded before real traffic and checked against it afterwards. Running hit rate: 0 of 0 checked (8 predictions open, no real traffic compared yet).
+Predictions are recorded before real traffic and checked against it afterwards. Running hit rate: 0 of 0 checked (12 predictions open, no real traffic compared yet).
 
 ## 2026-11-13 · SHOWHAUS walk: viewer, upgrade card, claim (Quick, 12 personas × 2 models)
 
@@ -27,5 +27,18 @@ Predictions to check against `upgrade_interest` and `upgrade_interest_cancel`:
 6. Cancels are rare: well under one cancel per ten votes.
 7. Predicted weakest step after voting: "nothing happens next". Voters leave the card without claiming or returning unless a price or a date appears.
 8. Builder-side visitors do not vote on an unclaimed home; they go to claim (or to legal).
+
+Not yet checked.
+
+## 2026-11-13 · SHOWHAUS whole journey: map → walk → AI walk → card → vote → claim (12 personas, Sonnet 12 + Haiku 6)
+
+Summary and quotes: `r5-journey.md`. Changes made from it: "Home builder" and "Owner" roles and a reason line on the claim details form; the card states that homes with the most votes are made photoreal first.
+
+Predictions to check against `walk_open`, `walk_room`, `upgrade_open`, `upgrade_interest`, `claim_viewed`, `claim_started`, `claim_submitted`:
+
+9. Predicted weakest step for builders: the claim details form. Most builder visitors who start a claim do not submit it on the first visit.
+10. Predicted weakest step for home seekers: after the vote. Few return while the gallery has one home.
+11. Almost everyone who opens a home reaches an AI walk viewpoint (the walk itself is not where people leave).
+12. Ranking of what would move people most, from the "missing" answers: more homes to compare > own-plan upload > who runs the site and what a claim changes > price and date.
 
 Not yet checked.

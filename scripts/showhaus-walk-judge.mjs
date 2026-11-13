@@ -127,7 +127,7 @@ async function run(name, viewport, touch) {
   const cardText = await page.locator('#card').textContent();
   check(!/\$\s?\d|AUD|per (clip|home|render)/i.test(cardText), `${name}: no price on the card`);
   check(!/credits?\b/i.test(cardText), `${name}: card does not use the word credits`);
-  check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up, and nothing starts/.test(cardText), `${name}: the button reads as a free vote, not an order`);
+  check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up/.test(cardText) && /most votes are made photoreal first/.test(cardText), `${name}: the button reads as a free vote, not an order`);
   check((await page.locator('#ownClaim').getAttribute('href')).includes('/claim/?p=' + SLUG), `${name}: card sends builders and owners to claim first`);
   check(/declined up front/.test(cardText) && /time cap/.test(cardText) && /refunded/.test(cardText) && /AI visualisation/.test(cardText), `${name}: card states the limit, the cap, the refund and the AI visualisation`);
   await shot('5-upgrade');
@@ -165,6 +165,7 @@ async function run(name, viewport, touch) {
   await page.goto(`${BASE}${root}/?synthetic=1`, { waitUntil: 'domcontentloaded' });
   check(await page.locator('#walkNav').isVisible(), `${name}: map header has the Walk link`);
   await page.waitForTimeout(2500);
+  await page.waitForSelector('.walk-pin', { timeout: 30000 }).catch(() => {}); // the map can be slow under software rendering
   const pins = await page.locator('.walk-pin').allTextContents();
   check(pins.length >= 1 && pins.every(t => !/Walk/.test(t) || false) , `${name}: exterior model pin is not called a walk (${pins.join(', ')})`);
   await shot('8-map');

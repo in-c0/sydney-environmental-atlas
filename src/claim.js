@@ -17,7 +17,7 @@ import { db, pseudo, sha256 } from './ops/store.js';
 import { track, environmentOf } from './ops/events.js';
 import { currentUser, cookieOf, mailMode } from './ops/auth.js';
 
-export const ROLES = { listing_agent: 'Listing agent', principal: 'Agency principal', developer: 'Developer', marketing: 'Marketing agency' };
+export const ROLES = { builder: 'Home builder', owner: 'Owner', listing_agent: 'Listing agent', principal: 'Agency principal', developer: 'Developer', marketing: 'Marketing agency' };
 export const MAX_FILE = 2 * 1024 * 1024;
 const CHUNK = 512 * 1024;                     // D1 caps a row at ~2 MB; files are stored in 512 KB rows
 const FILE_BUDGET = 250 * 1024 * 1024;        // all evidence files together (shared free-plan D1); past it, claims save without the file

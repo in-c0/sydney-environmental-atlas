@@ -147,12 +147,14 @@ async function openWalk() {
     const veil = $('veil'), want = $('want'), key = 'sh_want_' + slug;
     function shut() { veil.style.display = 'none'; }
     const wanted = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
+    // PROMISE shown to visitors: homes with the most votes are made photoreal first. The render queue must follow net votes
+    // (upgrade_interest − upgrade_interest_cancel) per home. Do not change the order without changing this copy.
     // Voted and not-voted are the two states of one button; "Cancel vote" takes the vote back and sends upgrade_interest_cancel,
     // so the demand count is interest minus cancels.
-    const NOT_VOTED = 'Not open yet. A free vote says you want this home made photoreal: no payment, no sign-up, and nothing starts. You can cancel it any time.';
+    const NOT_VOTED = 'Not open yet. Homes with the most votes are made photoreal first. A vote is free: no payment, no sign-up. You can cancel it any time.';
     let voted = wanted();
     const paintWant = () => { want.classList.toggle('done', voted); want.disabled = voted; want.textContent = voted ? 'Voted ✓' : 'Vote for this home — free';
-      $('wantFine').textContent = voted ? 'Thanks — your vote is counted. Nothing is charged and nobody will contact you.' : NOT_VOTED; $('unvote').hidden = !voted; };
+      $('wantFine').textContent = voted ? 'Thanks — your vote is counted. Homes with the most votes are made photoreal first. Nothing is charged and nobody will contact you.' : NOT_VOTED; $('unvote').hidden = !voted; };
     // The sample GIF loads when the card opens. A home without its own AI walk shows the sample from another home, and says so.
     const own = L.sample ? base + L.sample : null;
     const showSample = () => { const im = $('sampleGif'); if (im.getAttribute('src')) return; im.src = own || SAMPLE.gif; im.alt = own ? `AI walk sample of the ${L.name}` : `AI walk sample from the ${SAMPLE.name}`; $('sampleCap').textContent = own ? 'AI walk of this home — sample' : `Sample from another home (${SAMPLE.name})`; };

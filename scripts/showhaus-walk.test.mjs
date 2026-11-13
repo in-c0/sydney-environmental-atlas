@@ -89,7 +89,7 @@ test('worker: the public badge flips only for a verified claim, and a walk claim
   const env = makeEnv();
   assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: false, company: null });
   const f = new FormData();
-  for (const [k, v] of Object.entries({ p: 'buildtec-avalon', mode: 'guest', role: 'listing_agent', company: 'Harbour Homes', licence: '51 824 753 556', website: 'https://www.harbourhomes.com.au', email: 'sam@harbourhomes.com.au' })) f.set(k, v);
+  for (const [k, v] of Object.entries({ p: 'buildtec-avalon', mode: 'guest', role: 'builder', company: 'Harbour Homes', licence: '51 824 753 556', website: 'https://www.harbourhomes.com.au', email: 'sam@harbourhomes.com.au' })) f.set(k, v);
   const c = ctx();
   const r = await worker.fetch(new Request('https://showhaus.app/api/claim/submit', { method: 'POST', body: f, headers: { ...UA, 'cf-connecting-ip': '203.0.113.9' } }), env, c);
   await c.done();
@@ -97,6 +97,7 @@ test('worker: the public badge flips only for a verified claim, and a walk claim
   assert.equal(r.status, 200, JSON.stringify(body));
   assert.match(body.claim.embed, /^<iframe src="https:\/\/showhaus\.app\/walk\/\?p=buildtec-avalon&by=[a-z0-9]+&src=embed"/);
   assert.notEqual(body.claim.status, 'verified');
+  assert.equal(body.claim.role_label, 'Home builder', 'a builder can claim as a builder');
   assert.equal((await (await get(env, '/api/claim/public?p=buildtec-avalon')).json()).claimed, false, 'a pending claim does not change the badge');
   env.OPS_DB._db.prepare("UPDATE sh_claims SET status = 'verified' WHERE slug = ?").run('buildtec-avalon');
   assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: true, company: 'Harbour Homes' });

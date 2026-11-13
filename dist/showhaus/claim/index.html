@@ -78,20 +78,23 @@
   <!-- 3 · documents -->
   <form class="step" id="s-details" aria-labelledby="h-details" hidden novalidate>
     <h2 id="h-details">A few details to verify you</h2>
+    <p class="fine" id="whyDetails">We ask so nobody else can claim your home or design. Once verified, the page shows it as claimed by your company, and you get a share link and an embed.</p>
     <fieldset class="roles"><legend>Your role</legend>
+      <label><input type="radio" name="role" value="builder"><span>Home builder</span></label>
+      <label><input type="radio" name="role" value="owner"><span>Owner</span></label>
       <label><input type="radio" name="role" value="listing_agent" required><span>Listing agent</span></label>
       <label><input type="radio" name="role" value="principal"><span>Agency principal</span></label>
       <label><input type="radio" name="role" value="developer"><span>Developer</span></label>
       <label><input type="radio" name="role" value="marketing"><span>Marketing agency</span></label>
     </fieldset>
     <p class="ferr" data-for="role"></p>
-    <label class="field"><span>Company</span><input name="company" autocomplete="organization" required maxlength="120" placeholder="Your Agency"></label>
+    <label class="field"><span>Company</span><input name="company" autocomplete="organization" required maxlength="120" placeholder="Your company"></label>
     <p class="ferr" data-for="company"></p>
-    <label class="field"><span>ABN or agency licence no.</span><input name="licence" required maxlength="20" inputmode="text" placeholder="51 824 753 556"></label>
+    <label class="field"><span>ABN or licence no.</span><input name="licence" required maxlength="20" inputmode="text" placeholder="51 824 753 556"></label>
     <p class="ferr" data-for="licence"></p>
-    <label class="field"><span>Company website</span><input name="website" type="url" inputmode="url" autocomplete="url" required placeholder="youragency.com.au"></label>
+    <label class="field"><span>Company website</span><input name="website" type="url" inputmode="url" autocomplete="url" required placeholder="yourcompany.com.au"></label>
     <p class="ferr" data-for="website"></p>
-    <label class="field"><span>Work email</span><input name="email" type="email" inputmode="email" autocomplete="email" required placeholder="you@youragency.com.au"></label>
+    <label class="field"><span>Work email</span><input name="email" type="email" inputmode="email" autocomplete="email" required placeholder="you@yourcompany.com.au"></label>
     <p class="ferr" data-for="email"></p>
     <p class="match" id="match" aria-live="polite"></p>
     <label class="drop" id="drop">
