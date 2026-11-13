@@ -110,6 +110,20 @@ for (const [w, h] of VIEWPORTS) {
     await page.click('[data-display="numbers"]');
   }
 
+  // An exterior 3D model pin is an understated 40px shortcut, not a large CTA.
+  if (w === 1440) {
+    await page.waitForFunction(() => document.querySelector('.walk-pin--model'), null, { timeout: 15000 });
+    const modelPin = await page.locator('.walk-pin--model').first().evaluate(el => {
+      const rect = el.getBoundingClientRect(), style = getComputedStyle(el);
+      return { text: el.textContent.trim(), label: el.getAttribute('aria-label'),
+        width: rect.width, height: rect.height, shadow: style.boxShadow, color: style.color };
+    });
+    check('Exterior 3D pin is a compact neutral shortcut with an accessible label',
+      modelPin.text === '3D' && modelPin.label.includes('3D model') && modelPin.width <= 44
+      && modelPin.height <= 44 && modelPin.shadow === 'none', JSON.stringify(modelPin));
+    check('Walk navigation no longer promotes 3D novelty',
+      (await page.locator('#walkNav').innerText()).trim() === 'Walk');
+  }
   // Numbers are the default; circles are an explicit, reversible alternative.
   if (w === 1440) {
     await page.waitForFunction(() => window.SHOWHAUS?.map?.getLayer('pc-nodes-v'), null, { timeout: 15000 }).catch(() => {});
