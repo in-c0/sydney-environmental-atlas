@@ -102,15 +102,55 @@ for (const [w, h] of VIEWPORTS) {
     await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` });
   }
 
-  // The source-backed visual marker is reversible, and location suggestions follow the map view.
+  // Capture the actual mobile Visual state independently of the numeric default.
+  if (shotsDir && w === 390) {
+    await page.click('[data-display="visual"]');
+    await page.waitForTimeout(450);
+    await page.screenshot({ path: `${shotsDir}/act1-visual-bubbles-${w}x${h}.png` });
+    await page.click('[data-display="numbers"]');
+  }
+
+  // An exterior 3D model pin is an understated 40px shortcut, not a large CTA.
+  if (w === 1440) {
+    await page.waitForFunction(() => document.querySelector('.walk-pin--model'), null, { timeout: 15000 });
+    const modelPin = await page.locator('.walk-pin--model').first().evaluate(el => {
+      const rect = el.getBoundingClientRect(), style = getComputedStyle(el);
+      return { text: el.textContent.trim(), label: el.getAttribute('aria-label'),
+        width: rect.width, height: rect.height, shadow: style.boxShadow, color: style.color };
+    });
+    check('Exterior 3D pin is a compact neutral shortcut with an accessible label',
+      modelPin.text === '3D' && modelPin.label.includes('3D model') && modelPin.width <= 44
+      && modelPin.height <= 44 && modelPin.shadow === 'none', JSON.stringify(modelPin));
+    check('Walk navigation no longer promotes 3D novelty',
+      (await page.locator('#walkNav').innerText()).trim() === 'Walk');
+  }
+  // Numbers are the default; circles are an explicit, reversible alternative.
   if (w === 1440) {
     await page.waitForFunction(() => window.SHOWHAUS?.map?.getLayer('pc-nodes-v'), null, { timeout: 15000 }).catch(() => {});
-    check('Visual display defaults on', await page.locator('[data-display="visual"]').getAttribute('aria-pressed') === 'true');
-    const visual = await page.evaluate(() => { const m = window.SHOWHAUS.map; return m && m.getLayer('pc-nodes-v') && m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none'; });
-    check('Visible lease markers use visual scale', !!visual);
-    await page.click('[data-display="numbers"]');
-    check('Numbers switch restores count capsules', await page.evaluate(() => { const m = window.SHOWHAUS.map; return m.getLayoutProperty('pc-nodes-n','visibility') !== 'none' && m.getLayoutProperty('pc-nodes-v','visibility') === 'none'; }));
+    check('Numbers display defaults on', await page.locator('[data-display="numbers"]').getAttribute('aria-pressed') === 'true');
+    check('Numeric lease capsules are initially visible', await page.evaluate(() => {
+      const m = window.SHOWHAUS.map;
+      return m.getLayoutProperty('pc-nodes-n', 'visibility') !== 'none' && m.getLayoutProperty('pc-nodes-v', 'visibility') === 'none';
+    }));
     await page.click('[data-display="visual"]');
+    check('Visual toggle shows graduated circle markers, not bars', await page.evaluate(() => {
+      const m = window.SHOWHAUS.map, layer = m.getLayer('pc-nodes-v');
+      const radius = m.getPaintProperty('pc-nodes-v', 'circle-radius');
+      return layer?.type === 'circle' && Array.isArray(radius) && radius[0] === 'step'
+        && m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none'
+        && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none'
+        && !m.hasImage('lease-meter-1');
+    }));
+    check('Bubble legend documents grouped records', (await page.locator('#legend').innerText()).includes('Circle size = grouped new leases'));
+    if (shotsDir) {
+      await page.waitForTimeout(450);
+      await page.screenshot({ path: `${shotsDir}/act1-visual-bubbles-${w}x${h}.png` });
+    }
+    await page.click('[data-display="numbers"]');
+    check('Numbers toggle restores count capsules', await page.evaluate(() => {
+      const m = window.SHOWHAUS.map;
+      return m.getLayoutProperty('pc-nodes-n','visibility') !== 'none' && m.getLayoutProperty('pc-nodes-v','visibility') === 'none';
+    }));
     await page.fill('#where', '');
     await page.evaluate(() => window.SHOWHAUS.map.jumpTo({ center: [151.21, -33.88], zoom: 12 }));
     await page.waitForTimeout(350);
@@ -217,10 +257,22 @@ for (const [w, h] of VIEWPORTS) {
   await page.click('#pinA');
   check(`${tag} compare says what it does`, (await page.locator('#pinA').innerText()) === 'Stop comparing' && (await page.locator('#compare').innerText()).includes('pinned'));
   await page.click('#pinA');
+  // Mobile act 4 folds away the toggle; the real pointer toggle is tested in act 1.
+  // Dispatch its click here only to verify lens/state synchronisation at every viewport.
+  await page.locator('[data-display="visual"]').dispatchEvent('click');
   await page.click('[data-lens="3d"]');
   check(`${tag} 3D lens is a Pro preview`, await page.locator('#proLens').isVisible());
+  check(`${tag} non-map lens hides both marker layers`, await page.evaluate(() => {
+    const m = window.SHOWHAUS.map;
+    return m.getLayoutProperty('pc-nodes-v', 'visibility') === 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
+  }));
   await page.click('#proClose');
   check(`${tag} closing the Pro preview returns to the map`, await page.locator('#proLens').isHidden() && await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
+  check(`${tag} returning from Pro preview restores the Visual selection`, await page.evaluate(() => {
+    const m = window.SHOWHAUS.map;
+    return m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
+  }));
+  await page.locator('[data-display="numbers"]').dispatchEvent('click');
   await page.evaluate(() => { const S = window.SHOWHAUS, p = S.state.point; S.map.jumpTo({ center: [p.lng, p.lat], zoom: 13.5 }); });
   if (shotsDir) {
     await page.waitForTimeout(700);
@@ -255,7 +307,7 @@ for (const [w, h] of VIEWPORTS) {
       valid: sum === Number(sample.properties.leases) && sum >= sample.properties.point_count && expansionZoom > 9.5 };
   });
   check(`${tag} clusters sum leases (not postcode points) and expand on tap`, clusters.valid, JSON.stringify(clusters));
-  check(`${tag} legend distinguishes grouped lease counts from rent shading`, (await page.locator('#legend').innerText()).includes('new leases grouped') && (await page.locator('#legend').innerText()).includes('not individual homes'));
+  check(`${tag} legend distinguishes grouped lease counts from rent shading`, (await page.locator('#legend').innerText()).includes('new leases grouped') && (await page.locator('#legend').innerText()).includes('not individual home locations'));
   // Every live request has a 15 s timeout, so each lens must leave 'load' within ~20 s (ok, none or err).
   await page.waitForFunction(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return e && Object.values(e).every(v => v.s !== 'load'); }, null, { timeout: 22000 }).catch(() => {});
   const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });

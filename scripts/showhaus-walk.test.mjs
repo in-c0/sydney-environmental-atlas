@@ -58,7 +58,11 @@ test('data: every listed walk has its listing file, scene, atlases, photos and p
 test('wording: only interiors are called a walk; exterior models are pinned as 3D models', async () => {
   const app = await readFile(WALK + '../app.js', 'utf8'), js = await readFile(WALK + 'walk.js', 'utf8');
   assert.match(js, /filter\(it => it\.kind === 'walk'\)/, 'the Walk gallery lists walk listings only');
-  assert.match(app, /walk \? '▶ Walk' : '◆ 3D model'/, 'map pins name exterior models as 3D models');
+  assert.match(app, /walk \? '▶ Walk' : '3D'/, 'exterior model shortcut stays semantically distinct from an interior walk');
+  assert.match(app, /walk \? 'walk-pin' : 'walk-pin walk-pin--model'/, 'exterior models have separate subdued styling');
+  assert.match(app, /Open the 3D model of/, 'the full model meaning is retained in the accessible label');
+  const css = await readFile(WALK + '../explore.css', 'utf8');
+  assert.match(css, /\.walk-pin--model\s*\{[^}]*box-shadow:\s*none;/s, 'model shortcuts have no promotional drop shadow');
 });
 
 test('page: no price anywhere until render cost is measured', async () => {
