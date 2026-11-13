@@ -57,6 +57,8 @@ async function openWalk() {
   $('basis').textContent = T.basis; $('cardbasis').textContent = T.card;
   $('needPlan').textContent = T.plan; if (T.planOk) { $('needPlanIc').textContent = '✓'; $('needPlanIc').classList.add('ok'); }
   $('claimLink').href = `../claim/?p=${slug}&src=walk`;
+  $('ownClaim').href = `../claim/?p=${slug}&src=walk-upgrade`; $('ownLine').hidden = !!(claim && claim.claimed);
+  $('ownClaim').addEventListener('click', () => track('cta', { cta: 'claim-from-upgrade' }));
   $('claimLink').addEventListener('click', () => track('cta', { cta: 'claim' }));
   $('claim').addEventListener('click', () => $('title').classList.toggle('open'));
   $('title').hidden = false; $('side').hidden = false;
@@ -145,7 +147,7 @@ async function openWalk() {
     const veil = $('veil'), want = $('want'), key = 'sh_want_' + slug;
     function shut() { veil.style.display = 'none'; }
     const wanted = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
-    const paintWant = () => { if (!wanted() && !want.classList.contains('done')) return; want.classList.add('done'); want.textContent = 'Counted ✓'; want.disabled = true; $('wantFine').textContent = 'Thanks — counted for this home.'; };
+    const paintWant = () => { if (!wanted() && !want.classList.contains('done')) return; want.classList.add('done'); want.textContent = 'Counted ✓'; want.disabled = true; $('wantFine').textContent = 'Thanks — your vote is counted for this home.'; };
     // The sample GIF loads when the card opens. A home without its own AI walk shows the sample from another home, and says so.
     const own = L.sample ? base + L.sample : null;
     const showSample = () => { const im = $('sampleGif'); if (im.getAttribute('src')) return; im.src = own || SAMPLE.gif; im.alt = own ? `AI walk sample of the ${L.name}` : `AI walk sample from the ${SAMPLE.name}`; $('sampleCap').textContent = own ? 'AI walk of this home — sample' : `Sample from another home (${SAMPLE.name})`; };
