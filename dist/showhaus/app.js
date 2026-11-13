@@ -201,10 +201,15 @@
     fetch('./walk/data/index.json').then(r => (r.ok ? r.json() : null)).then(idx => {
       for (const it of (idx && idx.items) || []) {
         if (!Array.isArray(it.lngLat)) continue;
-        const a = document.createElement('a');
-        a.className = 'walk-pin'; a.href = './walk/' + it.href.replace(/^\.\//, '') + (it.href.includes('?') ? '&' : '?') + 'src=map-pin';
         const walk = it.kind === 'walk'; // an exterior model you orbit is not a walk
-        a.textContent = walk ? '▶ Walk' : '◆ 3D model'; a.title = `${it.name} — ${it.tier}`; a.setAttribute('aria-label', walk ? `Walk through ${it.name}` : `Open the 3D model of ${it.name}`);
+        const a = document.createElement('a');
+        a.className = walk ? 'walk-pin' : 'walk-pin walk-pin--model';
+        a.href = './walk/' + it.href.replace(/^\.\//, '') + (it.href.includes('?') ? '&' : '?') + 'src=map-pin';
+        // The exterior model remains discoverable without promoting a large
+        // terracotta badge over the place-search map.
+        a.textContent = walk ? '▶ Walk' : '3D';
+        a.title = `${it.name} — ${it.tier}`;
+        a.setAttribute('aria-label', walk ? `Walk through ${it.name}` : `Open the 3D model of ${it.name}`);
         a.addEventListener('click', e => { e.stopPropagation(); if (window.SH) window.SH.track('cta', { cta: 'walk-pin:' + it.slug }); });
         new maplibregl.Marker({ element: a, anchor: 'bottom' }).setLngLat(it.lngLat).addTo(map);
       }
