@@ -118,6 +118,14 @@ for (const [w, h] of VIEWPORTS) {
     await page.fill('#where', 'Parramatta');
     check('Manual place input hides automatic suggestions', await page.locator('#nearby').isHidden());
     await page.fill('#where', '');
+    await page.waitForTimeout(650);
+    const near = page.locator('#nearbyList button').first();
+    if (await near.count()) {
+      await near.click();
+      check('Choosing a map-based suggestion opens budget step', await page.evaluate(() => window.SHOWHAUS.state.act === 2 && !!window.SHOWHAUS.state.place));
+      await page.click('[data-cut="1"] button');
+      await page.fill('#where', '');
+    }
   }
   // Act 1: counter = recount for the whole window, then per-keystroke.
   const total = await page.locator('#c1').innerText();
