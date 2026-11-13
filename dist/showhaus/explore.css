@@ -370,3 +370,22 @@ body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
 .views a.view small { color: var(--terracotta); }
 .walk-pin { display: inline-block; padding: 6px 11px; border-radius: 999px; background: var(--terracotta); color: #fff; font: 600 12px/1 var(--sans); text-decoration: none; box-shadow: 0 3px 12px rgba(0,0,0,.3); border: 2px solid #fff; cursor: pointer; white-space: nowrap; }
 .walk-pin:hover, .walk-pin:focus-visible { filter: brightness(1.08); outline: none; }
+/* Exterior massing is an optional shortcut, not the primary map content.
+   Give it a small, neutral footprint while retaining a clear hit target. */
+.walk-pin--model {
+  display: grid; place-items: center;
+  width: 40px; height: 38px; padding: 0;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  color: var(--ink-2);
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 999px;
+  box-shadow: none;
+  font: 600 10px/1 var(--sans);
+  opacity: .88;
+  filter: none;
+}
+.walk-pin--model:hover, .walk-pin--model:focus-visible {
+  color: var(--ink); background: var(--paper); border-color: var(--ink-2);
+  opacity: 1; filter: none;
+}
+.walk-pin--model:focus-visible { outline: 2px solid var(--line); outline-offset: 3px; }
