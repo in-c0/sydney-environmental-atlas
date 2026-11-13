@@ -717,7 +717,7 @@
   }
   function renderLegend() {
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
-    const visualKey = '<div class="lease-scale">' + ['1', '2–9', '10–99', '100–999', '1k+'].map((label, i) => `<span><i style="width:${12 + i * 12}px"></i>${label}</span>`).join('') + '</div>';
+    const visualKey = '<div class="lease-scale">' + ['1', '2–9', '10–99', '100–999', '1k+'].map((label, i) => `<span><b class="lease-scale-meter">${[0, 1, 2, 3, 4].map(j => `<i class="${j <= i ? 'on' : ''}"></i>`).join('')}</b>${label}</span>`).join('') + '</div>';
     const detail = state.lens === 'map' ? (state.display === 'visual'
       ? '<div class="dotnote muted">Bars = orders of magnitude of new leases grouped at this zoom (not individual homes). Exact counts in Numbers mode and place details.</div>' + visualKey
       : '<div class="dotnote muted">Capsules ≈ new leases grouped at this zoom; tap to explore. Areas show postcode-level rents, not individual home locations. Exact counts appear in the place details.</div>') : '';
