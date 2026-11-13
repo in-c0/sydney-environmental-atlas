@@ -24,7 +24,7 @@
   const DARK = document.documentElement.dataset.theme === 'dark', INK = DARK ? '#ece4d3' : '#202c2b', PAPER = DARK ? '#15181d' : '#f6f3ec';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
-  const state = { display: store.get().display === 'numbers' ? 'numbers' : 'visual', act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
+  const state = { display: store.get().displayV2 === 'visual' ? 'visual' : 'numbers', act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
   let PRO = false; // set from the signed-in account (/api/auth/me → pro); everyone else sees Pro previewed blurred
   let A = null, centroids = {}, R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
   const evidence = new Map();
@@ -64,18 +64,6 @@
     g.shadowColor = 'transparent'; g.lineWidth = 2; g.strokeStyle = INK; g.globalAlpha = .9; g.stroke();
     return g.getImageData(0, 0, 64, 64);
   }
-  // Discrete, source-backed quantity bars. Not individual property positions.
-  function meterImage(level) {
-    const c = document.createElement('canvas'); c.width = 160; c.height = 48;
-    const g = c.getContext('2d');
-    g.fillStyle = PAPER; g.strokeStyle = INK; g.lineWidth = 1.3;
-    g.beginPath(); g.roundRect(2, 2, 156, 44, 11); g.fill(); g.stroke();
-    for (let i = 0; i < 5; i++) {
-      g.fillStyle = i < level ? (DARK ? '#b6cbbe' : '#48695f') : (DARK ? '#444e52' : '#d7dcd6');
-      g.beginPath(); g.roundRect(13 + i * 27, 12, 21, 24, 3); g.fill();
-    }
-    return g.getImageData(0, 0, c.width, c.height);
-  }
   function pcNodes() {
     return { type: 'FeatureCollection', features: (pcFC?.features || []).filter(f => f.properties.n > 0 && centroids[f.properties.pc])
       .map(f => ({ type: 'Feature', properties: { pc: f.properties.pc, n: f.properties.n, med: f.properties.med }, geometry: { type: 'Point', coordinates: centroids[f.properties.pc] } })) };
@@ -83,7 +71,6 @@
   // One capsule per visible cluster, labelled with its summed *lease* count, not
   // MapLibre's point_count (which would count postcodes). Round only the label.
   const leases = ['case', ['has', 'leases'], ['get', 'leases'], ['get', 'n']];
-  const meterLevel = ['step', leases, 1, 2, 2, 10, 3, 100, 4, 1000, 5];
   const roundedLeases = ['case',
     ['<', leases, 10], ['to-string', leases],
     ['<', leases, 100], ['concat', '≈', ['to-string', ['*', 10, ['round', ['/', leases, 10]]]]],
@@ -138,7 +125,6 @@
       map.addSource('pcn', { type: 'geojson', data: pcNodes(), cluster: true, clusterRadius: 46,
         clusterMaxZoom: 10, clusterProperties: { leases: ['+', ['get', 'n']] } });
       // Collision-managed quantity capsules: one readable marker per cluster at this zoom.
-      for (let n = 1; n <= 5; n++) map.addImage('lease-meter-' + n, meterImage(n), { pixelRatio: 2 });
       map.addImage('pill', pillImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[28, 36]], content: [20, 12, 44, 52] });
       map.addLayer({ id: 'pc-nodes-n', type: 'symbol', source: 'pcn', layout: {
         'text-field': roundedLeases, 'text-font': ['Noto Sans Bold'],
@@ -146,10 +132,17 @@
         'icon-image': 'pill', 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 9, 3, 9],
         'symbol-sort-key': ['-', leases], 'text-padding': 15, 'icon-padding': 15, visibility: 'none' },
         paint: { 'text-color': INK } });
-      map.addLayer({ id: 'pc-nodes-v', type: 'symbol', source: 'pcn', layout: {
-        'icon-image': ['concat', 'lease-meter-', ['to-string', meterLevel]],
-        'icon-padding': 13, 'symbol-sort-key': ['-', leases]
-      } });
+      // One graduated circle per aggregate at the postcode/cluster centre.
+      // Radius encodes five lease-volume bands, not individual property locations.
+      map.addLayer({ id: 'pc-nodes-v', type: 'circle', source: 'pcn',
+        layout: { visibility: 'none', 'circle-sort-key': leases },
+        paint: {
+          'circle-radius': ['step', leases, 6, 2, 9, 10, 12, 100, 16, 1000, 21],
+          'circle-color': DARK ? '#b6cbbe' : '#48695f',
+          'circle-opacity': .91,
+          'circle-stroke-color': PAPER,
+          'circle-stroke-width': 2
+        } });
       map.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({ id: 'pick-road', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'road'], paint: { 'line-color': '#2f4c7a', 'line-width': 2, 'line-dasharray': [2, 2] } });
       map.addLayer({ id: 'pick-ring', type: 'line', source: 'pick', filter: ['==', ['get', 'k'], 'ring'], paint: { 'line-color': '#7d5fc7', 'line-width': 1.2, 'line-opacity': .7 } });
@@ -187,7 +180,7 @@
     });
     map.on('mouseleave', 'pc-fill', () => { map.getCanvas().style.cursor = ''; pop.remove(); });
     map.on('click', e => {
-      // A quantity capsule drills into the aggregation; it is not an exact-address pin.
+      // A count capsule or graduated bubble drills into the aggregation, not a home pin.
       if (map.queryRenderedFeatures(e.point, { layers: ['pc-nodes-n', 'pc-nodes-v'] }).length) return;
       if (state.act < 3) {
         const f = map.queryRenderedFeatures(e.point, { layers: ['pc-fill'] })[0];
@@ -291,13 +284,12 @@
 
   // ---------- act 1 ----------
   function setDisplay(which) {
-    state.display = which === 'numbers' ? 'numbers' : 'visual';
-    const next = store.get(); next.display = state.display; store.set(next);
+    state.display = which === 'visual' ? 'visual' : 'numbers';
+    // New preference key prevents the prior release's implicit visual default from
+    // keeping returning visitors in visual mode without a deliberate new selection.
+    const next = store.get(); next.displayV2 = state.display; delete next.display; store.set(next);
     document.querySelectorAll('[data-display]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.display === state.display)));
-    if (mapReady) {
-      map.setLayoutProperty('pc-nodes-n', 'visibility', state.display === 'numbers' ? 'visible' : 'none');
-      map.setLayoutProperty('pc-nodes-v', 'visibility', state.display === 'visual' ? 'visible' : 'none');
-    }
+    syncPriceLabels();
     renderLegend();
   }
   function renderNearby() {
@@ -690,12 +682,15 @@
     $('compare').innerHTML = `<b>${esc(placeLabel(pin))}</b> ${C.weekly(a?.med)} · <b>${esc(placeLabel(p))}</b> ${C.weekly(b?.med)}${diff != null ? ` <span class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : ''}${diff}%</span>` : ''}`;
   }
 
-  // Avoid dense dots entirely in Explore; show one collision-managed count capsule
-  // per visible cluster, preserving the full rental records for exact evidence.
+  // One source-backed marker per visible postcode/cluster, never per rental.
+  // Both views share the same source and respect the current map lens and mode.
   function syncPriceLabels() {
     if (!mapReady) return;
-    const visibility = state.lens === 'map' && state.mode !== 'buy' ? 'visible' : 'none';
-    if (map.getLayoutProperty('pc-nodes-n', 'visibility') !== visibility) map.setLayoutProperty('pc-nodes-n', 'visibility', visibility);
+    const enabled = state.lens === 'map' && state.mode !== 'buy';
+    for (const [layer, view] of [['pc-nodes-n', 'numbers'], ['pc-nodes-v', 'visual']]) {
+      const visibility = enabled && state.display === view ? 'visible' : 'none';
+      if (map.getLayoutProperty(layer, 'visibility') !== visibility) map.setLayoutProperty(layer, 'visibility', visibility);
+    }
   }
 
   // ---------- map drawing for the pick ----------
@@ -733,9 +728,10 @@
   }
   function renderLegend() {
     const L = { map: 'Colour = median weekly rent of new leases matching your filters, by postcode', '3d': 'Height = median weekly rent, by postcode', strata: 'Layers at the chosen place, top to bottom', time: 'Rings = months (newest inside) · sectors = bedrooms · dot = leases' }[state.lens];
-    const visualKey = '<div class="lease-scale">' + ['1', '2–9', '10–99', '100–999', '1k+'].map((label, i) => `<span><b class="lease-scale-meter">${[0, 1, 2, 3, 4].map(j => `<i class="${j <= i ? 'on' : ''}"></i>`).join('')}</b>${label}</span>`).join('') + '</div>';
+    const visualKey = '<div class="lease-scale" aria-label="Circle size legend for grouped new leases">' +
+      ['1', '2–9', '10–99', '100–999', '1k+'].map((label, i) => `<span><i class="lease-scale-bubble size-${i + 1}" aria-hidden="true"></i><small>${label}</small></span>`).join('') + '</div>';
     const detail = state.lens === 'map' ? (state.display === 'visual'
-      ? '<div class="dotnote muted">Bars = orders of magnitude of new leases grouped at this zoom (not individual homes). Exact counts in Numbers mode and place details.</div>' + visualKey
+      ? '<div class="dotnote muted">Circle size = grouped new leases at this zoom (five volume bands, not individual homes). Switch to Numbers for approximate counts; exact counts are in place details.</div>' + visualKey
       : '<div class="dotnote muted">Capsules ≈ new leases grouped at this zoom; tap to explore. Areas show postcode-level rents, not individual home locations. Exact counts appear in the place details.</div>') : '';
     $('legend').innerHTML = `<div>${L}</div><div class="ramp"></div><div class="row"><span>$350</span><span>$750</span><span>$1,300</span><span>$2,000+</span></div>${detail}`;
   }
