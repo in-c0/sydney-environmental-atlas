@@ -102,6 +102,14 @@ for (const [w, h] of VIEWPORTS) {
     await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` });
   }
 
+  // Capture the actual mobile Visual state independently of the numeric default.
+  if (shotsDir && w === 390) {
+    await page.click('[data-display="visual"]');
+    await page.waitForTimeout(450);
+    await page.screenshot({ path: `${shotsDir}/act1-visual-bubbles-${w}x${h}.png` });
+    await page.click('[data-display="numbers"]');
+  }
+
   // Numbers are the default; circles are an explicit, reversible alternative.
   if (w === 1440) {
     await page.waitForFunction(() => window.SHOWHAUS?.map?.getLayer('pc-nodes-v'), null, { timeout: 15000 }).catch(() => {});
@@ -120,16 +128,10 @@ for (const [w, h] of VIEWPORTS) {
         && !m.hasImage('lease-meter-1');
     }));
     check('Bubble legend documents grouped records', (await page.locator('#legend').innerText()).includes('Circle size = grouped new leases'));
-    await page.click('[data-lens="3d"]');
-    check('Other map lenses hide both marker views', await page.evaluate(() => {
-      const m = window.SHOWHAUS.map;
-      return m.getLayoutProperty('pc-nodes-v', 'visibility') === 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
-    }));
-    await page.click('#proClose');
-    check('Returning to map restores only the chosen visual view', await page.evaluate(() => {
-      const m = window.SHOWHAUS.map;
-      return m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
-    }));
+    if (shotsDir) {
+      await page.waitForTimeout(450);
+      await page.screenshot({ path: `${shotsDir}/act1-visual-bubbles-${w}x${h}.png` });
+    }
     await page.click('[data-display="numbers"]');
     check('Numbers toggle restores count capsules', await page.evaluate(() => {
       const m = window.SHOWHAUS.map;
@@ -241,10 +243,20 @@ for (const [w, h] of VIEWPORTS) {
   await page.click('#pinA');
   check(`${tag} compare says what it does`, (await page.locator('#pinA').innerText()) === 'Stop comparing' && (await page.locator('#compare').innerText()).includes('pinned'));
   await page.click('#pinA');
+  await page.click('[data-display="visual"]');
   await page.click('[data-lens="3d"]');
   check(`${tag} 3D lens is a Pro preview`, await page.locator('#proLens').isVisible());
+  check(`${tag} non-map lens hides both marker layers`, await page.evaluate(() => {
+    const m = window.SHOWHAUS.map;
+    return m.getLayoutProperty('pc-nodes-v', 'visibility') === 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
+  }));
   await page.click('#proClose');
   check(`${tag} closing the Pro preview returns to the map`, await page.locator('#proLens').isHidden() && await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
+  check(`${tag} returning from Pro preview restores the Visual selection`, await page.evaluate(() => {
+    const m = window.SHOWHAUS.map;
+    return m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
+  }));
+  await page.click('[data-display="numbers"]');
   await page.evaluate(() => { const S = window.SHOWHAUS, p = S.state.point; S.map.jumpTo({ center: [p.lng, p.lat], zoom: 13.5 }); });
   if (shotsDir) {
     await page.waitForTimeout(700);
