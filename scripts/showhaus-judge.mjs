@@ -98,6 +98,27 @@ for (const [w, h] of VIEWPORTS) {
   await noOverflow(page, `${tag} act 1`);
   if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.waitForTimeout(1200); await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` }); }
 
+  // The source-backed visual marker is reversible, and location suggestions follow the map view.
+  if (w === 1440) {
+    await page.waitForFunction(() => window.SHOWHAUS?.map?.getLayer('pc-nodes-v'), null, { timeout: 15000 }).catch(() => {});
+    check('Visual display defaults on', await page.locator('[data-display="visual"]').getAttribute('aria-pressed') === 'true');
+    const visual = await page.evaluate(() => { const m = window.SHOWHAUS.map; return m && m.getLayer('pc-nodes-v') && m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none'; });
+    check('Visible lease markers use visual scale', !!visual);
+    await page.click('[data-display="numbers"]');
+    check('Numbers switch restores count capsules', await page.evaluate(() => { const m = window.SHOWHAUS.map; return m.getLayoutProperty('pc-nodes-n','visibility') !== 'none' && m.getLayoutProperty('pc-nodes-v','visibility') === 'none'; }));
+    await page.click('[data-display="visual"]');
+    await page.fill('#where', '');
+    await page.evaluate(() => window.SHOWHAUS.map.jumpTo({ center: [151.21, -33.88], zoom: 12 }));
+    await page.waitForTimeout(350);
+    const before = await page.locator('#nearbyList button').allTextContents();
+    await page.evaluate(() => window.SHOWHAUS.map.jumpTo({ center: [150.93, -33.81], zoom: 12 }));
+    await page.waitForTimeout(350);
+    const after = await page.locator('#nearbyList button').allTextContents();
+    check('Nearby suburb suggestions respond to map viewport', before.length > 0 && after.length > 0 && before.join('|') !== after.join('|'), before.join(' / ') + ' → ' + after.join(' / '));
+    await page.fill('#where', 'Parramatta');
+    check('Manual place input hides automatic suggestions', await page.locator('#nearby').isHidden());
+    await page.fill('#where', '');
+  }
   // Act 1: counter = recount for the whole window, then per-keystroke.
   const total = await page.locator('#c1').innerText();
   check(`${tag} act 1 total counter equals recount`, total.replace(/,/g, '') === String(recount()), `${total} vs ${recount()}`);
@@ -194,14 +215,14 @@ for (const [w, h] of VIEWPORTS) {
   }
   const calm = await page.evaluate(() => {
     const m = window.SHOWHAUS.map;
-    return { labels: !!m.getLayer('pc-nodes-n'), labelVisibility: m.getLayoutProperty('pc-nodes-n', 'visibility'),
+    return { labels: !!m.getLayer('pc-nodes-n'), visual: !!m.getLayer('pc-nodes-v'), visualVisibility: m.getLayoutProperty('pc-nodes-v', 'visibility'), labelVisibility: m.getLayoutProperty('pc-nodes-n', 'visibility'),
       noLeaseDots: !m.getLayer('lease-dots') && !m.getLayer('lease-ring') && !m.getSource('leases'),
       noFallbackDots: !m.getLayer('pc-nodes'),
       countLabel: JSON.stringify(m.getLayoutProperty('pc-nodes-n', 'text-field')),
       clusterSource: m.getSource('pcn')._options?.cluster,
     };
   });
-  check(`${tag} zoomed map uses approximate count capsules, not dense lease dots`, calm.labels && calm.labelVisibility !== 'none' && calm.noLeaseDots && calm.noFallbackDots && calm.countLabel.includes('leases') && calm.countLabel.includes('≈'), JSON.stringify(calm));
+  check(`${tag} zoomed map offers reversible numeric labels without dense lease dots`, calm.labels && calm.visual && calm.noLeaseDots && calm.noFallbackDots && calm.countLabel.includes('leases') && calm.countLabel.includes('≈') && (calm.visualVisibility !== 'none' || calm.labelVisibility !== 'none'), JSON.stringify(calm));
   const cityFiltered = await page.evaluate(() => window.SHOWHAUS.pc.features.reduce((n, f) => n + f.properties.n, 0));
   const geoCount = recount({ maxRent: 1000, beds: [2], mappedOnly: true });
   const missingGeometry = recount({ maxRent: 1000, beds: [2] }) - geoCount;
@@ -221,7 +242,7 @@ for (const [w, h] of VIEWPORTS) {
       valid: sum === Number(sample.properties.leases) && sum >= sample.properties.point_count && expansionZoom > 9.5 };
   });
   check(`${tag} clusters sum leases (not postcode points) and expand on tap`, clusters.valid, JSON.stringify(clusters));
-  check(`${tag} legend distinguishes grouped lease counts from rent shading`, (await page.locator('#legend').innerText()).includes('Capsules ≈ new leases') && (await page.locator('#legend').innerText()).includes('not individual home locations'));
+  check(`${tag} legend distinguishes grouped lease counts from rent shading`, (await page.locator('#legend').innerText()).includes('new leases grouped') && (await page.locator('#legend').innerText()).includes('not individual homes'));
   // Every live request has a 15 s timeout, so each lens must leave 'load' within ~20 s (ok, none or err).
   await page.waitForFunction(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return e && Object.values(e).every(v => v.s !== 'load'); }, null, { timeout: 22000 }).catch(() => {});
   const statuses = await page.evaluate(() => { const S = window.SHOWHAUS; const e = S.evidence.get(S.keyOf(S.state.point)); return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v.s])); });
