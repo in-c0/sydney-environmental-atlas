@@ -243,7 +243,9 @@ for (const [w, h] of VIEWPORTS) {
   await page.click('#pinA');
   check(`${tag} compare says what it does`, (await page.locator('#pinA').innerText()) === 'Stop comparing' && (await page.locator('#compare').innerText()).includes('pinned'));
   await page.click('#pinA');
-  await page.click('[data-display="visual"]');
+  // Mobile act 4 folds away the toggle; the real pointer toggle is tested in act 1.
+  // Dispatch its click here only to verify lens/state synchronisation at every viewport.
+  await page.locator('[data-display="visual"]').dispatchEvent('click');
   await page.click('[data-lens="3d"]');
   check(`${tag} 3D lens is a Pro preview`, await page.locator('#proLens').isVisible());
   check(`${tag} non-map lens hides both marker layers`, await page.evaluate(() => {
@@ -256,7 +258,7 @@ for (const [w, h] of VIEWPORTS) {
     const m = window.SHOWHAUS.map;
     return m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
   }));
-  await page.click('[data-display="numbers"]');
+  await page.locator('[data-display="numbers"]').dispatchEvent('click');
   await page.evaluate(() => { const S = window.SHOWHAUS, p = S.state.point; S.map.jumpTo({ center: [p.lng, p.lat], zoom: 13.5 }); });
   if (shotsDir) {
     await page.waitForTimeout(700);
