@@ -302,3 +302,55 @@ body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
 @media (prefers-reduced-motion: reduce) {
   .explore-stage .act { transition: none; }
 }
+
+/* Data display controls and actual-suburb suggestions; no synthetic geographic illustration. */
+.explore-shell .view-meter {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 0 25px; padding: 10px 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink-2); font: 600 11px/1.2 var(--sans);
+}
+.view-meter-buttons { display: inline-flex; gap: 3px; padding: 3px; border-radius: 8px; background: var(--paper-2); }
+.view-meter-buttons button {
+  min-height: 30px; border: 0; border-radius: 6px; padding: 5px 11px;
+  font: 600 11px/1.2 var(--sans); color: var(--ink-2); background: transparent;
+}
+.view-meter-buttons button[aria-pressed="true"] {
+  background: var(--glass); color: var(--ink); box-shadow: 0 1px 5px rgba(20,30,25,.12);
+}
+.explore-stage .nearby { margin: 15px 0 10px; }
+.explore-stage .nearby[hidden] { display: none; }
+.nearby-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.nearby-head strong { font: 650 12px/1.35 var(--sans); color: var(--ink); }
+.nearby-head span { font: 400 10px/1.35 var(--sans); color: var(--ink-2); }
+.nearby-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.nearby-list button {
+  min-width: 0; min-height: 46px; text-align: left; padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 70%, white);
+}
+.nearby-list button strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px/1.35 var(--sans); }
+.nearby-list button small { display: block; color: var(--ink-2); font: 400 10px/1.3 var(--sans); }
+.nearby-list button:hover { border-color: var(--terracotta); }
+.lease-scale { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 8px; }
+.lease-scale span { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; font: 400 10px var(--sans); color: var(--ink-2); }
+.lease-scale-meter { display: inline-flex; gap: 2px; font-weight: 400; }
+.lease-scale-meter i { display: block; width: 7px; height: 12px; border-radius: 2px; background: var(--paper-2); }
+.lease-scale-meter i.on { background: var(--line); }
+@media (max-width: 1100px) and (min-width: 761px) { .explore-shell .view-meter { margin: 0 19px; } }
+@media (max-width: 760px) {
+  .explore-shell .view-meter { margin: 0 19px; padding: 7px 0; }
+  .view-meter-buttons button { min-height: 28px; }
+  .explore-stage .nearby { margin-top: 10px; }
+  .nearby-list button { min-height: 42px; padding: 6px 8px; }
+}
+
+/* Recent searches remain visible and keyboard/touch removable beneath map suggestions.
+   Fixed hit targets also avoid hover-width reflow while an inner panel scrolls. */
+.explore-stage .presets { max-height: none; overflow: visible; padding-bottom: 8px; }
+.explore-stage .presets button.x,
+.explore-stage .presets li:hover button.x,
+.explore-stage .presets li:focus-within button.x {
+  width: 26px; min-width: 26px; min-height: 32px; padding: 0;
+  transition: none; overflow: visible;
+}
