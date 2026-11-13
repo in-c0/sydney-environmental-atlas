@@ -33,7 +33,7 @@ async function openGallery() {
   $('cards').innerHTML = ((idx && idx.items) || []).map(it => `
     <a class="g-card" href="${esc(it.href)}${it.href.includes('?') ? '&' : '?'}src=walk-gallery" data-slug="${esc(it.slug)}">
       <div class="shot" style="background-image:url('${esc(it.poster)}')"><span class="tier">${esc(it.tier)}</span><span class="go">▶ Walk</span></div>
-      <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
+      <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by, it.by && it.kind === 'walk' && 'not affiliated'].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
     </a>`).join('') || '<p>No walkthroughs yet.</p>';
   $('cards').addEventListener('click', e => { const a = e.target.closest('.g-card'); if (a) track('cta', { cta: 'open:' + a.dataset.slug }); });
 }
@@ -102,7 +102,7 @@ async function openWalk() {
       if (why) track('walk_room', { step: v.name, cta: why });
       let dy = v.yaw - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
       glide = { t: 0, d: Math.min(2.2, 0.7 + Math.hypot(v.pos[0] - px, v.pos[1] - py) * 0.16), x0: px, y0: py, w0: yaw, p0: pitch, x1: v.pos[0], y1: v.pos[1], w1: yaw + dy, p1: v.pitch, f0: camera.fov, f1: v.real ? photoFov() : baseFov(), i }; }
-    V.forEach((v, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.real ? '◉ ' + v.name : v.name; if (v.real) b.className = 'ph'; b.onclick = () => go(i, 'chip'); $('chips').append(b); });
+    V.forEach((v, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.real ? '◉ ' + v.name.replace(/^Photo\b/, 'AI render') : v.name; if (v.real) b.className = 'ph'; b.onclick = () => go(i, 'chip'); $('chips').append(b); });
 
     // ---- mini plan, sized from the room outline
     const P = R.plan, S = innerWidth <= 560 ? 8 : 11, pad = 0.5;
@@ -142,7 +142,7 @@ async function openWalk() {
     const veil = $('veil'), want = $('want'), key = 'sh_want_' + slug;
     function shut() { veil.style.display = 'none'; }
     const wanted = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
-    const paintWant = () => { if (!wanted() && !want.classList.contains('done')) return; want.classList.add('done'); want.textContent = 'Counted ✓'; want.disabled = true; $('wantFine').textContent = 'Thanks. This home moves up the photoreal queue.'; };
+    const paintWant = () => { if (!wanted() && !want.classList.contains('done')) return; want.classList.add('done'); want.textContent = 'Counted ✓'; want.disabled = true; $('wantFine').textContent = 'Thanks — counted for this home.'; };
     $('up').onclick = () => { veil.style.display = 'grid'; paintWant(); track('upgrade_open', { cta: 'button' }); };
     $('x').onclick = shut; veil.addEventListener('pointerdown', e => { if (e.target === veil) shut(); });
     const sample = V.findIndex(v => v.real);

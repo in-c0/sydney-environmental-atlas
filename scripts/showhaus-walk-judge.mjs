@@ -55,7 +55,7 @@ async function run(name, viewport, touch) {
   const basis = await page.locator('#basis').textContent();
   check(meta.listing.source === 'plan' ? /published floor plan/.test(basis) && !/satellite/.test(basis) : /satellite imagery/.test(basis), `${name}: basis line matches the data source (${meta.listing.source})`);
   check(/not affiliated/.test(await page.locator('#tby').textContent()), `${name}: unclaimed home says it is not affiliated with the builder`);
-  for (const sel of ['#title', '#up', '#chips button:first-child']) check(await inView(sel), `${name}: ${sel} is inside the screen`);
+  for (const sel of ['#title', '#up', '#chips button:first-child', '#chips button:last-child']) check(await inView(sel), `${name}: ${sel} is inside the screen`);
   check(!(await overlap('#title', '#side')), `${name}: title card and plan/upgrade column do not overlap`);
   check(!(await overlap('#side', '#chips')), `${name}: upgrade column does not cover the room chips`);
   if (touch) { check(await page.locator('#stick').isVisible(), `${name}: touch stick is shown`); check(!(await overlap('#stick', '#chips')) && !(await overlap('#stick', '#side')), `${name}: touch stick is clear of other controls`); }
@@ -132,6 +132,8 @@ async function run(name, viewport, touch) {
   check((await page.locator('#paddr').textContent()).trim() === meta.project.name, `${name}: claim page names this home ("${(await page.locator('#paddr').textContent()).trim()}")`);
   check((await page.locator('#open3d').getAttribute('href')).includes(`/walk/?p=${SLUG}`), `${name}: claim page links back to this walkthrough`);
   check(await page.locator('#walk').evaluate(v => !v.getAttribute('src') && /poster\.jpg/.test(v.poster)), `${name}: claim page shows this home's still, not the Studio demo clip`);
+  check(/build, own or market this home/.test(await page.locator('#h-intro').textContent()), `${name}: claim headline includes builders`);
+  check(await page.locator('#explainer').isHidden(), `${name}: the explainer recorded on another property is hidden`);
   check(!/Arncliffe|planning documents/.test(await page.locator('body').innerText()), `${name}: claim page carries no text from another property`);
   await shot('7-claim');
 
