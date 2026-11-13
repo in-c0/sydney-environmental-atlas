@@ -120,6 +120,10 @@ async function run(name, viewport, touch) {
   const cb = await page.locator('#card').boundingBox(), xb = await page.locator('#x').boundingBox();
   check(xb.x > cb.x && xb.x + xb.width <= cb.x + cb.width + 1 && xb.y >= cb.y && xb.y < cb.y + 60, `${name}: close button sits in the card's top-right corner`);
   check(await inView('#card'), `${name}: upgrade card fits the screen`);
+  await page.waitForFunction(() => { const i = document.getElementById('sampleGif'); return i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 }).catch(() => {});
+  check(await page.locator('#sampleGif').evaluate(i => /\.gif$/.test(i.src) && i.naturalWidth > 0), `${name}: sample GIF is shown in the upgrade card`);
+  check(/this home/.test(await page.locator('#sampleCap').textContent()), `${name}: sample caption says whose home it shows`);
+  check(await page.evaluate(() => document.getElementById('clip').videoWidth >= 1280 || !document.getElementById('clip').getAttribute('src')), `${name}: AI walk clip is the 1280-wide file`);
   const cardText = await page.locator('#card').textContent();
   check(!/\$\s?\d|AUD|per (clip|home|render)/i.test(cardText), `${name}: no price on the card`);
   check(/declined up front/.test(cardText) && /time cap/.test(cardText) && /refunded/.test(cardText) && /AI visualisation/.test(cardText), `${name}: card states the limit, the cap, the refund and the AI visualisation`);

@@ -46,6 +46,7 @@ test('data: every listed walk has its listing file, scene, atlases, photos and p
     assert.ok(['plan', 'estimate'].includes(meta.listing.source), `${it.slug}: source is plan or estimate`);
     if (meta.listing.source === 'plan') assert.match(meta.listing.source_url, /^https:\/\//, `${it.slug}: a plan-based listing records where the plan came from`);
     assert.ok(await exists(`data/${it.slug}/poster.jpg`), `${it.slug}: poster`);
+    if (meta.listing.sample) assert.ok(await exists(`data/${it.slug}/${meta.listing.sample}`), `${it.slug}: sample GIF`);
     globalThis.window = {}; await import(`${WALK}data/${it.slug}/room.js`); const R = globalThis.window.ROOM; delete globalThis.window;
     for (const g of Object.values(R.groups)) assert.ok(await exists(`data/${it.slug}/${g.atlas}`), `${it.slug}: atlas ${g.atlas}`);
     for (const v of R.views) for (const f of [v.photo, v.clip]) if (f) assert.ok(await exists(`data/${it.slug}/${f}`), `${it.slug}: ${f}`);
