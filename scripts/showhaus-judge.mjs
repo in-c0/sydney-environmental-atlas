@@ -96,7 +96,11 @@ for (const [w, h] of VIEWPORTS) {
   }));
   check(`${tag} modern readable type is applied`, typography.body.includes('Inter') && typography.heading.includes('Manrope') && typography.brand.includes('Manrope'), JSON.stringify(typography));
   await noOverflow(page, `${tag} act 1`);
-  if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.waitForTimeout(1200); await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` }); }
+  if (shotsDir) {
+    await mkdir(shotsDir, { recursive: true });
+    await page.waitForFunction(() => window.SHOWHAUS?.map?.getLayer('pc-nodes-v') && document.querySelectorAll('#nearbyList button').length > 0, null, { timeout: 15000 }).catch(() => {});
+    await page.screenshot({ path: `${shotsDir}/act1-${w}x${h}.png` });
+  }
 
   // The source-backed visual marker is reversible, and location suggestions follow the map view.
   if (w === 1440) {
@@ -115,6 +119,7 @@ for (const [w, h] of VIEWPORTS) {
     await page.waitForTimeout(350);
     const after = await page.locator('#nearbyList button').allTextContents();
     check('Nearby suburb suggestions respond to map viewport', before.length > 0 && after.length > 0 && before.join('|') !== after.join('|'), before.join(' / ') + ' → ' + after.join(' / '));
+    if (shotsDir) await page.screenshot({ path: `${shotsDir}/act1-map-recommendations-${w}x${h}.png` });
     await page.fill('#where', 'Parramatta');
     check('Manual place input hides automatic suggestions', await page.locator('#nearby').isHidden());
     await page.fill('#where', '');
