@@ -62,6 +62,13 @@
     <li data-cut="3"><button type="button">03<span> Matters</span></button></li>
     <li data-cut="4"><button type="button">04<span> Place</span></button></li>
   </ol>
+  <div class="view-meter" role="group" aria-label="Lease marker display">
+    <span>Map markers</span>
+    <div class="view-meter-buttons">
+      <button type="button" data-display="visual" aria-pressed="true" aria-label="Show lease quantities as visual five-step bars">Visual</button>
+      <button type="button" data-display="numbers" aria-pressed="false" aria-label="Show approximate lease counts on the map">Numbers</button>
+    </div>
+  </div>
   <div class="explore-stage">
 <section class="act" id="act1" aria-labelledby="q1">
   <h2 id="q1">Where would you like to live?</h2>
@@ -71,6 +78,10 @@
   </div>
   <p class="hint" id="whereHint"></p>
   <ul class="suggest" id="suggest" role="listbox"></ul>
+  <div class="nearby" id="nearby" hidden>
+    <div class="nearby-head"><strong>Around your map view</strong><span>Nearby, not ranked</span></div>
+    <div class="nearby-list" id="nearbyList" aria-label="Suggested suburbs from the visible map"></div>
+  </div>
   <ul class="presets" id="presets" aria-label="Recent searches"></ul>
 </section>
 
