@@ -65,6 +65,12 @@ test('wording: only interiors are called a walk; exterior models are pinned as 3
   assert.match(css, /\.walk-pin--model\s*\{[^}]*box-shadow:\s*none;/s, 'model shortcuts have no promotional drop shadow');
 });
 
+test('promise: the card tells voters that the most-voted homes are made photoreal first', async () => {
+  const js = await readFile(WALK + 'walk.js', 'utf8');
+  assert.match(js, /const PROMISE = 'Homes with the most votes are made photoreal first\.'/);
+  assert.equal((js.match(/\$\{PROMISE\}/g) || []).length, 2, 'shown before and after voting');
+});
+
 test('page: no price anywhere until render cost is measured', async () => {
   for (const f of ['index.html', 'walk.js']) assert.doesNotMatch(await readFile(WALK + f, 'utf8'), /\$\s?\d|AUD\s?\d/, f);
 });

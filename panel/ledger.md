@@ -1,6 +1,6 @@
 # Synthetic panel ledger
 
-Predictions are recorded before real traffic and checked against it afterwards. Running hit rate: 0 of 0 checked (8 predictions open, no real traffic compared yet).
+Predictions are recorded before real traffic and checked against it afterwards. Running hit rate: 0 of 0 checked (12 predictions open, no real traffic compared yet).
 
 ## 2026-11-13 · SHOWHAUS walk: viewer, upgrade card, claim (Quick, 12 personas × 2 models)
 
@@ -27,5 +27,18 @@ Predictions to check against `upgrade_interest` and `upgrade_interest_cancel`:
 6. Cancels are rare: well under one cancel per ten votes.
 7. Predicted weakest step after voting: "nothing happens next". Voters leave the card without claiming or returning unless a price or a date appears.
 8. Builder-side visitors do not vote on an unclaimed home; they go to claim (or to legal).
+
+Not yet checked.
+
+## 2026-11-15 · SHOWHAUS walk: whole visit, with the vote promise (Quick, 12 personas × 2 models)
+
+Funnel and quotes: `journey-2026-11-15.md`. Decision: ship the promise and two wording changes (AI clip label says what is real and what is imagined; limits and refunds fold under one line).
+
+Predictions to check against real events:
+
+9. Of visitors who open a walk, most reach an AI walk; the largest drop is at the upgrade card, not in the viewer.
+10. Return visits stay low while the gallery holds one home: the top reason given is "only one home / not a home I am considering".
+11. The vote promise does not by itself bring voters back; a price or a date would.
+12. Of builder-side visitors who open the claim form, about half submit; the ones who do not want to know what claiming changes on the page first.
 
 Not yet checked.

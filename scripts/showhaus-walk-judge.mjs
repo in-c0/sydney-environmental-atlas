@@ -85,7 +85,7 @@ async function run(name, viewport, touch) {
   if (layerSel === '#clip') { const a = await st(); await page.waitForTimeout(1200); const b = await st();
     check(b.clipTime !== a.clipTime, `${name}: AI walk clip is playing (${a.clipTime.toFixed(2)} → ${b.clipTime.toFixed(2)} s)`);
     check(Math.hypot(b.px - a.px, b.py - a.py) > 0.1, `${name}: base camera walks the clip's path in step (moved ${Math.hypot(b.px - a.px, b.py - a.py).toFixed(2)} m)`);
-    check(/not a video/.test(await page.locator('#tag').textContent()), `${name}: clip is labelled as AI, not a video of the home`); }
+    check(/AI preview: layout from the plan, finishes imagined/.test(await page.locator('#tag').textContent()), `${name}: clip label says what is real (layout) and what is imagined (finishes)`); }
   const clipBefore = await page.locator(layerSel).evaluate(e => e.style.clipPath);
   const wb = await page.locator('#wipe').boundingBox();
   if (touch) { await finger('touchStart', wb.x + 22, 300); for (const x of [160, 120, 80]) await finger('touchMove', x, 300); await finger('touchEnd'); }
@@ -125,13 +125,15 @@ async function run(name, viewport, touch) {
   check(/this home/.test(await page.locator('#sampleCap').textContent()), `${name}: sample caption says whose home it shows`);
   check(await page.evaluate(() => document.getElementById('clip').videoWidth >= 1280 || !document.getElementById('clip').getAttribute('src')), `${name}: AI walk clip is the 1280-wide file`);
   const cardText = await page.locator('#card').textContent();
+  check(await page.locator('#terms').evaluate(d => !d.open) && await page.locator('#terms summary').isVisible(), `${name}: limits and refunds are one tap away, not in the way`);
   check(!/\$\s?\d|AUD|per (clip|home|render)/i.test(cardText), `${name}: no price on the card`);
   check(!/credits?\b/i.test(cardText), `${name}: card does not use the word credits`);
-  check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up, and nothing starts/.test(cardText), `${name}: the button reads as a free vote, not an order`);
+  check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up/.test(cardText), `${name}: the button reads as a free vote, not an order`);
   check((await page.locator('#ownClaim').getAttribute('href')).includes('/claim/?p=' + SLUG), `${name}: card sends builders and owners to claim first`);
   check(/declined up front/.test(cardText) && /time cap/.test(cardText) && /refunded/.test(cardText) && /AI visualisation/.test(cardText), `${name}: card states the limit, the cap, the refund and the AI visualisation`);
   await shot('5-upgrade');
   check(/cancel it any time/.test(cardText), `${name}: card says a vote can be cancelled`);
+  check(/Homes with the most votes are made photoreal first/.test(cardText), `${name}: card states the promise before voting`);
   check(await page.locator('#unvote').isHidden(), `${name}: no cancel control before voting`);
   await page.locator('#want').click(); await page.waitForTimeout(300);
   check((await page.locator('#want').textContent()).includes('Voted') && await page.locator('#want').isDisabled(), `${name}: vote is acknowledged and cannot be sent twice`);
@@ -139,6 +141,7 @@ async function run(name, viewport, touch) {
   check(beacons.some(b => b.name === 'walk_open') && beacons.some(b => b.name === 'walk_room'), `${name}: walk_open and walk_room beacons sent`);
   await page.locator('#unvote').scrollIntoViewIfNeeded();
   check(await page.locator('#unvote').isVisible() && await inView('#unvote'), `${name}: Cancel vote is offered after voting`);
+  check(/Homes with the most votes are made photoreal first/.test(await page.locator('#wantFine').textContent()), `${name}: the promise stays visible after voting`);
   await shot('6-counted');
   await page.locator('#unvote').click(); await page.waitForTimeout(300);
   check((await page.locator('#want').textContent()).includes('Vote for this home') && !(await page.locator('#want').isDisabled()) && await page.locator('#unvote').isHidden(), `${name}: cancelling returns the button to its not-voted state`);
@@ -165,6 +168,7 @@ async function run(name, viewport, touch) {
   await page.goto(`${BASE}${root}/?synthetic=1`, { waitUntil: 'domcontentloaded' });
   check(await page.locator('#walkNav').isVisible(), `${name}: map header has the Walk link`);
   await page.waitForTimeout(2500);
+  await page.waitForSelector('.walk-pin', { timeout: 30000 }).catch(() => {});
   const pins = await page.locator('.walk-pin').allTextContents();
   check(pins.length >= 1 && pins.every(t => !/Walk/.test(t) || false) , `${name}: exterior model pin is not called a walk (${pins.join(', ')})`);
   await shot('8-map');
