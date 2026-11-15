@@ -1,6 +1,7 @@
 {
   "items": [
     { "slug": "buildtec-avalon", "kind": "walk", "name": "Avalon", "by": "Buildtec", "type": "Home design", "line": "Kitchen · Dining · Family · Alfresco", "tier": "Base walk + 2 AI walk clips", "href": "./?p=buildtec-avalon", "poster": "./data/buildtec-avalon/poster.jpg", "lngLat": null },
+    { "slug": "buildtec-erina", "kind": "walk", "name": "Erina", "by": "Buildtec", "type": "Home design", "line": "Kitchen · Dining · Living · Alfresco", "tier": "Base walk", "href": "./?p=buildtec-erina", "poster": "./data/buildtec-erina/poster.jpg", "lngLat": null },
     { "slug": "arncliffe-central", "kind": "studio", "name": "Arncliffe Central", "by": "", "type": "Off the plan", "line": "Arncliffe NSW · four towers · sun by floor", "tier": "Exterior massing model", "href": "../studio/?p=arncliffe-central", "poster": "../studio/arncliffe-central/poster.png", "lngLat": [151.1481, -33.9379] }
   ]
 }

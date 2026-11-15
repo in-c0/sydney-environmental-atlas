@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
+import { readFileSync } from 'node:fs';
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
 const SLUG = arg('--slug', 'buildtec-avalon');
 const SHOTS = arg('--shots', join(tmpdir(), 'showhaus-walk-shots'));
@@ -78,6 +79,11 @@ async function run(name, viewport, touch) {
     await page.waitForTimeout(touch ? 2900 : 500);
     await shot(`2-view${i + 1}`);
   }
+  // a base-only home (no photoreal views yet) has no divider to check
+  const roomSrc = readFileSync(new URL(`../dist/showhaus/walk/data/${SLUG}/room.js`, import.meta.url), 'utf8');
+  const hasPhoto = /"photo":\s*"/.test(roomSrc);
+  if (!hasPhoto) check((await st()).photoOn === -1 && !(await page.locator('#wipe').isVisible()), `${name}: base-only home shows no photo layer or divider`);
+  if (hasPhoto) {
   const s1 = await st();
   check(s1.photoOn === views - 1, `${name}: last photoreal viewpoint is revealed after the glide (photoOn=${s1.photoOn})`);
   check(await page.locator('#wipe').isVisible(), `${name}: divider is shown on a photoreal view`);
@@ -93,6 +99,7 @@ async function run(name, viewport, touch) {
   const clipAfter = await page.locator(layerSel).evaluate(e => e.style.clipPath);
   check(clipBefore !== clipAfter && parseFloat(clipAfter.split(' ').pop()) < 30, `${name}: dragging the divider reveals more of the photo (${clipAfter})`);
   await shot('3-photo-wipe');
+  }
 
   // walk: plan tap, then keys or stick
   const before = await st();
@@ -122,7 +129,7 @@ async function run(name, viewport, touch) {
   check(await inView('#card'), `${name}: upgrade card fits the screen`);
   await page.waitForFunction(() => { const i = document.getElementById('sampleGif'); return i.complete && i.naturalWidth > 0; }, null, { timeout: 15000 }).catch(() => {});
   check(await page.locator('#sampleGif').evaluate(i => /\.gif$/.test(i.src) && i.naturalWidth > 0), `${name}: sample GIF is shown in the upgrade card`);
-  check(/this home/.test(await page.locator('#sampleCap').textContent()), `${name}: sample caption says whose home it shows`);
+  check((hasPhoto ? /this home/ : /another home/).test(await page.locator('#sampleCap').textContent()), `${name}: sample caption says whose home it shows`);
   check(await page.evaluate(() => document.getElementById('clip').videoWidth >= 1280 || !document.getElementById('clip').getAttribute('src')), `${name}: AI walk clip is the 1280-wide file`);
   const cardText = await page.locator('#card').textContent();
   check(await page.locator('#terms').evaluate(d => !d.open) && await page.locator('#terms summary').isVisible(), `${name}: limits and refunds are one tap away, not in the way`);

@@ -27,7 +27,7 @@ in the JSON and listed under `assumptions` (the page shows them).
 | `openings` | `{"edge": i, "type": "window" \| "slider" \| "door", "a", "b", "sill", "head", "mullions"}`. Edge `i` runs `outline[i] → outline[i+1]`; `a..b` is the absolute x (horizontal wall) or y (vertical wall). Doors are closed: the room behind is not modelled. |
 | `outdoor` | `{"rect": [x0, y0, x1, y1], "roof": 2.7}`: a covered deck. A slider that opens onto it becomes a doorway you can walk through. |
 | `finishes` | `floor`: `oak` \| `tile` \| `concrete` \| `carpet`; `wall`, `cabinet`, `stone`, `splash`: `[r, g, b]`. This is where a claimant's real finishes go. |
-| `items` | `{"type", "at": [x, y], "rot": 0 \| 90 \| 180 \| 270, …}`. `at` is the footprint centre; `rot` 0 = back to the south, facing north. Types: `kitchen_run`, `island`, `tall`, `fridge`, `dining`, `sofa`, `armchair`, `coffee_table`, `rug`, `tv_unit`, `art`, `plant`, `floor_lamp`, `pendant`, `bed`, `bedside`, `desk`, `outdoor_table`, `box`. |
+| `items` | `{"type", "at": [x, y], "rot": 0 \| 90 \| 180 \| 270, …}`. `at` is the footprint centre; `rot` 0 = back to the south, facing north. Types: `kitchen_run`, `island`, `tall`, `fridge`, `dining`, `sofa`, `armchair`, `coffee_table`, `rug`, `tv_unit`, `art`, `plant`, `floor_lamp`, `pendant`, `bed`, `bedside`, `desk`, `outdoor_table`, `box`. `kitchen_run` takes `sink`, `sink_at`, `cooktop` and `window_gap: [u0, u1]` (local x, no splash or overheads there, so a window over the sink stays open); `island` takes `sink: false` when the plan's island is a plain bench. |
 | `views` | `{"name", "pos": [x, y], "look": [x, y], "pitch"}`: the room chips. A view standing in a wall or an object is refused. |
 
 `check` refuses a plan that is not rectilinear, has an opening that does not fit its wall or rises above the ceiling,
@@ -46,6 +46,14 @@ places an item outside the room, puts a camera inside something, or lists no ass
 - A full-resolution Avalon bake with `walkgen.py` (the live Avalon still uses the `avalon.py` bake, which its photos and clips are aligned to).
 - Reading a floor plan image into the JSON. That step is still done by a person or an agent with the plan in front of it.
 - Rooms that are not one rectilinear space: internal walls, curves, stairs, more than one level.
-- The order of homes to build is `/api/ops/summary` → `queue.base`; nothing takes from it automatically yet.
+- Reading the plan is done by the nightly scheduled session (an agent with the plan image in front of it), not by code.
+
+## Live homes built with walkgen
+
+- `plans/buildtec-erina.plan.json` → `walk/?p=buildtec-erina` (15 Nov 2026): first home built end to end with `walkgen.py` (3072 atlases, 30 samples, one group per process).
+
+## Queues
+
+- Base: `/api/ops/summary` → `queue.base`, taken nightly (see the repo CLAUDE.md). Photoreal: `scripts/showhaus-photoreal-queue.mjs`.
 
 The builder's plan image is theirs and is not stored here; the JSON records where it came from.
