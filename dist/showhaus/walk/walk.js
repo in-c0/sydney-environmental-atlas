@@ -164,7 +164,8 @@ async function openWalk() {
     let svg = `<svg width="${mw}" height="${mh}" viewBox="0 0 ${mw} ${mh}" role="img" aria-label="Floor plan: tap to walk there">`;
     if (P.alfresco) svg += `<rect x="${mx(P.alfresco[0])}" y="${my(P.alfresco[3])}" width="${(P.alfresco[2] - P.alfresco[0]) * S}" height="${(P.alfresco[3] - P.alfresco[1]) * S}" fill="#e9e4da" stroke="#14181c" stroke-width="1" stroke-dasharray="3 3"/>`;
     svg += `<polygon points="${P.room.map(p => mx(p[0]) + ',' + my(p[1])).join(' ')}" fill="#fff" stroke="#14181c" stroke-width="2"/>`;
-    for (const o of P.openings || []) svg += `<line x1="${mx(o[0])}" y1="${my(north)}" x2="${mx(o[1])}" y2="${my(north)}" stroke="#7fb6e6" stroke-width="3"/>`;
+    for (const o of P.openings || []) { const [ax, ay, bx, by] = o.length === 4 ? o : [o[0], north, o[1], north]; // [x0, y0, x1, y1] on any wall; [a, b] = on the north wall
+      svg += `<line x1="${mx(ax)}" y1="${my(ay)}" x2="${mx(bx)}" y2="${my(by)}" stroke="#7fb6e6" stroke-width="3"/>`; }
     for (const k of R.solid) svg += `<rect x="${mx(k[0])}" y="${my(k[3])}" width="${(k[2] - k[0]) * S}" height="${(k[3] - k[1]) * S}" rx="2" fill="#d9d4ca"/>`;
     svg += `<g id="me"><path d="M0 0 L-9 -17 A19 19 0 0 1 9 -17 Z" fill="#e8743b" opacity=".35"/><circle r="4.5" fill="#e8743b" stroke="#fff" stroke-width="1.5"/></g></svg>`;
     $('map').innerHTML = svg; const me = $('me');
