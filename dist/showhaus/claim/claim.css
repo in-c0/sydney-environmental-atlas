@@ -156,3 +156,16 @@ body.rec .explainer { display: none; }
   .step, .preview.swap { animation: none; }
   .mode.flash .sweep { animation: none; }
 }
+
+/* ---------- walk listings: what a claim gives, and the owner's controls ---------- */
+.gives { list-style: none; margin: 14px 0 4px; padding: 0; display: grid; gap: 7px; font-size: 13.5px; line-height: 1.4; color: var(--ink); }
+.gives li { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: baseline; }
+.gives b { font: 600 10.5px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+button.quiet { background: none; border: 0; cursor: pointer; text-align: left; }
+.owner { margin: 18px 0 4px; border-top: 1px solid var(--rule); }
+.owner-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--rule); }
+.owner-row b { font-size: 13.5px; }
+.owner-row p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+.owner-row .btn { flex: none; }
+.owner .drop { margin: 10px 0; }
+@media (max-width: 860px) { .gives li { grid-template-columns: 1fr; gap: 2px; } .owner-row { flex-direction: column; align-items: flex-start; } }

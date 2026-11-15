@@ -37,7 +37,12 @@
   <section class="step" id="s-intro" aria-labelledby="h-intro">
     <p class="eyebrow" id="paddr">Arncliffe Central · 26–42 Eden St, Arncliffe</p>
     <h1 id="h-intro">Do you or your agency own or market this property?</h1>
-    <p class="lead">Claim it free. You get a share link and an embed for your listings, socials and site.</p>
+    <p class="lead" id="lead">Claim it free. You get a share link and an embed for your listings, socials and site.</p>
+    <ul class="gives" id="gives" hidden>
+      <li><b>Free</b> Your name on it, and a link to share.</li>
+      <li><b>Paid by you</b> Your real finishes on the walk. Price shown before any charge.</li>
+      <li><b>Free</b> Or make it private, any time.</li>
+    </ul>
     <div class="cta-row">
       <button class="btn primary big" id="yes" type="button">Yes, claim it <span aria-hidden="true">→</span></button>
       <figure class="explainer">
@@ -46,6 +51,7 @@
       </figure>
     </div>
     <a class="quiet" id="justView" href="../studio/?p=arncliffe-central&amp;src=claim-no">Not mine — just view the 3D</a>
+    <button class="quiet" id="askPrivate" type="button" hidden>Yours, and you want it taken down? Make it private</button>
     <p class="fine">Made by SHOWHAUS from public planning documents. Not endorsed by the developer, architect or any agency.</p>
   </section>
 
@@ -83,6 +89,7 @@
       <label><input type="radio" name="role" value="principal"><span>Agency principal</span></label>
       <label><input type="radio" name="role" value="developer"><span>Developer</span></label>
       <label><input type="radio" name="role" value="marketing"><span>Marketing agency</span></label>
+      <label><input type="radio" name="role" value="builder"><span>Home builder</span></label>
     </fieldset>
     <p class="ferr" data-for="role"></p>
     <label class="field"><span>Company</span><input name="company" autocomplete="organization" required maxlength="120" placeholder="Your Agency"></label>
@@ -109,7 +116,7 @@
   <section class="step" id="s-done" aria-labelledby="h-done" hidden>
     <p class="status" id="status"></p>
     <h2 class="live" id="h-done">You're live.</h2>
-    <p class="lead">Paste this link anywhere — anyone can open the 3D view.</p>
+    <p class="lead" id="doneLead">Paste this link anywhere — anyone can open the 3D view.</p>
     <div class="share">
       <output id="shareUrl" class="mono"></output>
       <button class="btn primary" id="copyShare" type="button">Copy link</button>
@@ -129,6 +136,21 @@
     <div class="manage" id="manageBox" hidden>
       <p><b>Private manage link</b> — keep it. It opens this claim on any device.</p>
       <div class="share small"><output id="manageUrl" class="mono"></output><button class="btn ghost small" id="copyManage" type="button">Copy</button></div>
+    </div>
+    <div class="owner" id="ownerBox" hidden>
+      <div class="owner-row">
+        <div><b>Your real finishes</b><p id="finNote">Paid by you: it covers storing your files and the AI render. The price is shown before any charge.</p></div>
+        <button class="btn ghost small" id="finBtn" type="button">Ask for the price</button>
+      </div>
+      <label class="drop" id="finDrop" hidden>
+        <input type="file" id="finFile" accept="application/pdf,image/jpeg,image/png" multiple>
+        <span class="drop-t" id="finDropT">Add finish photos or schedules</span>
+        <span class="drop-d">PDF, JPG, PNG · max 2 MB each · up to 12 files</span>
+      </label>
+      <div class="owner-row">
+        <div><b>Visibility</b><p id="privNote">Public. Anyone can open this walk.</p></div>
+        <button class="btn ghost small" id="privBtn" type="button">Make it private</button>
+      </div>
     </div>
     <div class="nav end"><a class="btn ghost" id="openShare" href="#" target="_blank" rel="noopener">Open your link ↗</a></div>
     <button class="quiet tiny" id="release" type="button">Release this claim</button>

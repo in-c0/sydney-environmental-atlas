@@ -3,7 +3,7 @@
 //   showhaus.app / www.showhaus.app          → the SHOWHAUS app at the root (served from dist/showhaus/)
 import { handleOps, observeCheckout } from './ops/index.js';
 import { handleStudio } from './studio.js';
-import { handleClaim } from './claim.js';
+import { handleClaim, isPrivate } from './claim.js';
 
 const SHOWHAUS_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);
 
@@ -25,8 +25,14 @@ export default {
   },
 };
 
+// A walk listing made private by its builder: its scene, clips and listing file are no longer served to anyone.
+const WALK_DATA = /^(?:\/showhaus)?\/walk\/data\/([a-z0-9-]{3,80})(?:\.json|\/.*)$/;
+export const PRIVATE_NOTE = 'This home has been made private at the builder\'s request.';
+
 // Everything that is not an ops route: static assets with SHOWHAUS host routing.
 async function route(request, env) {
+  const walk = new URL(request.url).pathname.match(WALK_DATA);
+  if (walk && await isPrivate(env, walk[1])) return new Response(PRIVATE_NOTE, { status: 410, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
   const r = rewrite(request.url);
   if (!r) return env.ASSETS.fetch(request);
   if (r.redirect) return Response.redirect(r.redirect, 301);

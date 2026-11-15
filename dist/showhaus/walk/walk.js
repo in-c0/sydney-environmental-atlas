@@ -28,11 +28,20 @@ export function labels(listing, claim) {
 
 if (typeof document !== 'undefined') (slug ? openWalk() : openGallery());
 
+export const PRIVATE_NOTE = 'This home has been made private at the builder\u2019s request.';
+const isPrivate = s => getJSON(`/api/claim/public?p=${s}`).then(c => !!(c && c.private));
+
 async function openGallery() {
   document.body.dataset.mode = 'gallery'; $('gallery').hidden = false;
   const idx = await getJSON('./data/index.json');
+  const hidden = new Set();
+  await Promise.all(((idx && idx.items) || []).filter(it => it.kind === 'walk').map(async it => { if (await isPrivate(it.slug)) hidden.add(it.slug); }));
   // Only interiors you can walk belong here. Exterior models (Studio) are pinned on the map as 3D models, not walks.
-  $('cards').innerHTML = ((idx && idx.items) || []).filter(it => it.kind === 'walk').map(it => `
+  $('cards').innerHTML = ((idx && idx.items) || []).filter(it => it.kind === 'walk').map(it => hidden.has(it.slug) ? `
+    <div class="g-card g-card--private" data-slug="${esc(it.slug)}">
+      <div class="shot"><span class="tier">Private</span></div>
+      <div class="txt"><b>${esc(it.name)}</b><span class="line">${esc(PRIVATE_NOTE)}</span></div>
+    </div>` : `
     <a class="g-card" href="${esc(it.href)}${it.href.includes('?') ? '&' : '?'}src=walk-gallery" data-slug="${esc(it.slug)}">
       <div class="shot" style="background-image:url('${esc(it.poster)}')"><span class="tier">${esc(it.tier)}</span><span class="go">▶ Walk</span></div>
       <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by, it.by && it.kind === 'walk' && 'not affiliated'].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
@@ -40,12 +49,13 @@ async function openGallery() {
   $('cards').addEventListener('click', e => { const a = e.target.closest('.g-card'); if (a) track('cta', { cta: 'open:' + a.dataset.slug }); });
 }
 
-function fail(msg) { $('load').innerHTML = `${esc(msg)}<br><br><a href="./">See all walkthroughs</a>`; }
+function fail(msg) { $('load').innerHTML = `<div>${esc(msg)}<br><br><a href="./">See all walkthroughs</a></div>`; }
 
 async function openWalk() {
   document.body.dataset.mode = 'walk';
   const base = `./data/${slug}/`;
   const [meta, claim] = await Promise.all([getJSON(`./data/${slug}.json`), getJSON(`/api/claim/public?p=${slug}`)]);
+  if (claim && claim.private) { document.title = 'Private · SHOWHAUS'; document.body.dataset.private = '1'; return fail(PRIVATE_NOTE); }
   if (!meta || !meta.listing) return fail('This walkthrough does not exist.');
   const L = meta.listing, T = labels(L, claim);
   document.title = `${L.name} — walk it · SHOWHAUS`;

@@ -14,9 +14,10 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   'walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest', 'upgrade_interest_cancel',
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
-  'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified']);
+  'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified',
+  'listing_private', 'finishes_requested']); // a claimant made a listing private / asked for their real finishes (paid)
 // Events that page the owner during a sprint (CVF polls them; see /api/ops/summary).
-export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted']);
+export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted', 'listing_private', 'finishes_requested']);
 
 const BOT_UA = /cvf-e2e|cvf-promise-probe|headlesschrome|playwright|bot\b|crawler|spider|slurp|facebookexternalhit|preview/i;
 const PROD_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);

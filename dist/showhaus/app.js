@@ -203,6 +203,7 @@
         if (!Array.isArray(it.lngLat)) continue;
         const walk = it.kind === 'walk'; // an exterior model you orbit is not a walk
         const a = document.createElement('a');
+        if (walk) fetch('/api/claim/public?p=' + it.slug).then(r => (r.ok ? r.json() : null)).then(c => { if (c && c.private) a.remove(); }).catch(() => {}); // made private by its builder: no pin
         a.className = walk ? 'walk-pin' : 'walk-pin walk-pin--model';
         a.href = './walk/' + it.href.replace(/^\.\//, '') + (it.href.includes('?') ? '&' : '?') + 'src=map-pin';
         // The exterior model remains discoverable without promoting a large
