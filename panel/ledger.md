@@ -49,3 +49,10 @@ Not yet checked.
 - B ("Which home should we build next? Paste its floor plan link." / "Spot a mistake? Fix it in one line"): box 3 paste, 1 maybe, 2 ignore; report 1 send, 4 maybe, 1 ignore.
 - Prediction: wording makes no measurable difference (shipped A). The suggest box gets more use than the report link; reports arrive only when a room is visibly wrong. Low tech-comfort visitors skip the box (they do not know what a plan link is); builders paste their own designs.
 - Check against: `/api/ops/summary` → `suggestions.homes` vs `suggestions.fixes` counts and `home_suggested` / `fix_reported` events once real traffic exists. Result: open.
+
+## 2026-11-15 — price of "real finishes" per home design (paid by the claimant)
+- Panel: the 4 payer personas (3 builders, 1 designer) x 2 models (sonnet, haiku) = 8 answers; price-sensitivity questions (too cheap / good deal / getting expensive / too expensive), no price shown.
+- Medians (AUD): too cheap 75, good deal 325, getting expensive 750, too expensive 1200. Haiku answers ran about half of sonnet's. The volume-builder persona named 600-1500 as fair but would not buy from an unknown start-up at any price.
+- Stated blocker in 8 of 8: a wrong finish under their brand — they want to see or approve the result before it is public.
+- Prediction: a first price near A$290 is inside every payer's acceptable band except the volume builder's "too cheap" line (sonnet: 300); the first paying claimant is a small or mid-size builder with no display home, not a volume builder; nobody pays without an approval step.
+- Check against: `claims.finishes` (requests vs paid) once a price is live. Result: open.

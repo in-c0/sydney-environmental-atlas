@@ -53,19 +53,20 @@ export function mailMode(env) {
   if (env.MAIL && env.MAIL_SENDING === 'on') return 'cloudflare';
   return null;
 }
-export async function sendCode(env, to, code, fetchImpl = fetch) {
+export const sendCode = (env, to, code, fetchImpl = fetch) => sendMail(env, to, `${code} is your SHOWHAUS code`, mailText(code), fetchImpl);
+// One plain-text email from SHOWHAUS (sign-in codes, and "the home you asked for is ready").
+export async function sendMail(env, to, subject, text, fetchImpl = fetch) {
   const mode = mailMode(env);
   const from = env.MAIL_FROM || 'login@showhaus.app';
-  const subject = `${code} is your SHOWHAUS code`;
   if (mode === 'resend') {
     const r = await fetchImpl('https://api.resend.com/emails', {
       method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ from: `SHOWHAUS <${from}>`, to: [to], subject, text: mailText(code) }),
+      body: JSON.stringify({ from: `SHOWHAUS <${from}>`, to: [to], subject, text }),
     });
     if (!r.ok) { const b = await r.json().catch(() => ({})); throw Object.assign(new Error(b.message || 'resend ' + r.status), { code: 'RESEND_' + (b.name || r.status) }); }
     return r.json();
   }
-  if (mode === 'cloudflare') return env.MAIL.send({ to, from: { email: from, name: 'SHOWHAUS' }, subject, text: mailText(code) });
+  if (mode === 'cloudflare') return env.MAIL.send({ to, from: { email: from, name: 'SHOWHAUS' }, subject, text });
   throw Object.assign(new Error('no mail route configured'), { code: 'E_NO_MAIL_ROUTE' });
 }
 

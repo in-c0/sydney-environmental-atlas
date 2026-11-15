@@ -116,3 +116,4 @@ canvas { position: fixed; inset: 0; width: 100% !important; height: 100% !import
 #fix button { padding: 7px 12px; border-radius: 8px; border: 0; background: #1b1f24; color: #fff; font: 600 13px/1 inherit; cursor: pointer; }
 #fix p { grid-column: 1 / -1; margin: 0; font-size: 11.5px; opacity: .75; }
 #fix p.ok { color: #1c7a36; opacity: 1; } #fix p.bad { color: #b3261e; opacity: 1; }
+.g-email { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 9px 12px; border-radius: 10px; border: 1px dashed rgba(127,127,127,.45); background: transparent; color: inherit; font: 14px/1.2 inherit; }

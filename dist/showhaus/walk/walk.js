@@ -54,11 +54,12 @@ async function openGallery() {
     const url = $('sgUrl').value.trim();
     if (!/\.[a-z]{2,}/i.test(url)) { say('Paste the link to the page that shows the floor plan.', 'bad'); $('sgUrl').focus(); return; }
     $('sgBtn').disabled = true;
-    const r = await post('/api/suggest/home', { url });
+    const email = $('sgEmail').value.trim();
+    const r = await post('/api/suggest/home', { url, email: email || undefined });
     $('sgBtn').disabled = false;
     if (!r.ok) return say(r.data.error || 'Could not save it. Try again.', 'bad');
-    $('sgUrl').value = '';
-    say(r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.', 'ok');
+    $('sgUrl').value = ''; $('sgEmail').value = '';
+    say((r.data.notify ? 'We’ll email you once, when it’s ready, then delete your address. ' : '') + (r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.'), 'ok');
   });
 }
 const anonId = () => { try { return localStorage.getItem('sh_a') || undefined; } catch { return undefined; } };

@@ -11,7 +11,7 @@ for (const [name, vp, touch] of [['desktop', { width: 1280, height: 800 }, false
   await p.goto(BASE + '/walk/?synthetic=1'); await p.waitForSelector('#suggest');
   await p.fill('#sgUrl', 'hello'); await p.click('#sgBtn');
   check((await p.textContent('#sgNote')).includes('Paste the link'), name + ': a non-link is refused with a plain reason');
-  await p.fill('#sgUrl', 'https://www.buildtec.com.au/home-designs/avalon/?utm_source=fb'); await p.click('#sgBtn');
+  await p.fill('#sgUrl', 'https://www.buildtec.com.au/home-designs/avalon/?utm_source=fb'); if (touch) await p.fill('#sgEmail', 'pat@example.com'); await p.click('#sgBtn');
   await p.waitForFunction(() => /Counted/.test(document.getElementById('sgNote').textContent));
   check(true, name + ': a plan link is counted without sign-up: ' + (await p.textContent('#sgNote')));
   check(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), name + ': gallery has no sideways scroll');
@@ -30,5 +30,6 @@ for (const [name, vp, touch] of [['desktop', { width: 1280, height: 800 }, false
 }
 const d = env.OPS_DB._db;
 check(d.prepare('SELECT votes FROM sh_suggest').get().votes === 2, 'two visitors, one home, two votes');
+check(d.prepare('SELECT COUNT(*) n FROM sh_suggest_notify').get().n === 1, 'the optional email is kept for one visitor only');
 check(d.prepare('SELECT COUNT(*) n FROM sh_fixes').get().n === 2 && d.prepare("SELECT COUNT(*) n FROM sh_fixes WHERE env != 'synthetic'").get().n === 0, 'reports stored, marked synthetic');
 await b.close(); server.close && server.close(); console.log(fails.length ? fails.length + ' FAILED' : 'all passed'); process.exit(fails.length ? 1 : 0);
