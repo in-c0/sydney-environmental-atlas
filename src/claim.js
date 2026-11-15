@@ -6,6 +6,18 @@
 //   POST /api/claim/release {token}  the claimant withdraws the claim (share link stops showing their branding)
 //   GET  /api/claim/brand?c=<code>   { company } only for a verified claim — what the public walkthrough may show
 //   GET  /s/<slug>[/<code>]          the share link → the walkthrough page (with the claimant's line when verified)
+//   POST /api/claim/private {id|token, on}   a VERIFIED claimant makes the listing private (or public again). A private walk
+//                                    listing shows only "made private at the builder's request": the Worker stops serving its
+//                                    scene files (src/worker.js) and /api/claim/public reports { private: true }.
+//                                    submit with intent=private asks for the same thing; it applies the moment the claim verifies.
+//   POST /api/claim/finishes {id|token}      the claimant asks for their real finishes on the walk. Paid by the claimant
+//                                    (storage + AI render); this only records the request and returns the offer
+//                                    { price, pay }. Nothing is uploaded, stored or rendered before a price is shown and paid.
+//   GET  /pay/finishes?c=<code>&p=<slug>   302 → FINISHES_PAYMENT_LINK (Stripe) when it and FINISHES_PRICE_LABEL are set. The link
+//                                    carries client_reference_id=fin_<claim id>; the Stripe webhook (src/ops/stripe.js →
+//                                    finishesPaid) marks the request paid, which opens the upload.
+//   POST /api/claim/finishes-file    multipart {id|token, file}: one finish photo or schedule (PDF/JPG/PNG ≤ 2 MB, up to 12),
+//                                    only for a PAID request. Files are read on the CVF side (/api/ops/claim-file?id=&f=).
 // Verification is automatic and never waits on a person, and needs BOTH: the claimant proved the work mailbox with the
 // 6-digit email code (src/ops/auth.js session for exactly that address) AND its domain matches the company website's
 // domain (free-mail domains never match). Until then the claim is "pending": the share link works, unbranded. A pending
@@ -17,7 +29,7 @@ import { db, pseudo, sha256 } from './ops/store.js';
 import { track, environmentOf } from './ops/events.js';
 import { currentUser, cookieOf, mailMode } from './ops/auth.js';
 
-export const ROLES = { listing_agent: 'Listing agent', principal: 'Agency principal', developer: 'Developer', marketing: 'Marketing agency' };
+export const ROLES = { listing_agent: 'Listing agent', principal: 'Agency principal', developer: 'Developer', marketing: 'Marketing agency', builder: 'Home builder' };
 export const MAX_FILE = 2 * 1024 * 1024;
 const CHUNK = 512 * 1024;                     // D1 caps a row at ~2 MB; files are stored in 512 KB rows
 const FILE_BUDGET = 250 * 1024 * 1024;        // all evidence files together (shared free-plan D1); past it, claims save without the file
@@ -33,6 +45,14 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS sh_claims_slug ON sh_claims (slug, status)`,
   `CREATE TABLE IF NOT EXISTS sh_claim_files (claim_id TEXT NOT NULL, seq INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (claim_id, seq))`,
   `CREATE TABLE IF NOT EXISTS sh_claim_rate (k TEXT PRIMARY KEY, n INTEGER NOT NULL, window_start INTEGER NOT NULL)`,
+  // A listing made private by a verified claimant; stays private until that claimant turns it back on.
+  `CREATE TABLE IF NOT EXISTS sh_private (slug TEXT PRIMARY KEY, claim_id TEXT NOT NULL, at TEXT NOT NULL)`,
+  // "Make it private" asked by a claim that is not verified yet; applied when it verifies.
+  `CREATE TABLE IF NOT EXISTS sh_private_pending (claim_id TEXT PRIMARY KEY, slug TEXT NOT NULL, at TEXT NOT NULL)`,
+  // Real-finishes requests (paid by the claimant). status: requested → (later) paid / delivered.
+  `CREATE TABLE IF NOT EXISTS sh_finishes (claim_id TEXT PRIMARY KEY, slug TEXT NOT NULL, at TEXT NOT NULL, status TEXT NOT NULL)`,
+  // Finish files (photos, schedules) uploaded after payment; chunked like evidence files.
+  `CREATE TABLE IF NOT EXISTS sh_finish_files (claim_id TEXT NOT NULL, file_no INTEGER NOT NULL, seq INTEGER NOT NULL, name TEXT, type TEXT, bytes INTEGER, data BLOB NOT NULL, PRIMARY KEY (claim_id, file_no, seq))`,
   // 2026-11-10: domain match alone no longer verifies. Claims verified under the old rule (reason 'domain_match') go back
   // to pending until the mailbox is proven; proven ones carry reason 'email_confirmed', so this is idempotent.
   `UPDATE sh_claims SET status = 'pending', reason = 'email_unconfirmed' WHERE status = 'verified' AND reason = 'domain_match'`,
@@ -45,7 +65,7 @@ async function cdb(env) {
   await ready;
   return d;
 }
-export function resetClaimsForTests() { ready = null; }
+export function resetClaimsForTests() { ready = null; privateCache.clear(); }
 
 const j = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
 const rand = n => [...crypto.getRandomValues(new Uint8Array(n))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -189,12 +209,103 @@ async function actorOf(request, env, d, anon) {
   return { actor: a ? 'a:' + await pseudo(d, 'anon', String(a).slice(0, 64)) : null, user: null };
 }
 
+// ---------- private listings and real finishes ----------
+const privateCache = new Map(); // slug → { v, t }: the Worker asks on every scene-file request
+const PRIVATE_TTL = 30e3;
+async function privateRow(d, slug) { return d.prepare('SELECT claim_id, at FROM sh_private WHERE slug = ?').bind(slug).first(); }
+export async function isPrivate(env, slug) {
+  if (!/^[a-z0-9-]{3,80}$/.test(slug || '')) return false;
+  const hit = privateCache.get(slug);
+  if (hit && Date.now() - hit.t < PRIVATE_TTL) return hit.v;
+  let v = false;
+  try { const d = await cdb(env); v = !!(d && await privateRow(d, slug)); } catch (e) { console.error('private', e && e.message); }
+  privateCache.set(slug, { v, t: Date.now() });
+  return v;
+}
+async function setPrivate(env, request, d, row, on, ctx) {
+  if (on) {
+    await d.prepare('INSERT INTO sh_private (slug, claim_id, at) VALUES (?, ?, ?) ON CONFLICT(slug) DO UPDATE SET claim_id = excluded.claim_id, at = excluded.at').bind(row.slug, row.id, new Date().toISOString()).run();
+    await d.prepare('DELETE FROM sh_private_pending WHERE claim_id = ?').bind(row.id).run();
+  } else {
+    await d.prepare('DELETE FROM sh_private WHERE slug = ? AND claim_id = ?').bind(row.slug, row.id).run();
+  }
+  privateCache.delete(row.slug);
+  const p = track(env, { name: 'listing_private', env: row.env === 'synthetic' ? 'synthetic' : environmentOf(request), source: 'server', actor: row.actor, path: '/api/claim/private', props: { kind: 'claim:' + row.slug, step: on ? 'on' : 'off', cta: row.role } }).catch(() => {});
+  if (ctx && ctx.waitUntil) ctx.waitUntil(p); else await p;
+}
+const PAY_HOSTS = /^(buy|checkout)\.stripe\.com$/;
+// The offer exists only when BOTH a price label and a Stripe link are configured; otherwise requests are just recorded.
+export function finishesOffer(env) {
+  const price = clean(env && env.FINISHES_PRICE_LABEL, 40) || null;
+  let link = null;
+  try { const u = new URL((env && env.FINISHES_PAYMENT_LINK) || ''); if (u.protocol === 'https:' && PAY_HOSTS.test(u.hostname)) link = u.toString(); } catch { /* not configured */ }
+  return price && link ? { price, pay: true, link } : { price: null, pay: false, link: null };
+}
+export const MAX_FINISH_FILES = 12;
+// Called by the Stripe webhook with the checkout's client_reference_id.
+export async function finishesPaid(env, ref) {
+  const m = /^fin_([0-9a-f]{16})$/.exec(String(ref || ''));
+  if (!m) return false;
+  const d = await cdb(env);
+  if (!d) return false;
+  const r = await d.prepare("UPDATE sh_finishes SET status = 'paid' WHERE claim_id = ? AND status = 'requested'").bind(m[1]).run();
+  return !!(r.meta && r.meta.changes);
+}
+async function finishFile(request, env, d) {
+  let form;
+  try { form = await request.formData(); } catch { return j({ error: 'Send the file again.' }, 400); }
+  const mine = await heldClaim(request, env, d, { id: form.get('id'), token: form.get('token') });
+  if (!mine || mine.status === 'released') return j({ error: 'Open your private manage link first.' }, 404);
+  const fin = await d.prepare('SELECT status FROM sh_finishes WHERE claim_id = ?').bind(mine.id).first();
+  if (!fin || fin.status === 'requested') return j({ error: 'Uploads open after payment.' }, 402);
+  const up = form.get('file');
+  if (!up || typeof up !== 'object' || !up.size) return j({ error: 'Choose a file.' }, 400);
+  if (up.size > MAX_FILE) return j({ error: 'That file is over 2 MB.' }, 413);
+  const bytes = new Uint8Array(await up.arrayBuffer());
+  const type = sniff(bytes);
+  if (!type) return j({ error: 'Upload a PDF, JPG or PNG.' }, 415);
+  const n = (await d.prepare('SELECT COUNT(DISTINCT file_no) AS n FROM sh_finish_files WHERE claim_id = ?').bind(mine.id).first())?.n || 0;
+  if (n >= MAX_FINISH_FILES) return j({ error: `That is the limit of ${MAX_FINISH_FILES} files.` }, 409);
+  const used = ((await d.prepare('SELECT COALESCE(SUM(file_bytes), 0) AS b FROM sh_claims').first())?.b || 0)
+    + ((await d.prepare('SELECT COALESCE(SUM(bytes), 0) AS b FROM sh_finish_files WHERE seq = 0').first())?.b || 0);
+  if (used + bytes.length > FILE_BUDGET) return j({ error: 'Storage is full right now. Nothing was lost; try again later.' }, 507);
+  const name = clean(up.name || 'finish', 80).replace(/[^\w. ()-]/g, '_') || 'finish';
+  const no = ((await d.prepare('SELECT COALESCE(MAX(file_no), 0) AS m FROM sh_finish_files WHERE claim_id = ?').bind(mine.id).first())?.m || 0) + 1;
+  for (let i = 0, seq = 0; i < bytes.length; i += CHUNK, seq++)
+    await d.prepare('INSERT INTO sh_finish_files (claim_id, file_no, seq, name, type, bytes, data) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(mine.id, no, seq, name, type, bytes.length, bytes.slice(i, i + CHUNK)).run();
+  await d.prepare("UPDATE sh_finishes SET status = 'uploaded' WHERE claim_id = ?").bind(mine.id).run();
+  return j({ ok: true, files: n + 1, max: MAX_FINISH_FILES, finishes: 'uploaded' });
+}
+// The claim this browser or account holds: by manage token, or by id when the cookie / signed-in account covers it.
+async function heldClaim(request, env, d, body) {
+  if (body.token) return byToken(d, body.token);
+  if (!/^[0-9a-f]{16}$/.test(String(body.id || ''))) return null;
+  const row = await d.prepare("SELECT * FROM sh_claims WHERE id = ? AND status != 'released'").bind(body.id).first();
+  if (!row) return null;
+  const hashes = await Promise.all(tokensOf(request).map(t => sha256(t)));
+  if (hashes.includes(row.token_h)) return row;
+  const user = await currentUser(request, env).catch(() => null);
+  return user && (row.owner === 'u:' + user.id || row.email_h === user.id) ? row : null;
+}
+async function extras(d, slug, claims) {
+  const ids = claims.map(c => c.id);
+  const priv = await privateRow(d, slug);
+  const out = { private: !!priv, private_by_me: !!priv && ids.includes(priv.claim_id), private_pending: false, finishes: null, finish_files: 0 };
+  if (ids.length) {
+    const q = ids.map(() => '?').join(',');
+    out.private_pending = !!(await d.prepare(`SELECT 1 FROM sh_private_pending WHERE claim_id IN (${q}) LIMIT 1`).bind(...ids).first());
+    out.finishes = (await d.prepare(`SELECT status FROM sh_finishes WHERE claim_id IN (${q}) LIMIT 1`).bind(...ids).first())?.status || null;
+    out.finish_files = (await d.prepare(`SELECT COUNT(*) AS n FROM sh_finish_files WHERE seq = 0 AND claim_id IN (${q})`).bind(...ids).first())?.n || 0;
+  }
+  return out;
+}
+
 // ---------- routes ----------
 async function submit(request, env, ctx, d) {
   const url = new URL(request.url);
   let form;
   try { form = await request.formData(); } catch { return j({ error: 'Send the form again.' }, 400); }
-  const f = Object.fromEntries(['p', 'mode', 'role', 'company', 'licence', 'website', 'email', 'anon', 'src', 'env'].map(k => [k, form.get(k)]));
+  const f = Object.fromEntries(['p', 'mode', 'role', 'company', 'licence', 'website', 'email', 'anon', 'src', 'env', 'intent'].map(k => [k, form.get(k)]));
   const prop = await propertyOf(request, env, String(f.p || ''));
   if (!prop) return j({ error: 'Unknown property.' }, 404);
   const v = validateClaim(f);
@@ -256,7 +367,12 @@ async function submit(request, env, ctx, d) {
   if (ctx && ctx.waitUntil) ctx.waitUntil(p); else await p;
 
   const row = await d.prepare('SELECT * FROM sh_claims WHERE id = ?').bind(id).first();
-  return j({ ok: true, claim: publicClaim(url, row, prop.kind), manage_url: manageUrl(url, prop.slug, token), file_note: fileNote, updated: !!prev }, 200,
+  // "Make it private": a verified claimant gets it at once; otherwise it waits for the mailbox proof.
+  if (f.intent === 'private') {
+    if (status === 'verified') await setPrivate(env, request, d, row, true, ctx);
+    else await d.prepare('INSERT INTO sh_private_pending (claim_id, slug, at) VALUES (?, ?, ?) ON CONFLICT(claim_id) DO NOTHING').bind(id, prop.slug, now).run();
+  }
+  return j({ ok: true, claim: publicClaim(url, row, prop.kind), manage_url: manageUrl(url, prop.slug, token), file_note: fileNote, updated: !!prev, ...(await extras(d, prop.slug, [row])), offer: (({ price, pay }) => ({ price, pay }))(finishesOffer(env)) }, 200,
     { 'set-cookie': tokenCookie(request, [...tokensOf(request), token]) });
 }
 
@@ -272,6 +388,11 @@ async function confirmMailbox(env, d, user, request) {
   await d.prepare("UPDATE sh_claims SET status = 'verified', reason = 'email_confirmed', updated_at = ? WHERE email_h = ? AND status = 'pending' AND reason = 'email_unconfirmed'").bind(new Date().toISOString(), user.id).run();
   const environment = user.env === 'synthetic' ? 'synthetic' : environmentOf(request);
   await Promise.all(rows.map(r => track(env, { name: 'claim_verified', env: environment, source: 'server', actor: 'u:' + user.id, path: '/api/claim/state', props: { kind: 'claim:' + r.slug, step: 'email_confirmed', cta: r.role } }))).catch(() => {});
+  // Private requests made before the proof take effect now.
+  for (const r of rows) {
+    if (await d.prepare('SELECT 1 FROM sh_private_pending WHERE claim_id = ?').bind(r.id).first())
+      await setPrivate(env, request, d, { ...r, env: environment }, true, null);
+  }
   return rows.length;
 }
 
@@ -289,7 +410,7 @@ async function state(request, env, d) {
   const mine = conds.length
     ? (await d.prepare(`SELECT * FROM sh_claims WHERE slug = ? AND status != 'released' AND (${conds.join(' OR ')}) ORDER BY updated_at DESC LIMIT 5`).bind(...args).all()).results
     : [];
-  return j({ property: prop, mine: mine.map(c => publicClaim(url, c, prop.kind)), auth: { signedIn: !!user, available: !!mailMode(env) } });
+  return j({ property: prop, mine: mine.map(c => publicClaim(url, c, prop.kind)), auth: { signedIn: !!user, available: !!mailMode(env) }, ...(await extras(d, prop.slug, mine)), offer: (({ price, pay }) => ({ price, pay }))(finishesOffer(env)) });
 }
 
 export async function handleClaim(request, env, ctx) {
@@ -300,6 +421,18 @@ export async function handleClaim(request, env, ctx) {
     const to = `${url.origin}${prefix(url)}/${kind}/?p=${share[1]}${share[2] ? '&by=' + share[2] : ''}&src=share`;
     return new Response(null, { status: 302, headers: { location: to, 'cache-control': 'no-store' } });
   }
+  if (path === '/pay/finishes') { // the claimant pays for storing and rendering their finishes; without a configured offer, back to the claim
+    const offer = finishesOffer(env);
+    const code = (url.searchParams.get('c') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+    const slug = (url.searchParams.get('p') || '').replace(/[^a-z0-9-]/g, '').slice(0, 80);
+    let to = `${url.origin}${prefix(url)}/claim/?p=${slug}`;
+    if (offer.link && code) {
+      const d = await cdb(env).catch(() => null);
+      const row = d && await d.prepare("SELECT c.id FROM sh_claims c JOIN sh_finishes f ON f.claim_id = c.id WHERE c.code = ? AND c.slug = ? AND c.status != 'released' AND f.status = 'requested'").bind(code, slug).first();
+      if (row) { const u = new URL(offer.link); u.searchParams.set('client_reference_id', 'fin_' + row.id); to = u.toString(); }
+    }
+    return new Response(null, { status: 302, headers: { location: to, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
+  }
   if (!path.startsWith('/api/claim/')) return null;
   const sameOrigin = (() => { const o = request.headers.get('origin'); if (!o) return true; try { return new URL(o).host === url.host; } catch { return false; } })();
   if (request.method === 'POST' && !sameOrigin) return new Response('forbidden', { status: 403 });
@@ -309,8 +442,9 @@ export async function handleClaim(request, env, ctx) {
     if (path === '/api/claim/state' && request.method === 'GET') return await state(request, env, d);
     if (path === '/api/claim/public' && request.method === 'GET') { // is this property claimed? Drives the page badge; names only verified claimants.
       const slug = url.searchParams.get('p') || '';
+      if (await isPrivate(env, slug)) return j({ claimed: false, company: null, private: true }, 200, { 'cache-control': 'public, max-age=30' });
       const row = /^[a-z0-9-]{3,80}$/.test(slug) ? await d.prepare("SELECT company FROM sh_claims WHERE slug = ? AND status = 'verified' ORDER BY updated_at DESC LIMIT 1").bind(slug).first() : null;
-      return j({ claimed: !!row, company: row ? row.company : null }, 200, { 'cache-control': 'public, max-age=60' });
+      return j({ claimed: !!row, company: row ? row.company : null, private: false }, 200, { 'cache-control': 'public, max-age=60' });
     }
     if (path === '/api/claim/brand' && request.method === 'GET') {
       const code = (url.searchParams.get('c') || '').toLowerCase();
@@ -319,7 +453,26 @@ export async function handleClaim(request, env, ctx) {
     }
     if (request.method !== 'POST') return j({ error: 'method' }, 405);
     if (path === '/api/claim/submit') return await submit(request, env, ctx, d);
+    if (path === '/api/claim/finishes-file') return await finishFile(request, env, d);
     const body = await request.json().catch(() => ({}));
+    if (path === '/api/claim/private' || path === '/api/claim/finishes') {
+      const mine = await heldClaim(request, env, d, body);
+      if (!mine || mine.status === 'released') return j({ error: 'Open your private manage link first.' }, 404);
+      if (path === '/api/claim/private') {
+        if (mine.status !== 'verified') return j({ error: 'Confirm your work email first. The home goes private the moment it is confirmed.', pending: true }, 403);
+        await setPrivate(env, request, d, mine, body.on !== false, ctx);
+        return j({ ok: true, ...(await extras(d, mine.slug, [mine])) });
+      }
+      const now = new Date().toISOString();
+      const had = await d.prepare('SELECT status FROM sh_finishes WHERE claim_id = ?').bind(mine.id).first();
+      if (!had) {
+        await d.prepare("INSERT INTO sh_finishes (claim_id, slug, at, status) VALUES (?, ?, ?, 'requested')").bind(mine.id, mine.slug, now).run();
+        const p = track(env, { name: 'finishes_requested', env: mine.env === 'synthetic' ? 'synthetic' : environmentOf(request), source: 'server', actor: mine.actor, path, props: { kind: 'claim:' + mine.slug, cta: mine.role } }).catch(() => {});
+        if (ctx && ctx.waitUntil) ctx.waitUntil(p); else await p;
+      }
+      const { price, pay } = finishesOffer(env);
+      return j({ ok: true, finishes: had ? had.status : 'requested', max_files: MAX_FINISH_FILES, offer: { price, pay }, pay_url: pay ? `${prefix(url)}/pay/finishes?c=${mine.code}&p=${mine.slug}`.replace(/^\/showhaus\/pay/, '/pay') : null });
+    }
     const row = await byToken(d, body.token);
     if (path === '/api/claim/manage') {
       if (!row || row.status === 'released') return j({ error: 'This manage link is not valid any more.' }, 404);
@@ -346,11 +499,22 @@ export async function claimSummary(env) {
   for (const r of (await d.prepare('SELECT env, status, COUNT(*) AS n FROM sh_claims GROUP BY env, status').all()).results) (counts[r.env] ||= {})[r.status] = r.n;
   const pending = (await d.prepare(`SELECT id, at, slug, role, company, licence, licence_kind, website_host, email_domain, reason, file_name, file_bytes, mode
     FROM sh_claims WHERE status = 'pending' AND env = 'production' ORDER BY at DESC LIMIT 50`).all()).results;
-  return { counts, pending };
+  const privateListings = (await d.prepare('SELECT p.slug, p.at, c.company FROM sh_private p LEFT JOIN sh_claims c ON c.id = p.claim_id ORDER BY p.at DESC LIMIT 50').all()).results;
+  const privatePending = (await d.prepare('SELECT q.slug, q.at, c.company, c.reason FROM sh_private_pending q LEFT JOIN sh_claims c ON c.id = q.claim_id ORDER BY q.at DESC LIMIT 50').all()).results;
+  const finishes = (await d.prepare('SELECT f.claim_id AS id, f.slug, f.at, f.status, c.company, c.status AS claim_status, (SELECT COUNT(*) FROM sh_finish_files x WHERE x.claim_id = f.claim_id AND x.seq = 0) AS files FROM sh_finishes f LEFT JOIN sh_claims c ON c.id = f.claim_id ORDER BY f.at DESC LIMIT 50').all()).results;
+  return { counts, pending, private: privateListings, private_pending: privatePending, finishes };
 }
-export async function claimFile(env, id) {
+export async function claimFile(env, id, fileNo) {
   const d = await cdb(env);
   if (!d || !/^[0-9a-f]{16}$/.test(id || '')) return null;
+  if (fileNo) { // a finish file (1-based)
+    const rows = (await d.prepare('SELECT name, type, data FROM sh_finish_files WHERE claim_id = ? AND file_no = ? ORDER BY seq').bind(id, Number(fileNo) || 0).all()).results;
+    if (!rows.length) return null;
+    const parts = rows.map(r => new Uint8Array(r.data));
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+    return new Response(out, { headers: { 'content-type': rows[0].type, 'content-disposition': `attachment; filename="${rows[0].name}"`, 'cache-control': 'no-store' } });
+  }
   const meta = await d.prepare('SELECT file_name, file_type FROM sh_claims WHERE id = ?').bind(id).first();
   if (!meta || !meta.file_type) return null;
   const parts = (await d.prepare('SELECT data FROM sh_claim_files WHERE claim_id = ? ORDER BY seq').bind(id).all()).results.map(r => new Uint8Array(r.data));

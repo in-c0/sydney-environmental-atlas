@@ -2,6 +2,7 @@
 // Until that secret exists the endpoint answers 503 'webhook secret not set' (so a misconfigured endpoint is
 // visible to Stripe's delivery log and to CVF's E2E), and nothing is recorded.
 // Records PII-free events only: amount, currency, mode, payment link id, pseudonymous customer.
+import { finishesPaid } from '../claim.js';
 import { db, pseudo, setMeta } from './store.js';
 import { track } from './events.js';
 import { afterStripeEvent } from './owner.js';
@@ -74,7 +75,10 @@ export async function recordStripeEvent(env, e, { forceEnv, fetchImpl = fetch } 
   const at = e.created ? new Date(e.created * 1000).toISOString() : undefined;
   // client_reference_id carries the payer's PostHog id (set by observeCheckout), joining the PostHog funnel.
   const ph = typeof o.client_reference_id === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(o.client_reference_id) ? o.client_reference_id : null;
-  await track(env, { name, env: environment, source: 'stripe', actor: customer, ph, path: '/hooks/stripe', props, at });
+  // A real-finishes payment carries fin_<claim id> instead: it opens that claim's upload (src/claim.js).
+  const fin = !!ph && ph.startsWith('fin_');
+  if (fin && name === 'payment_succeeded') await finishesPaid(env, ph).catch(err => console.error('finishesPaid', err));
+  await track(env, { name, env: environment, source: 'stripe', actor: customer, ph: fin ? null : ph, path: '/hooks/stripe', props, at });
   await setMeta(d, 'stripe_last_event_at', new Date().toISOString());
   const after = await afterStripeEvent(env, d, e, name, { environment, customer, props, at }, fetchImpl);
   return { status: 200, body: { ok: true, recorded: name, env: environment, entitlement: after.entitlement, mailed: after.mailed } };

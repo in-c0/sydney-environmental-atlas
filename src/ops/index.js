@@ -33,7 +33,7 @@ export async function handleOps(request, env, ctx) {
     if (!(await requireOps(request))) return new Response('unauthorized', { status: 401 });
     if (path === '/api/ops/summary') return await summary(request, env);
     if (path === '/api/ops/replay' && request.method === 'POST') return await replay(request, env);
-    if (path === '/api/ops/claim-file') return (await claimFile(env, new URL(request.url).searchParams.get('id'))) || new Response('not found', { status: 404 }); // evidence upload, OIDC only
+    if (path === '/api/ops/claim-file') return (await claimFile(env, new URL(request.url).searchParams.get('id'), new URL(request.url).searchParams.get('f'))) || new Response('not found', { status: 404 }); // evidence upload, OIDC only
     if (path === '/api/ops/entitlement' && request.method === 'POST') return await entitlement(request, env);
     if (path === '/api/ops/pro' && request.method === 'POST') { // owner grant/revoke by email (OIDC); the email is HMAC-ed, never stored
       const d = await db(env), b = await request.json().catch(() => ({}));

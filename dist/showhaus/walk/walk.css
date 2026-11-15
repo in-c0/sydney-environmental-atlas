@@ -95,3 +95,7 @@ canvas { position: fixed; inset: 0; width: 100% !important; height: 100% !import
   #chips button { padding: 9px 13px; min-height: 42px; }
   #tag, #hint { bottom: auto; top: 36%; }
 }
+
+/* a home its builder made private: no picture, no link */
+.g-card--private { cursor: default; }
+.g-card--private .shot { background: repeating-linear-gradient(135deg, #20242b 0 10px, #262b33 10px 20px); }

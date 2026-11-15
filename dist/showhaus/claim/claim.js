@@ -12,7 +12,7 @@
   const track = (name, props = {}) => { try { window.SH && window.SH.track(name, { kind: 'claim:' + slug, utm_source: src, ...props }); } catch { /* never breaks the page */ } };
   const synthetic = (() => { try { return sessionStorage.getItem('sh_synth') === '1'; } catch { return false; } })();
 
-  let state = { property: null, auth: { available: false }, mode: 'guest', claim: null, manage: null, suVerified: false, suEmail: '' };
+  let state = { property: null, auth: { available: false }, mode: 'guest', claim: null, manage: null, suVerified: false, suEmail: '', intent: null, x: {}, offer: {} };
   const STEPS = ['intro', 'mode', 'details', 'done'];
 
   function go(step, { focus = true } = {}) {
@@ -32,7 +32,14 @@
   }
 
   // ---------- step 1 ----------
-  $('yes').onclick = () => { track('claim_started'); go('mode'); };
+  function setIntent(v) {
+    state.intent = v;
+    const n = state.property ? state.property.name : 'this home';
+    $('submit').textContent = v === 'private' ? `Make ${n} private` : `Claim ${n}`;
+    $('h-details').textContent = v === 'private' ? 'Verify you, and it goes private' : 'A few details to verify you';
+  }
+  $('yes').onclick = () => { setIntent(null); track('claim_started'); go('mode'); };
+  $('askPrivate').onclick = () => { setIntent('private'); track('claim_started', { cta: 'private' }); go('mode'); };
 
   // ---------- step 2: sign up or guest ----------
   const ICON = {
@@ -152,6 +159,7 @@
     fd.set('p', slug); fd.set('mode', state.mode); fd.set('src', src);
     try { const a = localStorage.getItem('sh_a'); if (a) fd.set('anon', a); } catch { /* ignore */ }
     if (synthetic) fd.set('env', 'synthetic');
+    if (state.intent) fd.set('intent', state.intent);
     if (!(fileIn.files && fileIn.files[0])) fd.delete('file');
     const btn = $('submit'); btn.disabled = true; const label = btn.innerHTML; btn.textContent = 'Claiming…';
     try {
@@ -162,7 +170,7 @@
         $('detailsErr').textContent = data.error || 'Something went wrong. Please try again.';
         return;
       }
-      state.claim = data.claim; state.manage = data.manage_url;
+      state.claim = data.claim; state.manage = data.manage_url; state.x = data; state.offer = data.offer || {};
       showDone({ fileNote: data.file_note });
     } catch { $('detailsErr').textContent = 'No connection. Check your network and try again.'; }
     finally { btn.disabled = false; btn.innerHTML = label; }
@@ -191,8 +199,65 @@
     $('embed').textContent = c.embed;
     $('manageBox').hidden = !state.manage;
     if (state.manage) $('manageUrl').textContent = state.manage.replace(/^https?:\/\//, '');
+    owner();
     go('done');
   }
+  // Walk listings: the owner's two controls. Finishes are paid by the claimant; private hides the home from everyone.
+  function owner() {
+    const walk = state.property && state.property.kind === 'walk', x = state.x || {}, c = state.claim;
+    $('ownerBox').hidden = !walk;
+    if (!walk) return;
+    const priv = !!x.private;
+    if (priv) $('h-done').textContent = 'This home is private.';
+    $('doneLead').textContent = priv ? 'Your link now opens the private notice, nothing else.' : 'Paste this link anywhere — anyone can open the walk.';
+    $('privNote').textContent = priv ? 'Private. Visitors see only a notice that it was made private at the builder’s request.'
+      : x.private_pending ? 'It goes private the moment your work email is confirmed.'
+      : c.status === 'verified' ? 'Public. Anyone can open this walk.' : 'Public. You can make it private once your work email is confirmed.';
+    $('privBtn').textContent = priv ? 'Make it public again' : 'Make it private';
+    $('privBtn').hidden = priv ? !x.private_by_me : (c.status !== 'verified' || !!x.private_pending);
+    const o = state.offer || {}, f = x.finishes;
+    const paid = f === 'paid' || f === 'uploaded';
+    $('finDrop').hidden = !paid;
+    $('finBtn').hidden = paid || (f === 'requested' && !o.pay);
+    $('finBtn').textContent = f === 'requested' && o.pay ? `Pay ${o.price}` : 'Ask for the price';
+    $('finNote').textContent = paid ? `Paid. ${x.finish_files || 0} of 12 files received. The new walk replaces this one when the render is done.`
+      : f === 'requested' ? (o.pay ? `${o.price}, paid by you. It covers storing your files and the AI render. Upload opens after payment.`
+        : 'Request saved. No price is set yet, so nothing is charged and nothing is uploaded. The price will show here, on your manage link.')
+      : 'Paid by you: it covers storing your files and the AI render. The price is shown before any charge.';
+  }
+  const claimApi = async (p, body) => {
+    const token = (state.manage || '').split('#m=')[1];
+    const r = await fetch('/api/claim/' + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: state.claim.id, token, ...body }), credentials: 'same-origin' });
+    return { ok: r.ok, data: await r.json().catch(() => ({})) };
+  };
+  $('privBtn').onclick = async () => {
+    const on = !(state.x && state.x.private);
+    $('privBtn').disabled = true;
+    const r = await claimApi('private', { on }).finally(() => { $('privBtn').disabled = false; });
+    if (!r.ok) { toast(r.data.error || 'Could not change it'); return; }
+    state.x = { ...state.x, ...r.data }; owner(); toast(on ? 'Private now' : 'Public again');
+  };
+  $('finBtn').onclick = async () => {
+    $('finBtn').disabled = true;
+    const r = await claimApi('finishes', {}).finally(() => { $('finBtn').disabled = false; });
+    if (!r.ok) { toast(r.data.error || 'Could not save the request'); return; }
+    const first = !state.x.finishes;
+    state.x = { ...state.x, finishes: r.data.finishes }; state.offer = r.data.offer || {};
+    if (!first && r.data.pay_url) { location.href = r.data.pay_url; return; } // second tap on a priced offer: pay
+    owner(); toast('Request saved');
+  };
+  $('finFile').onchange = async () => {
+    const token = (state.manage || '').split('#m=')[1] || '';
+    for (const file of $('finFile').files) {
+      const fd = new FormData(); fd.set('id', state.claim.id); if (token) fd.set('token', token); fd.set('file', file);
+      $('finDropT').textContent = `Uploading ${file.name}…`;
+      const r = await fetch('/api/claim/finishes-file', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { toast(data.error || 'Upload failed'); break; }
+      state.x = { ...state.x, finishes: data.finishes, finish_files: data.files };
+    }
+    $('finFile').value = ''; $('finDropT').textContent = 'Add finish photos or schedules'; owner();
+  };
   $('copyShare').onclick = async () => {
     if (await copy(state.claim.share_url, 'Link copied')) { $('copyShare').textContent = 'Copied ✓'; $('copyShare').closest('.share').classList.add('copied'); setTimeout(() => { $('copyShare').textContent = 'Copy link'; }, 1800); }
     track('share_link_copied', { cta: 'share' });
@@ -213,7 +278,7 @@
       if (!v.ok) { err.textContent = v.data.error || 'That code did not work.'; return; }
       const st = await fetch(`/api/claim/state?p=${slug}`, { credentials: 'same-origin' }).then(r => r.json());
       const mine = (st.mine || []).find(x => x.code === state.claim.code);
-      if (mine) { state.claim = mine; showDone(); toast(mine.status === 'verified' ? 'Verified' : 'Email confirmed'); }
+      if (mine) { state.claim = mine; state.x = st; state.offer = st.offer || {}; showDone(); toast(mine.status === 'verified' ? 'Verified' : 'Email confirmed'); }
     } finally { $('cfBtn').disabled = false; }
   };
   $('release').onclick = async () => {
@@ -230,7 +295,7 @@
     const m = location.hash.match(/^#m=([0-9a-f]{48})$/);
     const st = await fetch(`/api/claim/state?p=${slug}`, { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
     if (st) {
-      state.property = st.property; state.auth = st.auth || state.auth;
+      state.property = st.property; state.auth = st.auth || state.auth; state.x = st; state.offer = st.offer || {};
       const street = st.property.address.split(/ and |,/)[0].replace(/ Street\b/, ' St').replace(/ Road\b/, ' Rd');
       const suburb = (st.property.address.match(/,\s*([A-Za-z' -]+?)\s+(NSW|VIC|QLD|ACT|SA|WA|TAS|NT)\b/) || [])[1];
       $('paddr').textContent = [st.property.name, [street, suburb].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
@@ -238,6 +303,7 @@
         const v = $('walk'); if (v) { v.pause(); v.removeAttribute('src'); v.removeAttribute('autoplay'); v.poster = `../walk/data/${slug}/poster.jpg`; v.setAttribute('aria-label', `Still from the ${st.property.name} walkthrough`); v.load(); }
         const ex = $('explainer'); if (ex) { ex.pause(); const box = ex.closest('.explainer') || ex; box.hidden = true; } // that recording shows another property
         $('h-intro').textContent = 'Do you build, own or market this home?';
+        $('lead').hidden = true; $('gives').hidden = false; $('askPrivate').hidden = false;
         const note = document.querySelector('.stage-note'); if (note) note.textContent = `${st.property.name} · base walkthrough`;
         const fine = [...document.querySelectorAll('p.fine')].find(e => /^Made by SHOWHAUS/.test(e.textContent));
         if (fine) fine.textContent = 'Made by SHOWHAUS as an AI visualisation. Not endorsed by the builder, owner or any agency until it is claimed.';
@@ -251,7 +317,12 @@
     if (m) {
       const r = await fetch('/api/claim/manage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: m[1] }), credentials: 'same-origin' });
       const data = await r.json().catch(() => ({}));
-      if (r.ok) { state.claim = data.claim; state.manage = location.href.split('#')[0] + '#m=' + m[1]; showDone({ back: true }); return; }
+      if (r.ok) {
+        state.claim = data.claim; state.manage = location.href.split('#')[0] + '#m=' + m[1];
+        const again = await fetch(`/api/claim/state?p=${slug}`, { credentials: 'same-origin' }).then(x => x.ok ? x.json() : null).catch(() => null); // the manage call set the cookie
+        if (again) { state.x = again; state.offer = again.offer || {}; }
+        showDone({ back: true }); return;
+      }
       toast(data.error || 'That manage link is not valid');
     } else if (st && st.mine && st.mine.length) { state.claim = st.mine[0]; showDone({ back: true }); return; }
     track('claim_viewed');

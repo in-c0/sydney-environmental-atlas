@@ -6,7 +6,8 @@ import { readFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import worker, { rewrite } from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
-import { resetClaimsForTests } from '../src/claim.js';
+import { resetClaimsForTests, claimSummary, claimFile } from '../src/claim.js';
+import { recordStripeEvent } from '../src/ops/stripe.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 import { labels, BASIS } from '../dist/showhaus/walk/walk.js';
@@ -16,7 +17,7 @@ const read = async p => JSON.parse(await readFile(WALK + p, 'utf8'));
 const exists = p => access(WALK + p).then(() => true, () => false);
 const UA = { 'user-agent': 'Mozilla/5.0 Safari' };
 const ctx = () => { const p = []; return { waitUntil: x => p.push(x), done: () => Promise.all(p) }; };
-function makeEnv() { resetForTests(); resetClaimsForTests(); for (const t of ['sh_claims', 'sh_events']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
+function makeEnv() { resetForTests(); resetClaimsForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
 const get = (env, path, host = 'https://showhaus.app') => worker.fetch(new Request(host + path, { headers: UA, redirect: 'manual' }), env, ctx());
 
 test('labels: the basis line follows the data source and never claims a plan that is not there', () => {
@@ -30,7 +31,7 @@ test('labels: the basis line follows the data source and never claims a plan tha
 });
 
 test('labels: a verified claim switches the badge and drops the warning', () => {
-  const t = labels({ source: 'plan' }, { claimed: true, company: 'Harbour Homes' });
+  const t = labels({ source: 'plan' }, { claimed: true, company: 'Harbour Homes', private: false });
   assert.equal(t.badge, 'Owner-claimed'); assert.equal(t.basis, BASIS.plan); assert.match(t.card, /Harbour Homes/);
 });
 
@@ -93,7 +94,7 @@ test('worker: a walk listing is a claimable property; share links open the walk,
 
 test('worker: the public badge flips only for a verified claim, and a walk claim embeds the walk', async () => {
   const env = makeEnv();
-  assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: false, company: null });
+  assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: false, company: null, private: false });
   const f = new FormData();
   for (const [k, v] of Object.entries({ p: 'buildtec-avalon', mode: 'guest', role: 'listing_agent', company: 'Harbour Homes', licence: '51 824 753 556', website: 'https://www.harbourhomes.com.au', email: 'sam@harbourhomes.com.au' })) f.set(k, v);
   const c = ctx();
@@ -105,7 +106,7 @@ test('worker: the public badge flips only for a verified claim, and a walk claim
   assert.notEqual(body.claim.status, 'verified');
   assert.equal((await (await get(env, '/api/claim/public?p=buildtec-avalon')).json()).claimed, false, 'a pending claim does not change the badge');
   env.OPS_DB._db.prepare("UPDATE sh_claims SET status = 'verified' WHERE slug = ?").run('buildtec-avalon');
-  assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: true, company: 'Harbour Homes' });
+  assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: true, company: 'Harbour Homes', private: false });
   assert.equal((await (await get(env, '/api/claim/public?p=arncliffe-central')).json()).claimed, false);
 });
 
@@ -118,4 +119,91 @@ test('events: upgrade interest is a page event carrying the listing and nothing 
   assert.equal(r.status, 204);
   const row = env.OPS_DB._db.prepare("SELECT * FROM sh_events WHERE name = 'upgrade_interest'").get();
   assert.equal(row.path, '/walk/'); assert.deepEqual(JSON.parse(row.props), { kind: 'walk:buildtec-avalon', cta: 'has-plan' });
+});
+
+// ---------- private listings and paid real finishes ----------
+const builder = { p: 'buildtec-avalon', mode: 'guest', role: 'builder', company: 'Harbour Homes', licence: '51 824 753 556', website: 'https://www.harbourhomes.com.au', email: 'sam@harbourhomes.com.au' };
+async function claimAs(env, fields = {}, ip = '203.0.113.9') {
+  const f = new FormData();
+  for (const [k, v] of Object.entries({ ...builder, ...fields })) f.set(k, v);
+  const c = ctx();
+  const r = await worker.fetch(new Request('https://showhaus.app/api/claim/submit', { method: 'POST', body: f, headers: { ...UA, 'cf-connecting-ip': ip } }), env, c);
+  await c.done();
+  return { body: await r.json(), cookie: (r.headers.get('set-cookie') || '').split(';')[0] };
+}
+const post = (env, path, body, cookie) => worker.fetch(new Request('https://showhaus.app' + path, { method: 'POST', body: JSON.stringify(body), headers: { ...UA, 'content-type': 'application/json', ...(cookie ? { cookie } : {}) } }), env, ctx());
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+
+test('private: only a VERIFIED claimant can hide a home; then its scene files are gone for everyone', async () => {
+  const env = makeEnv();
+  const { body, cookie } = await claimAs(env, { intent: 'private' });
+  assert.equal(body.claim.role_label, 'Home builder');
+  assert.equal(body.private, false, 'an unverified request hides nothing'); assert.equal(body.private_pending, true);
+  assert.equal((await get(env, '/walk/data/buildtec-avalon.json')).status, 200);
+  assert.equal((await post(env, '/api/claim/private', { id: body.claim.id, on: true }, cookie)).status, 403, 'pending claim cannot hide it');
+  assert.equal((await post(env, '/api/claim/private', { id: body.claim.id, on: true })).status, 404, 'a stranger who knows the id cannot either');
+  env.OPS_DB._db.prepare("UPDATE sh_claims SET status = 'verified' WHERE id = ?").run(body.claim.id);
+  const on = await post(env, '/api/claim/private', { id: body.claim.id, on: true }, cookie);
+  assert.equal(on.status, 200); assert.equal((await on.json()).private_by_me, true);
+  assert.deepEqual(await (await get(env, '/api/claim/public?p=buildtec-avalon')).json(), { claimed: false, company: null, private: true });
+  for (const f of ['/walk/data/buildtec-avalon.json', '/walk/data/buildtec-avalon/room.js', '/walk/data/buildtec-avalon/walk1.mp4', '/walk/data/buildtec-avalon/poster.jpg']) {
+    const r = await get(env, f);
+    assert.equal(r.status, 410, f); assert.equal(await r.text(), "This home has been made private at the builder's request.");
+  }
+  assert.equal((await get(env, '/showhaus/walk/data/buildtec-avalon/room.js', 'https://x.workers.dev')).status, 410, 'the workers.dev path is closed too');
+  assert.equal((await get(env, '/walk/data/index.json')).status, 200);
+  assert.equal((await get(env, '/walk/')).status, 200);
+  const st = await (await worker.fetch(new Request('https://showhaus.app/api/claim/state?p=buildtec-avalon', { headers: { ...UA, cookie } }), env, ctx())).json();
+  assert.equal(st.private, true); assert.equal(st.mine.length, 1, 'the claimant can still manage it');
+  assert.equal((await claimSummary(env)).private[0].slug, 'buildtec-avalon');
+  // another verified claimant cannot undo it; the one who hid it can
+  const other = await claimAs(env, { company: 'Other Co', website: 'https://other.com.au', email: 'a@other.com.au' }, '203.0.113.10');
+  env.OPS_DB._db.prepare("UPDATE sh_claims SET status = 'verified' WHERE id = ?").run(other.body.claim.id);
+  await post(env, '/api/claim/private', { id: other.body.claim.id, on: false }, other.cookie);
+  assert.equal((await (await get(env, '/api/claim/public?p=buildtec-avalon')).json()).private, true);
+  await post(env, '/api/claim/private', { id: body.claim.id, on: false }, cookie);
+  assert.equal((await get(env, '/walk/data/buildtec-avalon/room.js')).status, 200);
+  assert.ok(env.OPS_DB._db.prepare("SELECT COUNT(*) AS n FROM sh_events WHERE name = 'listing_private'").get().n >= 2);
+});
+
+test('private: the viewer, gallery and map all honour it, in English', async () => {
+  const js = await readFile(WALK + 'walk.js', 'utf8');
+  assert.match(js, /PRIVATE_NOTE = 'This home has been made private at the builder\\u2019s request\.'/);
+  assert.match(js, /claim\.private\) \{[^}]*fail\(PRIVATE_NOTE\)/);
+  assert.match(js, /g-card--private/);
+  assert.match(await readFile(WALK + '../app.js', 'utf8'), /c\.private\) a\.remove\(\)/);
+});
+
+test('finishes: the claimant pays; nothing is uploaded before payment, and no price exists until one is configured', async () => {
+  const env = makeEnv();
+  const { body, cookie } = await claimAs(env);
+  assert.deepEqual(body.offer, { price: null, pay: false });
+  const ask = await (await post(env, '/api/claim/finishes', { id: body.claim.id }, cookie)).json();
+  assert.equal(ask.finishes, 'requested'); assert.equal(ask.pay_url, null);
+  assert.equal((await post(env, '/api/claim/finishes', { id: body.claim.id })).status, 404, 'only the claimant');
+  const upload = async bytes => { const f = new FormData(); f.set('id', body.claim.id); f.set('file', new Blob([bytes]), 'kitchen.png'); return worker.fetch(new Request('https://showhaus.app/api/claim/finishes-file', { method: 'POST', body: f, headers: { ...UA, cookie } }), env, ctx()); };
+  assert.equal((await upload(PNG)).status, 402, 'upload is closed until paid');
+  assert.equal((await get(env, '/pay/finishes?c=' + body.claim.code + '&p=buildtec-avalon')).headers.get('location'), 'https://showhaus.app/claim/?p=buildtec-avalon', 'no price set: no checkout');
+  // price + link configured by the owner
+  const priced = { ...env, FINISHES_PRICE_LABEL: 'A$1 test', FINISHES_PAYMENT_LINK: 'https://buy.stripe.com/test_abc' };
+  const ask2 = await (await post(priced, '/api/claim/finishes', { id: body.claim.id }, cookie)).json();
+  assert.deepEqual(ask2.offer, { price: 'A$1 test', pay: true }); assert.equal(ask2.pay_url, '/pay/finishes?c=' + body.claim.code + '&p=buildtec-avalon');
+  const to = (await get(priced, ask2.pay_url)).headers.get('location');
+  assert.equal(to, 'https://buy.stripe.com/test_abc?client_reference_id=fin_' + body.claim.id);
+  assert.equal((await recordStripeEvent(priced, { id: 'evt_1', type: 'checkout.session.completed', livemode: false, data: { object: { payment_status: 'paid', amount_total: 100, currency: 'aud', client_reference_id: 'fin_' + body.claim.id } } })).status, 200);
+  assert.equal(env.OPS_DB._db.prepare('SELECT status FROM sh_finishes WHERE claim_id = ?').get(body.claim.id).status, 'paid');
+  assert.equal((await upload(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9]))).status, 415);
+  const ok = await upload(PNG);
+  assert.equal(ok.status, 200); assert.deepEqual(await ok.json(), { ok: true, files: 1, max: 12, finishes: 'uploaded' });
+  const file = await claimFile(env, body.claim.id, 1);
+  assert.equal(file.headers.get('content-type'), 'image/png'); assert.equal((await file.arrayBuffer()).byteLength, PNG.length);
+  const sum = await claimSummary(env);
+  assert.equal(sum.finishes[0].status, 'uploaded'); assert.equal(sum.finishes[0].files, 1);
+});
+
+test('claim page: says what a claim gives and who pays, with no price in the page', async () => {
+  const html = await readFile(WALK + '../claim/index.html', 'utf8'), js = await readFile(WALK + '../claim/claim.js', 'utf8');
+  assert.match(html, /Paid by you<\/b> Your real finishes on the walk\. Price shown before any charge\./);
+  assert.match(html, /Or make it private, any time\./);
+  for (const t of [html, js]) assert.doesNotMatch(t, /\$\s?\d|AUD\s?\d/);
 });
