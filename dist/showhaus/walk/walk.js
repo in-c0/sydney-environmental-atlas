@@ -47,6 +47,27 @@ async function openGallery() {
       <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by, it.by && it.kind === 'walk' && 'not affiliated'].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
     </a>`).join('') || '<p>No walkthroughs yet.</p>';
   $('cards').addEventListener('click', e => { const a = e.target.closest('.g-card'); if (a) track('cta', { cta: 'open:' + a.dataset.slug }); });
+  // Suggest a home: a link to a published plan, no sign-up. Links are counted, never shown to other visitors.
+  $('suggest').addEventListener('submit', async e => {
+    e.preventDefault();
+    const note = $('sgNote'), say = (t, c) => { note.textContent = t; note.className = 'g-note ' + c; };
+    const url = $('sgUrl').value.trim();
+    if (!/\.[a-z]{2,}/i.test(url)) { say('Paste the link to the page that shows the floor plan.', 'bad'); $('sgUrl').focus(); return; }
+    $('sgBtn').disabled = true;
+    const r = await post('/api/suggest/home', { url });
+    $('sgBtn').disabled = false;
+    if (!r.ok) return say(r.data.error || 'Could not save it. Try again.', 'bad');
+    $('sgUrl').value = '';
+    say(r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.', 'ok');
+  });
+}
+const anonId = () => { try { return localStorage.getItem('sh_a') || undefined; } catch { return undefined; } };
+const synth = () => { try { return sessionStorage.getItem('sh_synth') === '1' || /[?&]synthetic=1/.test(location.search) ? 'synthetic' : undefined; } catch { return undefined; } };
+async function post(path, body) {
+  try {
+    const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ...body, anon: anonId(), env: synth() }) });
+    return { ok: r.ok, data: await r.json().catch(() => ({})) };
+  } catch { return { ok: false, data: { error: 'No connection. Try again.' } }; }
 }
 
 function fail(msg) { $('load').innerHTML = `<div>${esc(msg)}<br><br><a href="./">See all walkthroughs</a></div>`; }
@@ -70,6 +91,20 @@ async function openWalk() {
   $('ownClaim').href = `../claim/?p=${slug}&src=walk-upgrade`; $('ownLine').hidden = !!(claim && claim.claimed);
   $('ownClaim').addEventListener('click', () => track('cta', { cta: 'claim-from-upgrade' }));
   $('claimLink').addEventListener('click', () => track('cta', { cta: 'claim' }));
+  // Something wrong? A room and one line, no sign-up. Keys typed here must not walk the camera.
+  const fix = $('fix'), fmsg = $('fixMsg');
+  for (const ev of ['keydown', 'keyup', 'pointerdown', 'touchstart']) fix.addEventListener(ev, e => e.stopPropagation());
+  $('fixOpen').onclick = () => { fix.hidden = !fix.hidden; if (!fix.hidden) { track('cta', { cta: 'fix-open' }); $('fixNote').focus(); } };
+  fix.addEventListener('submit', async e => {
+    e.preventDefault();
+    const note = $('fixNote').value.trim();
+    if (note.length < 4) { fmsg.textContent = 'Say what is wrong in a few words.'; fmsg.className = 'bad'; return; }
+    $('fixSend').disabled = true;
+    const r = await post('/api/suggest/fix', { p: slug, room: $('fixRoom').value, note });
+    $('fixSend').disabled = false;
+    if (!r.ok) { fmsg.textContent = r.data.error || 'Could not send it. Try again.'; fmsg.className = 'bad'; return; }
+    $('fixNote').value = ''; fix.hidden = true; $('fixOpen').textContent = 'Sent, thank you. Report another?';
+  });
   $('claim').addEventListener('click', () => $('title').classList.toggle('open'));
   $('title').hidden = false; $('side').hidden = false;
   if (matchMedia('(pointer: coarse)').matches) $('hint').textContent = 'Drag to look · stick or tap the plan to walk';
@@ -117,6 +152,7 @@ async function openWalk() {
       if (why) track('walk_room', { step: v.name, cta: why });
       let dy = v.yaw - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
       glide = { t: 0, d: Math.min(2.2, 0.7 + Math.hypot(v.pos[0] - px, v.pos[1] - py) * 0.16), x0: px, y0: py, w0: yaw, p0: pitch, x1: v.pos[0], y1: v.pos[1], w1: yaw + dy, p1: v.pitch, f0: camera.fov, f1: v.real ? photoFov() : baseFov(), i }; }
+    $('fixRoom').innerHTML = ['Whole home', ...new Set(V.map(v => v.label))].map(l => `<option>${esc(l)}</option>`).join('');
     V.forEach((v, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.label; if (v.real) b.className = 'ph'; b.onclick = () => go(i, 'chip'); $('chips').append(b); });
 
     // ---- mini plan, sized from the room outline

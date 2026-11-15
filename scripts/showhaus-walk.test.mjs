@@ -8,6 +8,7 @@ import worker, { rewrite } from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
 import { resetClaimsForTests, claimSummary, claimFile } from '../src/claim.js';
 import { recordStripeEvent } from '../src/ops/stripe.js';
+import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR } from '../src/suggest.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 import { labels, BASIS } from '../dist/showhaus/walk/walk.js';
@@ -17,7 +18,7 @@ const read = async p => JSON.parse(await readFile(WALK + p, 'utf8'));
 const exists = p => access(WALK + p).then(() => true, () => false);
 const UA = { 'user-agent': 'Mozilla/5.0 Safari' };
 const ctx = () => { const p = []; return { waitUntil: x => p.push(x), done: () => Promise.all(p) }; };
-function makeEnv() { resetForTests(); resetClaimsForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
+function makeEnv() { resetForTests(); resetClaimsForTests(); resetSuggestForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate', 'sh_suggest', 'sh_suggest_votes', 'sh_fixes']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
 const get = (env, path, host = 'https://showhaus.app') => worker.fetch(new Request(host + path, { headers: UA, redirect: 'manual' }), env, ctx());
 
 test('labels: the basis line follows the data source and never claims a plan that is not there', () => {
@@ -206,4 +207,53 @@ test('claim page: says what a claim gives and who pays, with no price in the pag
   assert.match(html, /Paid by you<\/b> Your real finishes on the walk\. Price shown before any charge\./);
   assert.match(html, /Or make it private, any time\./);
   for (const t of [html, js]) assert.doesNotMatch(t, /\$\s?\d|AUD\s?\d/);
+});
+
+// ---------- no-login community input ----------
+const sg = (env, path, body, ip = '198.51.100.7', headers = {}) => { const c = ctx(); return worker.fetch(new Request('https://showhaus.app' + path, { method: 'POST', body: JSON.stringify(body), headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Safari/605', 'content-type': 'application/json', 'cf-connecting-ip': ip, ...headers } }), env, c).then(async r => { await c.done(); return r; }); };
+
+test('suggest: one home is one key — https, no tracking, no fragment; private and own hosts are refused', () => {
+  assert.deepEqual(normalizePlanUrl('WWW.Buildtec.com.au/home-designs/avalon/?utm_source=x&b=2&a=1#plan'), { url: 'https://buildtec.com.au/home-designs/avalon?a=1&b=2', host: 'buildtec.com.au' });
+  assert.equal(normalizePlanUrl('http://buildtec.com.au/home-designs/avalon').url, 'https://buildtec.com.au/home-designs/avalon');
+  for (const bad of ['', 'not a link', 'javascript:alert(1)', 'https://localhost/x', 'https://10.0.0.1/x', 'https://showhaus.app/walk/', 'https://user:pw@site.com/x', 'ftp://site.com/x', 'https://site.com:8443/x', 'https://site.com/' + 'a'.repeat(400)]) assert.equal(normalizePlanUrl(bad), null, bad);
+});
+
+test('suggest: a link needs no login, the same link adds up as votes, and one visitor counts once', async () => {
+  const env = makeEnv();
+  const a = await (await sg(env, '/api/suggest/home', { url: 'https://buildtec.com.au/home-designs/avalon?utm_source=fb', anon: 'visitor-one-1' })).json();
+  assert.deepEqual(a, { ok: true, votes: 1, counted: true, host: 'buildtec.com.au' });
+  const again = await (await sg(env, '/api/suggest/home', { url: 'buildtec.com.au/home-designs/avalon/', anon: 'visitor-one-1' })).json();
+  assert.equal(again.votes, 1); assert.equal(again.counted, false);
+  assert.equal((await (await sg(env, '/api/suggest/home', { url: 'https://www.buildtec.com.au/home-designs/avalon', anon: 'visitor-two-2' }, '198.51.100.8')).json()).votes, 2);
+  assert.equal((await sg(env, '/api/suggest/home', { url: 'nope' })).status, 400);
+  assert.equal((await sg(env, '/api/suggest/home', { url: 'https://a.com/x' }, '198.51.100.9', { origin: 'https://evil.example' })).status, 403);
+  const sum = await suggestSummary(env);
+  assert.equal(sum.homes.length, 1); assert.equal(sum.homes[0].votes, 2); assert.equal(sum.homes[0].url, 'https://buildtec.com.au/home-designs/avalon');
+  assert.deepEqual(await (await get(env, '/api/suggest/count')).json(), { homes: 1 }, 'visitors see a number, never the links');
+  const ev = env.OPS_DB._db.prepare("SELECT props, actor FROM sh_events WHERE name = 'home_suggested'").all();
+  assert.equal(ev.length, 2); assert.equal(JSON.parse(ev[0].props).ref, 'buildtec.com.au', 'the event keeps the host only');
+});
+
+test('suggest: a fix report is a room and one line on a real, public walk; nothing personal is kept', async () => {
+  const env = makeEnv();
+  assert.equal((await sg(env, '/api/suggest/fix', { p: 'buildtec-avalon', room: 'Kitchen', note: 'The island is on the wrong side <b>', email: 'a@b.co' })).status, 200);
+  assert.equal((await sg(env, '/api/suggest/fix', { p: 'buildtec-avalon', note: 'no' })).status, 400);
+  assert.equal((await sg(env, '/api/suggest/fix', { p: 'no-such-home', note: 'something is off' })).status, 404);
+  const row = env.OPS_DB._db.prepare('SELECT * FROM sh_fixes').all();
+  assert.equal(row.length, 1); assert.equal(row[0].room, 'Kitchen'); assert.equal(row[0].note, 'The island is on the wrong side b');
+  assert.ok(!JSON.stringify(row).includes('a@b.co'));
+  assert.equal((await suggestSummary(env)).fixes[0].slug, 'buildtec-avalon');
+});
+
+test('suggest: ten submissions per connection per hour, then 429', async () => {
+  const env = makeEnv();
+  for (let i = 0; i < PER_HOUR; i++) assert.equal((await sg(env, '/api/suggest/home', { url: 'https://site.com.au/plan-' + i }, '198.51.100.20')).status, 200);
+  assert.equal((await sg(env, '/api/suggest/home', { url: 'https://site.com.au/plan-x' }, '198.51.100.20')).status, 429);
+});
+
+test('suggest: the page offers both inputs with no sign-up and never lists submitted links', async () => {
+  const html = await readFile(WALK + 'index.html', 'utf8'), js = await readFile(WALK + 'walk.js', 'utf8');
+  assert.match(html, /id="suggest"/); assert.match(html, /id="fixOpen"/); assert.match(html, /No sign-up/);
+  assert.doesNotMatch(html, /type="file"/, 'links only: no file upload from visitors');
+  assert.doesNotMatch(js, /api\/suggest\/(homes|list)/);
 });
