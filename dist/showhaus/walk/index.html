@@ -21,6 +21,11 @@
   <h1>Walk it before you visit.</h1>
   <p class="g-lead">Every home starts with a free base walk. Photoreal upgrades are opening soon — open a home and tell us which one first.</p>
   <div id="cards" class="g-cards"></div>
+  <form class="g-suggest" id="suggest" novalidate>
+    <label for="sgUrl" id="sgLabel">Want to walk another home? Paste a link to its floor plan.</label>
+    <div class="g-row"><input id="sgUrl" type="url" inputmode="url" autocomplete="off" placeholder="builder.com.au/home-designs/…" maxlength="400"><button type="submit" id="sgBtn">Suggest</button></div>
+    <p class="g-note" id="sgNote" aria-live="polite">No sign-up. Copy the address of the builder’s page for that home. The most-asked homes are built first.</p>
+  </form>
   <p class="g-foot">Own, build or market one of these? Open it and claim it — free.</p>
 </main>
 
@@ -32,6 +37,13 @@
   <b id="tname"></b><span id="tby"></span><span id="trooms"></span>
   <span id="claim"></span><span id="basis"></span>
   <a id="claimLink" href="#">Is this yours? Claim it</a>
+  <button id="fixOpen" type="button">Something wrong? Tell us</button>
+  <form id="fix" hidden novalidate>
+    <select id="fixRoom" aria-label="Where"></select>
+    <input id="fixNote" maxlength="280" placeholder="e.g. the island is on the wrong side" aria-label="What is wrong">
+    <button type="submit" id="fixSend">Send</button>
+    <p id="fixMsg" aria-live="polite">No sign-up. One line is enough.</p>
+  </form>
 </div>
 <div id="side" hidden><div id="map"></div><button id="up" type="button">Make this walk photoreal</button></div>
 <div id="tag"></div>

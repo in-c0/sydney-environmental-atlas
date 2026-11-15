@@ -42,3 +42,10 @@ Predictions to check against real events:
 12. Of builder-side visitors who open the claim form, about half submit; the ones who do not want to know what claiming changes on the page first.
 
 Not yet checked.
+
+## 2026-11-15 — no-login inputs on the walk (suggest a home / report a mistake), wording A vs B
+- Panel: 12 personas (`personas-showhaus-walk.json`), 6 per wording, between-subjects; 6 sonnet + 6 haiku; counted stated actions (no SSR).
+- A ("Want to walk another home? Paste a link to its floor plan." / "Something wrong? Tell us"): box 2 paste, 2 maybe, 2 ignore; report 1 send, 4 maybe, 1 ignore.
+- B ("Which home should we build next? Paste its floor plan link." / "Spot a mistake? Fix it in one line"): box 3 paste, 1 maybe, 2 ignore; report 1 send, 4 maybe, 1 ignore.
+- Prediction: wording makes no measurable difference (shipped A). The suggest box gets more use than the report link; reports arrive only when a room is visibly wrong. Low tech-comfort visitors skip the box (they do not know what a plan link is); builders paste their own designs.
+- Check against: `/api/ops/summary` → `suggestions.homes` vs `suggestions.fixes` counts and `home_suggested` / `fix_reported` events once real traffic exists. Result: open.
