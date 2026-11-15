@@ -149,10 +149,12 @@ async function openWalk() {
     const wanted = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
     // Voted and not-voted are the two states of one button; "Cancel vote" takes the vote back and sends upgrade_interest_cancel,
     // so the demand count is interest minus cancels.
-    const NOT_VOTED = 'Not open yet. A free vote says you want this home made photoreal: no payment, no sign-up, and nothing starts. You can cancel it any time.';
+    // PROMISE is a commitment to visitors: the photoreal render queue must be ordered by votes (interest − cancels), highest first.
+    const PROMISE = 'Homes with the most votes are made photoreal first.';
+    const NOT_VOTED = `Not open yet. ${PROMISE} A vote is free: no payment, no sign-up, and you can cancel it any time.`;
     let voted = wanted();
     const paintWant = () => { want.classList.toggle('done', voted); want.disabled = voted; want.textContent = voted ? 'Voted ✓' : 'Vote for this home — free';
-      $('wantFine').textContent = voted ? 'Thanks — your vote is counted. Nothing is charged and nobody will contact you.' : NOT_VOTED; $('unvote').hidden = !voted; };
+      $('wantFine').textContent = voted ? `Thanks — your vote is counted. ${PROMISE} Nothing is charged and nobody will contact you.` : NOT_VOTED; $('unvote').hidden = !voted; };
     // The sample GIF loads when the card opens. A home without its own AI walk shows the sample from another home, and says so.
     const own = L.sample ? base + L.sample : null;
     const showSample = () => { const im = $('sampleGif'); if (im.getAttribute('src')) return; im.src = own || SAMPLE.gif; im.alt = own ? `AI walk sample of the ${L.name}` : `AI walk sample from the ${SAMPLE.name}`; $('sampleCap').textContent = own ? 'AI walk of this home — sample' : `Sample from another home (${SAMPLE.name})`; };

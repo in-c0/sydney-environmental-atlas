@@ -127,11 +127,12 @@ async function run(name, viewport, touch) {
   const cardText = await page.locator('#card').textContent();
   check(!/\$\s?\d|AUD|per (clip|home|render)/i.test(cardText), `${name}: no price on the card`);
   check(!/credits?\b/i.test(cardText), `${name}: card does not use the word credits`);
-  check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up, and nothing starts/.test(cardText), `${name}: the button reads as a free vote, not an order`);
+  check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up/.test(cardText), `${name}: the button reads as a free vote, not an order`);
   check((await page.locator('#ownClaim').getAttribute('href')).includes('/claim/?p=' + SLUG), `${name}: card sends builders and owners to claim first`);
   check(/declined up front/.test(cardText) && /time cap/.test(cardText) && /refunded/.test(cardText) && /AI visualisation/.test(cardText), `${name}: card states the limit, the cap, the refund and the AI visualisation`);
   await shot('5-upgrade');
   check(/cancel it any time/.test(cardText), `${name}: card says a vote can be cancelled`);
+  check(/Homes with the most votes are made photoreal first/.test(cardText), `${name}: card states the promise before voting`);
   check(await page.locator('#unvote').isHidden(), `${name}: no cancel control before voting`);
   await page.locator('#want').click(); await page.waitForTimeout(300);
   check((await page.locator('#want').textContent()).includes('Voted') && await page.locator('#want').isDisabled(), `${name}: vote is acknowledged and cannot be sent twice`);
@@ -139,6 +140,7 @@ async function run(name, viewport, touch) {
   check(beacons.some(b => b.name === 'walk_open') && beacons.some(b => b.name === 'walk_room'), `${name}: walk_open and walk_room beacons sent`);
   await page.locator('#unvote').scrollIntoViewIfNeeded();
   check(await page.locator('#unvote').isVisible() && await inView('#unvote'), `${name}: Cancel vote is offered after voting`);
+  check(/Homes with the most votes are made photoreal first/.test(await page.locator('#wantFine').textContent()), `${name}: the promise stays visible after voting`);
   await shot('6-counted');
   await page.locator('#unvote').click(); await page.waitForTimeout(300);
   check((await page.locator('#want').textContent()).includes('Vote for this home') && !(await page.locator('#want').isDisabled()) && await page.locator('#unvote').isHidden(), `${name}: cancelling returns the button to its not-voted state`);
@@ -165,6 +167,7 @@ async function run(name, viewport, touch) {
   await page.goto(`${BASE}${root}/?synthetic=1`, { waitUntil: 'domcontentloaded' });
   check(await page.locator('#walkNav').isVisible(), `${name}: map header has the Walk link`);
   await page.waitForTimeout(2500);
+  await page.waitForSelector('.walk-pin', { timeout: 30000 }).catch(() => {});
   const pins = await page.locator('.walk-pin').allTextContents();
   check(pins.length >= 1 && pins.every(t => !/Walk/.test(t) || false) , `${name}: exterior model pin is not called a walk (${pins.join(', ')})`);
   await shot('8-map');
