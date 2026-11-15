@@ -85,7 +85,7 @@ async function run(name, viewport, touch) {
   if (layerSel === '#clip') { const a = await st(); await page.waitForTimeout(1200); const b = await st();
     check(b.clipTime !== a.clipTime, `${name}: AI walk clip is playing (${a.clipTime.toFixed(2)} → ${b.clipTime.toFixed(2)} s)`);
     check(Math.hypot(b.px - a.px, b.py - a.py) > 0.1, `${name}: base camera walks the clip's path in step (moved ${Math.hypot(b.px - a.px, b.py - a.py).toFixed(2)} m)`);
-    check(/not a video/.test(await page.locator('#tag').textContent()), `${name}: clip is labelled as AI, not a video of the home`); }
+    check(/AI preview: layout from the plan, finishes imagined/.test(await page.locator('#tag').textContent()), `${name}: clip label says what is real (layout) and what is imagined (finishes)`); }
   const clipBefore = await page.locator(layerSel).evaluate(e => e.style.clipPath);
   const wb = await page.locator('#wipe').boundingBox();
   if (touch) { await finger('touchStart', wb.x + 22, 300); for (const x of [160, 120, 80]) await finger('touchMove', x, 300); await finger('touchEnd'); }
@@ -125,6 +125,7 @@ async function run(name, viewport, touch) {
   check(/this home/.test(await page.locator('#sampleCap').textContent()), `${name}: sample caption says whose home it shows`);
   check(await page.evaluate(() => document.getElementById('clip').videoWidth >= 1280 || !document.getElementById('clip').getAttribute('src')), `${name}: AI walk clip is the 1280-wide file`);
   const cardText = await page.locator('#card').textContent();
+  check(await page.locator('#terms').evaluate(d => !d.open) && await page.locator('#terms summary').isVisible(), `${name}: limits and refunds are one tap away, not in the way`);
   check(!/\$\s?\d|AUD|per (clip|home|render)/i.test(cardText), `${name}: no price on the card`);
   check(!/credits?\b/i.test(cardText), `${name}: card does not use the word credits`);
   check(/Vote for this home — free/.test(cardText) && /no payment, no sign-up/.test(cardText), `${name}: the button reads as a free vote, not an order`);

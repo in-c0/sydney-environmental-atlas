@@ -99,7 +99,7 @@ async function openWalk() {
     const setWipe = w => { w = Math.max(0.03, Math.min(0.97, w)); layer.style.clipPath = `inset(0 0 0 ${(w * 100).toFixed(2)}%)`; $('wipe').style.left = (w * 100).toFixed(2) + '%'; };
     function photoOff() { if (photoOn < 0) return; if (V[photoOn].clip) { px = V[photoOn].pos[0]; py = V[photoOn].pos[1]; } photoOn = -1; wipeAnim = null; photo.style.opacity = 0; clip.style.opacity = 0; clip.pause(); $('tag').style.opacity = 0; $('wipe').style.display = 'none'; setFov(baseFov()); mark(-1); }
     function photoShow(i) { const v = V[i]; photoOn = i; layer = v.clip ? clip : photo;
-      $('tag').innerHTML = v.clip ? '◀ Base walk &nbsp;·&nbsp; AI walk, not a video of the home ▶' : '◀ Base walk &nbsp;·&nbsp; AI render, not a photo ▶';
+      $('tag').innerHTML = v.clip ? '◀ Base walk &nbsp;·&nbsp; AI preview: layout from the plan, finishes imagined ▶' : '◀ Base walk &nbsp;·&nbsp; AI render, not a photo ▶';
       if (v.clip) { if (v.photo) clip.poster = base + v.photo; clip.src = base + v.clip; clip.currentTime = 0; clip.play().catch(() => {}); } else photo.src = base + v.photo;
       setWipe(0.97); $('wipe').style.display = 'block'; wipeAnim = { t: 0 }; layer.style.opacity = 1; $('tag').style.opacity = 1; }
     function mark(i) { [...$('chips').children].forEach((b, k) => b.setAttribute('aria-pressed', k === i)); }
