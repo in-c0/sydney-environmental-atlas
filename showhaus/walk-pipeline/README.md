@@ -1,20 +1,51 @@
-# Walk pipeline source (plan → base walk)
+# Walk pipeline (plan → base walk)
 
-The scripts that produced `dist/showhaus/walk/data/buildtec-avalon/`. They are kept here so a new session can
-re-run or extend them; before this they lived only in one chat's workspace.
+`walkgen.py` turns one plan JSON into a baked, walkable scene for `dist/showhaus/walk`. It replaces the scene script that
+was written by hand for Avalon (`avalon.py`, kept for reference).
 
-| File | What it does |
+```
+python3 walkgen.py plans/<slug>.plan.json check              # no Blender: validates, prints walk areas
+python3 walkgen.py plans/<slug>.plan.json preview /tmp/out   # 16-sample render of every view; fix layout and exposure here
+python3 walkgen.py plans/<slug>.plan.json bake    /tmp/out   # Cycles bake, one atlas per group, saved group by group
+python3 walkgen.py plans/<slug>.plan.json pack    /tmp/out ../../dist/showhaus/walk   # atlases, room.js, <slug>.json, poster
+```
+
+Needs `pip install bpy numpy pillow` (checked with bpy 5.3, Python 3.13). `pack` prints the row to add to
+`walk/data/index.json`. After a home goes live, `POST /api/ops/suggest-built {url, slug}` tells the people who asked for it.
+
+## Plan JSON
+
+Metres; x = east, y = north, z = up. Nothing is guessed by the builder: every value the plan does not give is written
+in the JSON and listed under `assumptions` (the page shows them).
+
+| Key | Meaning |
 |---|---|
-| `avalon.json` | The plan as data: room outline, openings, joinery, furniture boxes, cameras, and every assumption the plan does not give. |
-| `build.py` | Blender (`bpy`): proxy boxes from the JSON, one render per camera, per-pixel world XYZ (`.npy`) for generative steps. |
-| `avalon.py` | Blender: the full living-zone scene; `preview` (16 samples, fix exposure here) or `bake` (Cycles COMBINED to UV atlases per group). |
-| `avgen.py` | Baked atlases + meshes → `room.js` (`window.ROOM`) and `atlas_*.jpg` for the viewer. |
+| `slug`, `name`, `by`, `type`, `rooms` | What the gallery card and the viewer show. |
+| `source`, `source_url` | `plan` (from a published floor plan; needs the URL) or `estimate`. Picks the basis line on the page. |
+| `outline` | The room outline, rectilinear, counter-clockwise. One connected space (a living zone, a studio). |
+| `ceiling` | `{"type": "flat", "h": 2.7}` or `{"type": "raked", "from": [x, y], "to": [x, y], "h0": 2.6, "h1": 3.5}`. |
+| `openings` | `{"edge": i, "type": "window" \| "slider" \| "door", "a", "b", "sill", "head", "mullions"}`. Edge `i` runs `outline[i] → outline[i+1]`; `a..b` is the absolute x (horizontal wall) or y (vertical wall). Doors are closed: the room behind is not modelled. |
+| `outdoor` | `{"rect": [x0, y0, x1, y1], "roof": 2.7}`: a covered deck. A slider that opens onto it becomes a doorway you can walk through. |
+| `finishes` | `floor`: `oak` \| `tile` \| `concrete` \| `carpet`; `wall`, `cabinet`, `stone`, `splash`: `[r, g, b]`. This is where a claimant's real finishes go. |
+| `items` | `{"type", "at": [x, y], "rot": 0 \| 90 \| 180 \| 270, …}`. `at` is the footprint centre; `rot` 0 = back to the south, facing north. Types: `kitchen_run`, `island`, `tall`, `fridge`, `dining`, `sofa`, `armchair`, `coffee_table`, `rug`, `tv_unit`, `art`, `plant`, `floor_lamp`, `pendant`, `bed`, `bedside`, `desk`, `outdoor_table`, `box`. |
+| `views` | `{"name", "pos": [x, y], "look": [x, y], "pitch"}`: the room chips. A view standing in a wall or an object is refused. |
 
-Run with Blender's Python (`blender -b -P avalon.py -- preview`). Paths at the top of each script point at the original
-workspace (`/home/claude/showhaus/…`); change them first. Bake limits and known dead ends are in the
-`plan-to-walkthrough` skill.
+`check` refuses a plan that is not rectilinear, has an opening that does not fit its wall or rises above the ceiling,
+places an item outside the room, puts a camera inside something, or lists no assumptions.
 
-**Not automated yet:** `avalon.py` is written for this one plan. A second home needs its own plan JSON and scene script;
-the generic "any plan JSON → scene" builder does not exist. The order of homes to build is `/api/ops/summary` → `queue.base`.
+## What was checked (15 Nov 2026, 2 CPU cores)
 
-The plan image itself is the builder's and is not stored here; `avalon.json` records its source.
+- `plans/buildtec-avalon.plan.json` rebuilds Avalon from data: preview of six views in 1 min 36 s; its walk areas and
+  collisions match the live walk (`scripts/showhaus-walkgen.test.mjs`).
+- `plans/fixture-studio.plan.json` (an invented L-shaped studio, never published) went plan → preview → bake → pack →
+  the real viewer: three views, walking, mini plan with openings on three walls. Low-resolution bake (1024 atlases,
+  8 samples) took 51 s; a publishable bake (3072 atlases, 28–32 samples) is about 40 minutes by the earlier measurements.
+
+## Not done
+
+- A full-resolution Avalon bake with `walkgen.py` (the live Avalon still uses the `avalon.py` bake, which its photos and clips are aligned to).
+- Reading a floor plan image into the JSON. That step is still done by a person or an agent with the plan in front of it.
+- Rooms that are not one rectilinear space: internal walls, curves, stairs, more than one level.
+- The order of homes to build is `/api/ops/summary` → `queue.base`; nothing takes from it automatically yet.
+
+The builder's plan image is theirs and is not stored here; the JSON records where it came from.

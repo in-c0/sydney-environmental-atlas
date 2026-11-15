@@ -1,0 +1,54 @@
+{
+  "slug": "buildtec-avalon",
+  "name": "Avalon",
+  "by": "Buildtec",
+  "type": "Home design",
+  "rooms": "Kitchen · Dining · Family · Alfresco",
+  "source": "plan",
+  "source_url": "https://www.buildtechomes.com.au/wp-content/uploads/2026/07/avalon-floorplan.png",
+  "assumptions": [
+    "Ceiling: not on the plan. Assumed raked, 2.6 m at the hall wall rising to 3.5 m at the alfresco wall.",
+    "Windows: heights not on the plan. Sliding doors 0–2.4 m, windows 0.6–2.4 m.",
+    "Alfresco assumed to face north.",
+    "Finishes and furniture are placeholders."
+  ],
+  "lngLat": null,
+  "outline": [[0, 1.4], [6.6, 1.4], [6.6, 0], [12.7, 0], [12.7, 6.3], [0, 6.3]],
+  "ceiling": { "type": "raked", "from": [0, -0.11], "to": [0, 6.41], "h0": 2.6, "h1": 3.5 },
+  "openings": [
+    { "edge": 0, "type": "door", "a": 1.0, "b": 1.82, "head": 2.1 },
+    { "edge": 2, "type": "door", "a": 7.0, "b": 8.2, "head": 2.4 },
+    { "edge": 4, "type": "slider", "a": 0.6, "b": 4.8, "head": 2.4, "mullions": 3 },
+    { "edge": 4, "type": "window", "a": 6.2, "b": 8.8, "sill": 0.6, "head": 2.4, "mullions": 2 },
+    { "edge": 4, "type": "window", "a": 9.6, "b": 12.2, "sill": 0.6, "head": 2.4, "mullions": 2 }
+  ],
+  "outdoor": [{ "rect": [-0.3, 6.41, 5.2, 9.41], "roof": 2.7 }],
+  "finishes": { "floor": "oak" },
+  "items": [
+    { "type": "kitchen_run", "at": [0.325, 3.9], "rot": 270, "len": 4.3 },
+    { "type": "island", "at": [4.21, 3.9], "rot": 270, "len": 3.0, "depth": 0.94, "stools": 4 },
+    { "type": "tall", "at": [4.5, 1.71], "rot": 0, "len": 4.2, "depth": 0.62 },
+    { "type": "pendant", "at": [3.9, 3.2] },
+    { "type": "pendant", "at": [3.9, 4.6] },
+    { "type": "dining", "at": [8.0, 3.4], "rot": 90, "len": 2.4, "seats": 8 },
+    { "type": "pendant", "at": [8.0, 3.4], "z": 1.62, "r": 0.26 },
+    { "type": "sofa", "at": [9.99, 3.5], "rot": 270, "len": 2.4, "throws": ["teal", "rust"] },
+    { "type": "sofa", "at": [11.4, 0.595], "rot": 0, "len": 1.9, "depth": 0.95, "seats": 2, "throws": ["charcoal"] },
+    { "type": "rug", "at": [11.3, 3.2], "len": 2.6, "depth": 3.0 },
+    { "type": "coffee_table", "at": [11.45, 3.3] },
+    { "type": "tv_unit", "at": [12.47, 3.4], "rot": 90, "len": 2.2 },
+    { "type": "art", "at": [11.4, 0.02], "rot": 0, "len": 1.3 },
+    { "type": "plant", "at": [12.2, 5.75] },
+    { "type": "floor_lamp", "at": [9.75, 5.25] },
+    { "type": "outdoor_table", "at": [2.6, 8.01], "rot": 0 },
+    { "type": "plant", "at": [4.75, 6.76], "dark": true }
+  ],
+  "views": [
+    { "name": "Kitchen", "pos": [5.7, 4.3], "look": [1.6, 3.6], "pitch": -0.10 },
+    { "name": "Dining", "pos": [6.1, 5.5], "look": [8.6, 3.0], "pitch": -0.14 },
+    { "name": "Family", "pos": [10.7, 5.6], "look": [11.9, 2.3], "pitch": -0.16 },
+    { "name": "Alfresco", "pos": [0.4, 9.0], "look": [4.2, 5.4], "pitch": -0.04 },
+    { "name": "From the hall", "pos": [9.3, 1.3], "look": [3.0, 4.9], "pitch": -0.055 },
+    { "name": "Family from the hall", "pos": [8.9, 0.7], "look": [11.7, 4.1], "pitch": -0.113 }
+  ]
+}
