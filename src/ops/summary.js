@@ -6,7 +6,7 @@ import { recordStripeEvent } from './stripe.js';
 import { mailMode } from './auth.js';
 import { entitlementSummary, alertHealth, markEntitlement } from './owner.js';
 import { claimSummary } from '../claim.js';
-import { suggestSummary } from '../suggest.js';
+import { suggestSummary, walkQueue } from '../suggest.js';
 
 export const CLAIM_FUNNEL = ['claim_viewed', 'claim_started', 'claim_submitted', 'claim_verified', 'share_link_copied'];
 const FUNNEL = ['view', 'search', 'place_card', 'signin_open', 'signup', 'login', 'checkout_started', 'payment_succeeded'];
@@ -102,7 +102,9 @@ export async function summary(request, env) {
     // Claim flow: unique actors per step (production) and claims still pending automatic verification (no human review step).
     claim_funnel: Object.fromEntries(CLAIM_FUNNEL.map(n => [n, new Set(prodRows.filter(r => r.name === n && r.actor).map(r => r.actor)).size])),
     claims: await claimSummary(env).catch(() => null),
-    suggestions: await suggestSummary(env).catch(() => null), // no-login input: homes asked for (by votes) and fix reports
+    suggestions: await suggestSummary(env).catch(() => null),
+    queue: await walkQueue(env).catch(() => null), // the build order the pages promise: base (asked-for homes), photoreal (votes), finishes (paid)
+    // no-login input: homes asked for (by votes) and fix reports
   });
 }
 

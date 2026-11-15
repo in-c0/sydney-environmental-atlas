@@ -8,7 +8,7 @@ import worker, { rewrite } from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
 import { resetClaimsForTests, claimSummary, claimFile } from '../src/claim.js';
 import { recordStripeEvent } from '../src/ops/stripe.js';
-import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR } from '../src/suggest.js';
+import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR, suggestBuilt, walkQueue } from '../src/suggest.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 import { labels, BASIS } from '../dist/showhaus/walk/walk.js';
@@ -18,7 +18,7 @@ const read = async p => JSON.parse(await readFile(WALK + p, 'utf8'));
 const exists = p => access(WALK + p).then(() => true, () => false);
 const UA = { 'user-agent': 'Mozilla/5.0 Safari' };
 const ctx = () => { const p = []; return { waitUntil: x => p.push(x), done: () => Promise.all(p) }; };
-function makeEnv() { resetForTests(); resetClaimsForTests(); resetSuggestForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate', 'sh_suggest', 'sh_suggest_votes', 'sh_fixes']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
+function makeEnv() { resetForTests(); resetClaimsForTests(); resetSuggestForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate', 'sh_suggest', 'sh_suggest_votes', 'sh_fixes', 'sh_suggest_notify']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
 const get = (env, path, host = 'https://showhaus.app') => worker.fetch(new Request(host + path, { headers: UA, redirect: 'manual' }), env, ctx());
 
 test('labels: the basis line follows the data source and never claims a plan that is not there', () => {
@@ -221,7 +221,7 @@ test('suggest: one home is one key — https, no tracking, no fragment; private 
 test('suggest: a link needs no login, the same link adds up as votes, and one visitor counts once', async () => {
   const env = makeEnv();
   const a = await (await sg(env, '/api/suggest/home', { url: 'https://buildtec.com.au/home-designs/avalon?utm_source=fb', anon: 'visitor-one-1' })).json();
-  assert.deepEqual(a, { ok: true, votes: 1, counted: true, host: 'buildtec.com.au' });
+  assert.deepEqual(a, { ok: true, votes: 1, counted: true, host: 'buildtec.com.au', notify: false });
   const again = await (await sg(env, '/api/suggest/home', { url: 'buildtec.com.au/home-designs/avalon/', anon: 'visitor-one-1' })).json();
   assert.equal(again.votes, 1); assert.equal(again.counted, false);
   assert.equal((await (await sg(env, '/api/suggest/home', { url: 'https://www.buildtec.com.au/home-designs/avalon', anon: 'visitor-two-2' }, '198.51.100.8')).json()).votes, 2);
@@ -256,4 +256,41 @@ test('suggest: the page offers both inputs with no sign-up and never lists submi
   assert.match(html, /id="suggest"/); assert.match(html, /id="fixOpen"/); assert.match(html, /No sign-up/);
   assert.doesNotMatch(html, /type="file"/, 'links only: no file upload from visitors');
   assert.doesNotMatch(js, /api\/suggest\/(homes|list)/);
+});
+
+test('notify: the email is optional, used for one message when the home is live, then deleted', async () => {
+  const env = makeEnv();
+  const U = 'https://buildtec.com.au/home-designs/avalon';
+  assert.equal((await (await sg(env, '/api/suggest/home', { url: U, anon: 'visitor-aaa-1' })).json()).notify, false);
+  assert.equal((await sg(env, '/api/suggest/home', { url: U, email: 'nope', anon: 'visitor-bbb-2' }, '198.51.100.31')).status, 400);
+  assert.equal((await (await sg(env, '/api/suggest/home', { url: U, email: ' Pat@Example.com ', anon: 'visitor-ccc-3' }, '198.51.100.32')).json()).notify, true);
+  assert.equal((await suggestSummary(env)).homes[0].url, U);
+  assert.ok(!JSON.stringify(await suggestSummary(env)).includes('pat@example.com'), 'the summary never carries addresses');
+  assert.equal((await worker.fetch(new Request('https://showhaus.app/api/ops/suggest-built', { method: 'POST', body: '{}' }), env, ctx())).status, 401, 'OIDC only');
+  assert.deepEqual(await suggestBuilt(env, { url: U, slug: 'buildtec-avalon' }), { ok: true, sent: 0, waiting: 1, note: 'no mail route configured; addresses kept' });
+  const mails = [];
+  const mailEnv = { ...env, RESEND_API_KEY: 'k' };
+  const fake = async (u, o) => { mails.push(JSON.parse(o.body)); return new Response('{}', { status: 200 }); };
+  assert.deepEqual(await suggestBuilt(mailEnv, { url: U + '/?utm_source=x', slug: 'buildtec-avalon' }, fake), { ok: true, sent: 1, failed: 0 });
+  assert.deepEqual(mails[0].to, ['pat@example.com']); assert.match(mails[0].text, /showhaus\.app\/walk\/\?p=buildtec-avalon/); assert.match(mails[0].from, /^SHOWHAUS </);
+  assert.equal(env.OPS_DB._db.prepare('SELECT COUNT(*) AS n FROM sh_suggest_notify').get().n, 0, 'address deleted after the one email');
+  assert.deepEqual(await suggestBuilt(mailEnv, { url: U, slug: 'buildtec-avalon' }, fake), { ok: true, sent: 0, failed: 0 }); assert.equal(mails.length, 1, 'never twice');
+  assert.equal((await walkQueue(env)).base.length, 0, 'a built home leaves the queue');
+});
+
+test('queue: asked-for homes by votes, photoreal by net votes (last vote or cancel counts), paid finishes oldest first', async () => {
+  const env = makeEnv();
+  const db = env.OPS_DB._db;
+  for (const [u, n] of [['https://a.com.au/one', 1], ['https://b.com.au/two', 3], ['https://c.com.au/three', 2]])
+    for (let i = 0; i < n; i++) await sg(env, '/api/suggest/home', { url: u, anon: `voter-${u.length}-${i}-xx` }, `198.51.100.${40 + i}`);
+  await sg(env, '/api/suggest/home', { url: 'https://probe.com.au/x', anon: 'probe-visitor-1' }, '198.51.100.60', { 'x-cvf-synthetic': '1' });
+  await (await import('../src/suggest.js')).walkQueue(env); // tables exist
+  const ev = (name, actor, slug, at) => db.prepare("INSERT INTO sh_events (at, name, env, source, actor, props) VALUES (?, ?, 'production', 'client', ?, ?)").run(at, name, actor, JSON.stringify({ kind: 'walk:' + slug }));
+  ev('upgrade_interest', 'a:1', 'buildtec-avalon', '2026-11-15T01:00:00Z'); ev('upgrade_interest', 'a:2', 'buildtec-avalon', '2026-11-15T01:01:00Z');
+  ev('upgrade_interest_cancel', 'a:2', 'buildtec-avalon', '2026-11-15T01:02:00Z'); ev('upgrade_interest', 'a:1', 'buildtec-avalon', '2026-11-15T01:03:00Z');
+  ev('upgrade_interest', 'a:3', 'other-home', '2026-11-15T01:04:00Z'); ev('upgrade_interest', 'a:4', 'other-home', '2026-11-15T01:05:00Z');
+  const q = await walkQueue(env);
+  assert.deepEqual(q.base.map(b => [b.host, b.votes]), [['b.com.au', 3], ['c.com.au', 2], ['a.com.au', 1]], 'production only, most votes first');
+  assert.deepEqual(q.photoreal, [{ slug: 'other-home', votes: 2 }, { slug: 'buildtec-avalon', votes: 1 }]);
+  assert.deepEqual(q.finishes, []);
 });

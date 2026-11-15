@@ -6,6 +6,7 @@
 import { handleBeacon, track, environmentOf } from './events.js';
 import { handleAuth, currentUser, cookieOf, grantPro } from './auth.js';
 import { handleStripeHook } from './stripe.js';
+import { suggestBuilt } from '../suggest.js';
 import { requireOps } from './oidc.js';
 import { summary, replay, health, entitlement } from './summary.js';
 import { db, pseudo } from './store.js';
@@ -22,7 +23,7 @@ export async function handleOps(request, env, ctx) {
   if (!(path === '/api/e' || path.startsWith('/api/auth/') || path === '/hooks/stripe' || path.startsWith('/api/ops/'))) return null;
   try {
     if (path === '/hooks/stripe') return await handleStripeHook(request, env);
-    if (request.method === 'POST' && path !== '/api/ops/replay' && path !== '/api/ops/entitlement' && path !== '/api/ops/pro' && !sameOrigin(request)) return new Response('forbidden', { status: 403 });
+    if (request.method === 'POST' && path !== '/api/ops/replay' && path !== '/api/ops/entitlement' && path !== '/api/ops/pro' && path !== '/api/ops/suggest-built' && !sameOrigin(request)) return new Response('forbidden', { status: 403 });
     if (path === '/api/e') {
       if (request.method !== 'POST') return new Response('method', { status: 405 });
       const user = await currentUser(request, env).catch(() => null);
@@ -35,6 +36,7 @@ export async function handleOps(request, env, ctx) {
     if (path === '/api/ops/replay' && request.method === 'POST') return await replay(request, env);
     if (path === '/api/ops/claim-file') return (await claimFile(env, new URL(request.url).searchParams.get('id'), new URL(request.url).searchParams.get('f'))) || new Response('not found', { status: 404 }); // evidence upload, OIDC only
     if (path === '/api/ops/entitlement' && request.method === 'POST') return await entitlement(request, env);
+    if (path === '/api/ops/suggest-built' && request.method === 'POST') return Response.json(await suggestBuilt(env, await request.json().catch(() => ({})))); // a suggested home is live: tell those who asked, once
     if (path === '/api/ops/pro' && request.method === 'POST') { // owner grant/revoke by email (OIDC); the email is HMAC-ed, never stored
       const d = await db(env), b = await request.json().catch(() => ({}));
       const email = String(b.email || '').trim().toLowerCase();
