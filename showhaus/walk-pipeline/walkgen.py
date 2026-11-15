@@ -434,9 +434,13 @@ def build(p, mode, out):
     def b_kitchen_run(it):
         ln = it.get('len', 3.0); x0, x1, y0 = -ln / 2, ln / 2, -0.325
         box('FURN', 'bench_kick', x0, x1, y0, y0 + 0.56, 0, 0.10, KICK); box('FURN', 'bench', x0, x1, y0, y0 + 0.62, 0.10, 0.88, CAB, bevel=0.003)
-        box('FURN', 'bench_top', x0 - 0.02, x1 + 0.02, y0, y0 + 0.65, 0.88, 0.92, STONE, bevel=0.004); box('FURN', 'splash', x0, x1, y0, y0 + 0.012, 0.92, 1.50, SPLASH)
+        box('FURN', 'bench_top', x0 - 0.02, x1 + 0.02, y0, y0 + 0.65, 0.88, 0.92, STONE, bevel=0.004)
+        # window_gap [u0, u1] (local x): no splash or overheads there, so a window over the sink stays open
+        g = it.get('window_gap'); spans = [(x0, x1)] if not g else [(a, b) for a, b in ((x0, g[0]), (g[1], x1)) if b - a > 0.05]
+        for a, b in spans: box('FURN', 'splash', a, b, y0, y0 + 0.012, 0.92, 1.50, SPLASH)
         n = max(2, round(ln / 0.6)); joinery_gaps(x0, x1, y0 + 0.62, 0.11, 0.87, n)
-        if it.get('overheads', True): box('FURN', 'overheads', x0, x1, y0, y0 + 0.36, 1.50, 2.25, CAB, bevel=0.003); joinery_gaps(x0, x1, y0 + 0.36, 1.51, 2.24, n)
+        if it.get('overheads', True):
+            for a, b in spans: box('FURN', 'overheads', a, b, y0, y0 + 0.36, 1.50, 2.25, CAB, bevel=0.003); joinery_gaps(a, b, y0 + 0.36, 1.51, 2.24, max(1, round((b - a) / 0.6)))
         if it.get('cooktop', True):
             c = it.get('cooktop_at', 0.0); box('FURN', 'cooktop', c - 0.40, c + 0.40, y0 + 0.08, y0 + 0.56, 0.92, 0.928, BLACK); box('FURN', 'oven', c - 0.33, c + 0.33, y0 + 0.621, y0 + 0.628, 0.22, 0.80, BLACK)
         if it.get('sink', False):
