@@ -47,19 +47,51 @@ async function openGallery() {
       <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by, it.by && it.kind === 'walk' && 'not affiliated'].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
     </a>`).join('') || '<p>No walkthroughs yet.</p>';
   $('cards').addEventListener('click', e => { const a = e.target.closest('.g-card'); if (a) track('cta', { cta: 'open:' + a.dataset.slug }); });
-  // Suggest a home: a link to a published plan, no sign-up. Links are counted, never shown to other visitors.
+  // Suggest a home, no sign-up: a NSW street address (autocompleted from the NSW address register) or a link to a
+  // published plan. Both are counted as votes and never shown to other visitors.
+  const inp = $('sgUrl'), list = $('sgList'), note = $('sgNote'), say = (t, c) => { note.textContent = t; note.className = 'g-note ' + c; };
+  const looksLink = v => /^https?:\/\//i.test(v) || (!/\s/.test(v) && /\.[a-z]{2,}(\/|$)/i.test(v));
+  let picked = null, items = [], active = -1, timer = 0, seq = 0;
+  const close = () => { list.hidden = true; list.innerHTML = ''; items = []; active = -1; inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant'); };
+  const mark = i => { active = i; [...list.children].forEach((li, k) => li.setAttribute('aria-selected', String(k === i))); if (i >= 0) inp.setAttribute('aria-activedescendant', 'sgOpt' + i); };
+  const pick = i => { const it = items[i]; if (!it) return; picked = it; inp.value = it.label; close(); say('Found on the NSW address register. Tap Suggest.', 'ok'); $('sgBtn').focus(); };
+  inp.addEventListener('input', () => {
+    picked = null; clearTimeout(timer);
+    const v = inp.value.trim();
+    if (v.length < 4 || looksLink(v) || !/^\d/.test(v)) { close(); return; }
+    timer = setTimeout(async () => {
+      const my = ++seq, d = await getJSON('/api/suggest/address?q=' + encodeURIComponent(v));
+      if (my !== seq || inp.value.trim() !== v) return;
+      items = (d && d.results) || [];
+      if (!items.length) { close(); return; }
+      list.innerHTML = items.map((it, i) => `<li id="sgOpt${i}" role="option" aria-selected="false" data-i="${i}"><span class="pin" aria-hidden="true">⌂</span>${esc(it.label)}</li>`).join('');
+      list.hidden = false; inp.setAttribute('aria-expanded', 'true'); mark(-1);
+      try { list.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* old browsers */ }
+    }, 220);
+  });
+  inp.addEventListener('keydown', e => {
+    if (list.hidden || !items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); mark((active + 1) % items.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); mark((active - 1 + items.length) % items.length); }
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(active); }
+    else if (e.key === 'Escape') close();
+  });
+  list.addEventListener('pointerdown', e => { const li = e.target.closest('li'); if (li) { e.preventDefault(); pick(Number(li.dataset.i)); } });
+  inp.addEventListener('blur', () => setTimeout(close, 150));
   $('suggest').addEventListener('submit', async e => {
-    e.preventDefault();
-    const note = $('sgNote'), say = (t, c) => { note.textContent = t; note.className = 'g-note ' + c; };
-    const url = $('sgUrl').value.trim();
-    if (!/\.[a-z]{2,}/i.test(url)) { say('Paste the link to the page that shows the floor plan.', 'bad'); $('sgUrl').focus(); return; }
+    e.preventDefault(); close();
+    const v = inp.value.trim();
+    const body = looksLink(v) ? { url: v } : /^\d+\S*\s+\S+/.test(v) ? { address: picked ? picked.address : v } : null;
+    if (!body) { say(v ? 'Start with the house number, e.g. 12 Forest Rd, Arncliffe — or paste a floor-plan link.' : 'Type the home’s address, or paste a link to its floor plan.', 'bad'); inp.focus(); return; }
     $('sgBtn').disabled = true;
     const email = $('sgEmail').value.trim();
-    const r = await post('/api/suggest/home', { url, email: email || undefined });
+    const r = await post('/api/suggest/home', { ...body, email: email || undefined });
     $('sgBtn').disabled = false;
     if (!r.ok) return say(r.data.error || 'Could not save it. Try again.', 'bad');
-    $('sgUrl').value = ''; $('sgEmail').value = '';
-    say((r.data.notify ? 'We’ll email you once, when it’s ready, then delete your address. ' : '') + (r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.'), 'ok');
+    inp.value = ''; $('sgEmail').value = ''; picked = null;
+    const what = r.data.address ? r.data.address + ': ' : '';
+    say((r.data.notify ? 'We’ll email you once, when it’s ready, then delete your address. ' : '') + what + (r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.'), 'ok');
+    track('cta', { cta: 'suggest:' + (body.url ? 'link' : picked || r.data.verified ? 'address' : 'address:unverified') });
   });
 }
 const anonId = () => { try { return localStorage.getItem('sh_a') || undefined; } catch { return undefined; } };

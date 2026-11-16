@@ -21,11 +21,15 @@
   <h1>Walk it before you visit.</h1>
   <p class="g-lead">Every home starts with a free base walk. Photoreal upgrades are opening soon — open a home and tell us which one first.</p>
   <div id="cards" class="g-cards"></div>
-  <form class="g-suggest" id="suggest" novalidate>
-    <label for="sgUrl" id="sgLabel">Want to walk another home? Paste a link to its floor plan.</label>
-    <div class="g-row"><input id="sgUrl" type="url" inputmode="url" autocomplete="off" placeholder="builder.com.au/home-designs/…" maxlength="400"><button type="submit" id="sgBtn">Suggest</button></div>
+  <form class="g-suggest" id="suggest" novalidate autocomplete="off">
+    <label for="sgUrl" id="sgLabel">Want to walk another home? Type its address.</label>
+    <div class="g-row g-ac">
+      <input id="sgUrl" type="text" inputmode="text" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="12 Forest Rd, Arncliffe — or a floor-plan link" maxlength="400" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sgList">
+      <button type="submit" id="sgBtn">Suggest</button>
+      <ul id="sgList" class="g-list" role="listbox" hidden></ul>
+    </div>
     <input id="sgEmail" class="g-email" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="Optional: email me when it’s ready" aria-label="Optional: email me when it is ready">
-    <p class="g-note" id="sgNote" aria-live="polite">No sign-up. Copy the address of the builder’s page for that home. The most-asked homes are built first.</p>
+    <p class="g-note" id="sgNote" aria-live="polite">No sign-up. Any NSW address, or the builder’s page for that home. The most-asked homes are built first.</p>
   </form>
   <p class="g-foot">Own, build or market one of these? Open it and claim it — free.</p>
 </main>
