@@ -49,3 +49,33 @@ test('walkgen: a plan that guesses, overlaps a wall or is not a rectilinear room
   bad(p => { p.views[0].pos = [0.5, 1.8]; }, /stands inside a wall or an object/);
   bad(p => { p.source = 'plan'; }, /needs source_url/);
 });
+
+// estimate.py: address-only homes. Its network steps (NSW register, cadastre, roads, aerial) are checked by hand
+// (README); here: the generated plan is valid for every roof size it can meet, and its address rules match src/suggest.js.
+test('estimate: every roof footprint from a terrace to a large house gives a plan walkgen accepts', () => {
+  const py = `
+import sys, json, numpy as np; sys.path.insert(0, ${JSON.stringify(DIR)})
+import estimate, walkgen
+s = dict(lot={'attributes': {'lotnumber': '1', 'planlabel': 'DP1'}}, lot_f=np.array([[0,0],[15,0],[15,40],[0,40]], float),
+         street=('FOREST', 'ROAD'), norm='1 FOREST ROAD ARNCLIFFE', lng=151.13, lat=-33.94)
+bad = []
+for w in [4.0, 4.6, 5.2, 5.6, 6.2, 6.6, 7.0, 8.0, 9.5, 12.0, 16.0]:
+  for d in [8.0, 11.0, 14.0, 20.0, 30.0]:
+    box = dict(x0=1.0, x1=1.0 + w, y0=6.0, y1=6.0 + d)
+    W, D, narrow = estimate.living_zone(box)
+    p = estimate.plan_json('est-test', 'Test', s, box, 'aerial', W, D, narrow)
+    e = walkgen.validate(p)
+    if e or p['source'] != 'estimate' or W > max(w, 4.2): bad.append([w, d, W, D, e])
+print(json.dumps(bad))`;
+  const r = spawnSync('python3', ['-c', py], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout), []);
+});
+
+test('estimate: address rules are the same as the Worker (src/suggest.js normalizeAddress)', async () => {
+  const { normalizeAddress } = await import('../src/suggest.js');
+  const cases = ['199 Forest Rd, Arncliffe NSW 2205', 'Unit 1 229 forest rd arncliffe', 'addr:199 FOREST ROAD ARNCLIFFE', '12 O’Connell St, Sydney', 'St Kilda Rd', '7 Newlot Ave, Box Hill'];
+  const py = spawnSync('python3', ['-c', `import sys, json; sys.path.insert(0, ${JSON.stringify(DIR)}); import estimate; print(json.dumps([estimate.normalize(c) for c in json.loads(sys.argv[1])]))`, JSON.stringify(cases)], { encoding: 'utf8' });
+  assert.equal(py.status, 0, py.stderr);
+  assert.deepEqual(JSON.parse(py.stdout), cases.map(c => normalizeAddress(c.replace(/^addr:/i, ''))));
+});

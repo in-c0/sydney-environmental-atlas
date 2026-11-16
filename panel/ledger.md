@@ -56,3 +56,11 @@ Not yet checked.
 - Stated blocker in 8 of 8: a wrong finish under their brand — they want to see or approve the result before it is public.
 - Prediction: a first price near A$290 is inside every payer's acceptable band except the volume builder's "too cheap" line (sonnet: 300); the first paying claimant is a small or mid-size builder with no display home, not a volume builder; nobody pays without an approval step.
 - Check against: `claims.finishes` (requests vs paid) once a price is live. Result: open.
+
+## 2026-11-16 — suggest a home by address (autocomplete), then the wording fix
+- Panel: 12 personas (`personas-showhaus-walk.json`), one context each, 6 sonnet + 6 haiku, stimulus = live /walk/ (desktop) + the phone autocomplete list; stated actions counted (no SSR, same reason as above). Re-check of the changed wording: 4 personas (S1, S4, S5, S7), 2 sonnet + 2 haiku.
+- Round 1 (address-first box): 7 of 12 would submit (6 an address, 1 a plan link), 5 would not (low tech comfort, already has a builder, both builder-side personas). Earlier link-only box (2026-11-15): 2 of 6 would paste, 2 maybe.
+- Top objections: (1) "the address of a house that is there, or of my empty block?" (4 of 7 who would type: S1, S3, S5, S7 — land buyers would type their vacant block); (2) "what do I get back, and when?" (S2, S5, O1, B3); (3) the email field reads like spam (S3, S4, S7, B3).
+- Shipped: note says a built home is modelled from aerial photos and block owners should paste a plan link; email placeholder "one email, no spam"; success line says the address is modelled from aerial photos and the lot map, the inside is estimated, most-asked first, and it appears in the gallery. Re-check: S1 and S5 now type a built home's address and expect days, not minutes; S4 and S7 (low tech comfort) still would not type anything.
+- Predictions: (13) most address suggestions are existing homes near the visitor, but a visible share are vacant blocks or new lots the register does not know yet (`verified:false`); (14) the address box gets several times the use of the link-only box; (15) low tech-comfort visitors still do not use it.
+- Check against: `/api/ops/summary` → `suggestions.homes` (`kind`, `verified`) and `home_suggested` events (`method`: address / address:unverified / link). Result: open.

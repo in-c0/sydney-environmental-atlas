@@ -13,6 +13,28 @@ python3 walkgen.py plans/<slug>.plan.json pack    /tmp/out ../../dist/showhaus/w
 Needs `pip install bpy numpy pillow` (checked with bpy 5.3, Python 3.13). `pack` prints the row to add to
 `walk/data/index.json`. After a home goes live, `POST /api/ops/suggest-built {url, slug}` tells the people who asked for it.
 
+## Homes suggested by address (no plan): `estimate.py`
+
+```
+python3 estimate.py "addr:199 FOREST ROAD ARNCLIFFE" --slug arncliffe-199-forest-road --out /tmp/est
+#   → /tmp/est/<slug>.plan.json  (source "estimate", passes check)   /tmp/est/aerial.jpg   /tmp/est/estimate.json
+python3 estimate.py ... --roof x0,x1,y0,y1      # after looking at aerial.jpg: override the roof box (lot metres)
+```
+
+All public NSW Spatial Services data, no account: the address register (GURAS) for the point, the cadastre lot under it,
+the road with the address's street name (that lot edge is the front), and the NSW aerial mosaic clipped to the lot, where
+the roof is the largest non-vegetation, non-shadow blob, measured in the lot's own axes (setbacks if that blob is not
+plausible). `aerial.jpg` draws the lot (yellow), the front (blue) and the roof box (red): **look at it before baking**
+and pass `--roof` if the box caught a neighbour, a carport or a tree shadow. The interior is one open
+kitchen/dining/living space at the back of the roof footprint (wide layout from a 7.3 m roof width, otherwise a
+front-to-back terrace layout); every guess is in `assumptions`, and the viewer shows the estimate basis line.
+Then `preview` / `bake` / `pack` as for any plan. An address the register does not know (new lots) cannot be estimated:
+skip it until the register has it.
+
+Checked 16 Nov 2026: Arncliffe (detached), Randwick (narrow lot), Kellyville (new estate), a strata unit in Arncliffe —
+lot, front and roof box all on target in the aerial clip; Arncliffe went estimate → preview → low-res bake → pack → the
+real viewer (basis line "estimated from satellite imagery", unclaimed badge). Not published: nobody had asked for it.
+
 ## Plan JSON
 
 Metres; x = east, y = north, z = up. Nothing is guessed by the builder: every value the plan does not give is written
@@ -21,7 +43,7 @@ in the JSON and listed under `assumptions` (the page shows them).
 | Key | Meaning |
 |---|---|
 | `slug`, `name`, `by`, `type`, `rooms` | What the gallery card and the viewer show. |
-| `source`, `source_url` | `plan` (from a published floor plan; needs the URL) or `estimate`. Picks the basis line on the page. |
+| `source`, `source_url` | `plan` (from a published floor plan; needs the URL) or `estimate` (`estimate.py`: no plan, from the lot and aerial imagery; `source_url` null, `address_key` = the queue key). Picks the basis line on the page. |
 | `outline` | The room outline, rectilinear, counter-clockwise. One connected space (a living zone, a studio). |
 | `ceiling` | `{"type": "flat", "h": 2.7}` or `{"type": "raked", "from": [x, y], "to": [x, y], "h0": 2.6, "h1": 3.5}`. |
 | `openings` | `{"edge": i, "type": "window" \| "slider" \| "door", "a", "b", "sill", "head", "mullions"}`. Edge `i` runs `outline[i] → outline[i+1]`; `a..b` is the absolute x (horizontal wall) or y (vertical wall). Doors are closed: the room behind is not modelled. |
