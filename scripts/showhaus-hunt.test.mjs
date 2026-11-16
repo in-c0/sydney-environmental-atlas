@@ -25,7 +25,7 @@ function fakeFetch(url) {
   if (u.includes('/MapServer/229/')) return json({ features: [] });
   if (u.includes('/MapServer/230/')) return json({ features: [{ attributes: { LAY_CLASS: 'Flood Planning Area' } }] });
   if (u.includes('Protection/MapServer/2')) return json({ error: { message: 'down' } });
-  if (u.includes('VegStrata')) return json({ features: [{ attributes: { Canopy_pc: 17.6 } }] });
+  if (u.includes('VegStrata')) return json({ features: [{ attributes: { Canopy_pc: 0.176 } }] });
   return Promise.resolve(new Response('nope', { status: 404 }));
 }
 function makeEnv() {
@@ -45,11 +45,12 @@ test('paste: a Domain link gives its street, suburb and postcode; realestate.com
 });
 
 test('summarise: a failed service is unknown, never "none"; hits and misses are plain words', () => {
-  const s = summarise({ zoning: { ok: true, rows: [{ SYM_CODE: 'R2', LAY_CLASS: 'Low Density Residential' }] }, bushfire: { ok: true, rows: [] }, flood: { ok: false }, anec: { ok: true, rows: [{ ANEF_CODE: '20-25' }] }, canopy: { ok: true, rows: [{ Canopy_pc: 31.4 }] } });
+  const s = summarise({ zoning: { ok: true, rows: [{ SYM_CODE: 'R2', LAY_CLASS: 'Low Density Residential' }] }, bushfire: { ok: true, rows: [] }, flood: { ok: false }, anec: { ok: true, rows: [{ ANEF_CODE: '20-25' }] }, canopy: { ok: true, rows: [{ Canopy_pc: 0.314 }] } });
   assert.equal(s.flood, null);
   assert.equal(s.bushfire.hit, false); assert.match(s.bushfire.text, /Not on bush fire prone land/);
   assert.equal(s.aircraft.hit, true); assert.match(s.aircraft.text, /20-25/);
   assert.equal(s.canopy.pct, 31); assert.equal(s.zoning.code, 'R2');
+  assert.equal(summarise({ zoning: { ok: false }, bushfire: { ok: false }, flood: { ok: false }, anec: { ok: false }, canopy: { ok: true, rows: [{ Canopy_pc: 0 }] } }).canopy.pct, 0, 'a real zero is a number, not unknown');
   const clear = summarise({ zoning: { ok: true, rows: [] }, bushfire: { ok: true, rows: [] }, flood: { ok: true, rows: [] }, anec: { ok: true, rows: [] }, canopy: { ok: true, rows: [] } });
   assert.match(clear.aircraft.text, /Sydney Airport \(Mascot\) noise is not checked/, 'no airport row is not a promise of quiet');
   assert.match(clear.flood.text, /some councils are not in it/);

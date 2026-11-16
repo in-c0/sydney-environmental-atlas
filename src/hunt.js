@@ -77,7 +77,8 @@ export function summarise(raw) {
   const b = raw.bushfire; out.bushfire = !b.ok ? null : b.rows.length ? { hit: true, text: `Bush fire prone land${b.rows[0].d_Category ? ' — ' + b.rows[0].d_Category : ''}` } : { hit: false, text: 'Not on bush fire prone land' };
   const f = raw.flood; out.flood = !f.ok ? null : f.rows.length ? { hit: true, text: 'Inside a flood planning area' } : { hit: false, text: 'Not in the state flood layer (some councils are not in it yet)' };
   const a = raw.anec; out.aircraft = !a.ok ? null : a.rows.length ? { hit: true, text: `Western Sydney Airport noise contour ANEC ${a.rows[0].ANEF_CODE ?? ''}`.trim() } : { hit: false, text: 'Outside the Western Sydney Airport noise contours. Sydney Airport (Mascot) noise is not checked here yet' };
-  const c = raw.canopy; out.canopy = !c.ok || !c.rows.length || c.rows[0].Canopy_pc == null ? null : { pct: Math.round(Number(c.rows[0].Canopy_pc)) };
+  // Canopy_pc is a share (0–1) of the ~2,600 m² cell the home sits in.
+  const c = raw.canopy, cv = c.ok && c.rows.length ? Number(c.rows[0].Canopy_pc) : NaN; out.canopy = Number.isFinite(cv) ? { pct: Math.round(cv <= 1 ? cv * 100 : cv) } : null;
   return out;
 }
 
@@ -114,7 +115,7 @@ export async function handleHunt(request, env, ctx) {
         postcode: parsed.postcode || null, from: parsed.link || null,
         checks: summarise(raw),
         sources: Object.fromEntries(Object.entries(SVC).map(([k, [n]]) => [k, n])),
-        checked: new Date().toISOString().slice(0, 10),
+        checked: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }), // YYYY-MM-DD, Sydney date
       };
       ctx && ctx.waitUntil && ctx.waitUntil(track(env, { name: 'hunt_check', env: environment, source: 'server', path, props: { kind: parsed.link ? 'link:' + parsed.link : 'address' } }).catch(() => {}));
       return j(body, 200, 'public, max-age=86400');
