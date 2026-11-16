@@ -87,7 +87,7 @@ for (const [w, h] of VIEWPORTS) {
   await page.waitForFunction(() => window.SHOWHAUS?.rents, null, { timeout: 30000 });
   const tag = `${w}×${h}`;
   check(`${tag} Living Atlas opens in Explore`, await page.locator('.views .view.on').innerText() === 'Explore' && await page.locator('.explore-shell').isVisible());
-  check(`${tag} unreleased experiences are clearly unavailable`, await page.locator('.views .view[disabled]').count() === 2);
+  check(`${tag} no unreleased experiences in the nav`, await page.locator('.views .view[disabled]').count() === 0);
   check(`${tag} reading panel is opaque over map`, await page.locator('.explore-shell').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(250, 248, 243)'));
   const typography = await page.evaluate(() => ({
     body: getComputedStyle(document.body).fontFamily,
@@ -95,6 +95,13 @@ for (const [w, h] of VIEWPORTS) {
     brand: getComputedStyle(document.querySelector('.bar .brand')).fontFamily,
   }));
   check(`${tag} modern readable type is applied`, typography.body.includes('Inter') && typography.heading.includes('Manrope') && typography.brand.includes('Manrope'), JSON.stringify(typography));
+  // Start screen: three paths (walk, rents, builders); the walk path leads with home posters.
+  check(`${tag} start screen offers walk, rents and builders`, await page.locator('#act0').isVisible() && await page.locator('#act0 [data-path]').count() === 3
+    && (await page.locator('#act0 [data-path="walk"]').getAttribute('href')).includes('walk/'));
+  await noOverflow(page, `${tag} start`);
+  if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.screenshot({ path: `${shotsDir}/act0-${w}x${h}.png` }); }
+  await page.click('#act0 [data-path="rent"]');
+  check(`${tag} rents path opens the suburb step`, await page.evaluate(() => document.body.dataset.act === '1'));
   await noOverflow(page, `${tag} act 1`);
   if (shotsDir) {
     await mkdir(shotsDir, { recursive: true });
@@ -226,19 +233,19 @@ for (const [w, h] of VIEWPORTS) {
   if (shotsDir) await page.screenshot({ path: `${shotsDir}/act3-${w}x${h}.png` });
   const c3before = (await page.locator('#c3').innerText()).replace(/,/g, '');
   check(`${tag} act 3 count starts equal to act 2`, c3before === c2, `${c3before} vs ${c2}`);
-  await page.click('[data-want="quiet"]');
-  const c3 = (await page.locator('#c3').innerText()).replace(/,/g, '');
   if (amen) {
+    await page.click('[data-want="quiet"]');
+    const c3 = (await page.locator('#c3').innerText()).replace(/,/g, '');
     const q = amen.postcodes[busiestPc]?.quiet ?? amen.postcodes[Number(busiestPc)]?.quiet;
     const wantQ = q != null && q >= 0.5 ? want : 0;
     check(`${tag} "quiet street" recounts leases from measured postcodes`, c3 === String(wantQ), `${c3} vs ${wantQ} (quiet share ${q})`);
+    await page.click('[data-want="quiet"]');
   } else {
-    check(`${tag} without measures, area wants say so and do not change the count`, c3 === c2 && (await page.locator('[data-want="quiet"]').innerText()).includes('not measured'), c3);
+    check(`${tag} without measures, unmeasured area wants are not offered`, await page.locator('[data-want="quiet"]').count() === 0 && !(await page.locator('#wants').innerText()).includes('not measured'));
   }
   await page.click('[data-want="commute"]');
   check(`${tag} commute want opens a place input`, await page.locator('#commuteWhere').isVisible());
   await page.click('[data-want="commute"]');
-  await page.click('[data-want="quiet"]');
   check(`${tag} hidden act 2 does not capture clicks`, await page.evaluate(() => getComputedStyle(document.getElementById('act2')).pointerEvents === 'none'));
   await page.click('[data-go="4"]'); await page.waitForFunction(() => document.body.dataset.act === '4');
   await page.waitForTimeout(4000);
@@ -315,6 +322,7 @@ for (const [w, h] of VIEWPORTS) {
 
   // presets survive reload and delete with ×
   await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForFunction(() => window.SHOWHAUS?.rents);
+  await page.click('#act0 [data-path="rent"]');
   const pre = await page.locator('#presets button.go').allInnerTexts();
   check(`${tag} preset survives reload`, pre.includes(busiest), pre.join(','));
   if (pre.length) { await page.locator('#presets li').first().hover(); await page.locator('#presets button.x').first().click(); }
