@@ -3,7 +3,8 @@
 const { serve, env } = await import('./showhaus-local-worker.mjs');
 // The NSW address register stands in locally (the judge runs offline): prefix matches with map points.
 const REG = [['199 FOREST ROAD ARNCLIFFE', 151.134659, -33.941236], ['199 FOREST ROAD KIRRAWEE', 151.077778, -34.040384], ['199 FOREST ROAD HURSTVILLE', 151.103826, -33.967638]];
-env.__fetch = async u => { const w = new URL(u).searchParams.get('where'); const m = w.match(/^address (LIKE|=) '(.*)'$/); const v = m[2].replace(/%$/, '');
+env.__fetch = async u => { if (String(u).startsWith('https://photon.komoot.io/')) return new Response(JSON.stringify({ features: [{ properties: { name: 'Forest Road', district: 'Arncliffe', state: 'New South Wales' }, geometry: { coordinates: [151.1342, -33.9409] } }] }));
+  const w = new URL(u).searchParams.get('where'); const m = w.match(/^address (LIKE|=) '(.*)'$/); const v = m[2].replace(/%$/, '');
   return new Response(JSON.stringify({ features: REG.filter(([a]) => m[1] === '=' ? a === v : a.startsWith(v)).map(([a, x, y]) => ({ attributes: { address: a }, geometry: { x, y } })) })); };
 const server = await serve(8797); const BASE = 'http://127.0.0.1:8797/showhaus';
 const { chromium } = await import('playwright');
@@ -12,7 +13,20 @@ const fails = []; const check = (ok, m) => { console.log((ok ? 'ok   ' : 'FAIL '
 for (const [name, vp, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 780 }, true]]) {
   const ctx = await b.newContext({ viewport: vp, hasTouch: touch, isMobile: touch, deviceScaleFactor: touch ? 2 : 1 });
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  // Slow gallery data must not delay the box: hold index.json back and type straight away.
+  let release; const held = new Promise(r => { release = r; });
+  await p.route('**/walk/data/index.json', async rt => { await held; await rt.continue(); });
   await p.goto(BASE + '/walk/?synthetic=1'); await p.waitForSelector('#suggest');
+  await p.type('#sgUrl', 'forest rd arn', { delay: 30 });
+  await p.waitForSelector('#sgList:not([hidden]) li', { timeout: 5000 });
+  check((await p.textContent('#sgList li')).includes('Forest Road, Arncliffe NSW'), name + ': no house number yet → street suggestions, even while the gallery is still loading');
+  release();
+  if (touch) await p.tap('#sgList li >> nth=0'); else { await p.press('#sgUrl', 'ArrowDown'); await p.press('#sgUrl', 'Enter'); }
+  check(await p.evaluate(() => document.activeElement.id === 'sgUrl' && document.getElementById('sgUrl').selectionStart === 0), name + ': picking a street puts the cursor in front for the number');
+  await p.keyboard.type('199', { delay: 40 });
+  await p.waitForSelector('#sgList:not([hidden]) li');
+  check((await p.textContent('#sgList li')).includes('199 Forest Road, Arncliffe NSW'), name + ': adding the number lists the register match');
+  await p.fill('#sgUrl', ''); await p.waitForSelector('.g-card');
   await p.fill('#sgUrl', 'hello'); await p.click('#sgBtn');
   check((await p.textContent('#sgNote')).includes('Start with the house number'), name + ': text that is neither an address nor a link is refused with a plain reason');
   await p.fill('#sgUrl', ''); await p.type('#sgUrl', '199 forest rd', { delay: 40 });

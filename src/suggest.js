@@ -105,6 +105,28 @@ const sqlq = s => "'" + s.replace(/'/g, "''") + "'";
 const SYD = [151.207, -33.868], d2 = p => (p[0] - SYD[0]) ** 2 + (p[1] - SYD[1]) ** 2;
 export const lookupAddresses = async (norm, fetchImpl = fetch) => (await guras(`address LIKE ${sqlq(norm + '%')}`, 40, fetchImpl)).sort((a, b) => d2(a.lngLat) - d2(b.lngLat)).slice(0, 6);
 export const verifyAddress = async (norm, fetchImpl = fetch) => (await guras(`address = ${sqlq(norm)}`, 1, fetchImpl))[0] || null;
+// No house number yet ("forest rd arncliffe", "martin pl"): street names, so the box still answers while people type.
+// The NSW register only answers prefix queries on the whole address (contains-queries time out), so streets come from
+// Photon (OpenStreetMap geocoder, komoot) — asked by this Worker, never by the visitor's browser; NSW only.
+export const PHOTON = 'https://photon.komoot.io/api/';
+export async function lookupStreets(q, fetchImpl = fetch) {
+  const t = String(q || '').replace(/[^\p{L}\p{N} ,'\/-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!/[a-z]{3}/i.test(t)) return [];
+  const u = PHOTON + '?' + new URLSearchParams({ q: t, limit: '10', lang: 'en', layer: 'street', lat: String(SYD[1]), lon: String(SYD[0]), bbox: `${NSW_BOX.w},${NSW_BOX.s},${NSW_BOX.e},${NSW_BOX.n}` });
+  const r = await fetchImpl(u, { headers: { accept: 'application/json', 'user-agent': 'showhaus.app address suggest' }, signal: AbortSignal.timeout(4000), cf: { cacheTtl: 86400, cacheEverything: true } });
+  if (!r.ok) throw new Error('photon ' + r.status);
+  const d = await r.json(), seen = new Set(), out = [];
+  for (const f of d.features || []) {
+    const p = f.properties || {}, c = (f.geometry && f.geometry.coordinates) || [];
+    const sub = p.district || p.locality || p.city;
+    if (p.state !== 'New South Wales' || !p.name || !sub || !inNSW(c[0], c[1])) continue;
+    const fill = `${p.name}, ${sub}`;
+    if (seen.has(fill)) continue;
+    seen.add(fill); out.push({ kind: 'street', label: fill + ' NSW', fill, lngLat: [Math.round(c[0] * 1e6) / 1e6, Math.round(c[1] * 1e6) / 1e6] });
+    if (out.length === 6) break;
+  }
+  return out;
+}
 export const AC_PER_HOUR = 240;
 
 async function who(request, d, anon) {
@@ -124,12 +146,12 @@ export async function handleSuggest(request, env, ctx) {
       return new Response(JSON.stringify({ homes: n }), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
     }
     if (path === '/api/suggest/address' && request.method === 'GET') {
-      const norm = normalizeAddress(url.searchParams.get('q'));
-      if (!norm) return j({ results: [], hint: 'Start with the house number, e.g. 12 Forest Rd, Arncliffe.' });
+      const q = String(url.searchParams.get('q') || '').slice(0, 120), norm = normalizeAddress(q);
+      if (!norm && !/[a-z]{3}/i.test(q)) return j({ results: [] });
       const ip = await pseudo(d, 'ip', request.headers.get('cf-connecting-ip') || 'local');
       if (!(await hit(d, 'ac:' + ip, AC_PER_HOUR, 3600e3))) return j({ results: [], error: 'Too many lookups. Type the full address instead.' }, 429);
       try {
-        const results = await lookupAddresses(norm, env.__fetch || fetch);
+        const results = norm ? (await lookupAddresses(norm, env.__fetch || fetch)).map(r => ({ kind: 'address', ...r })) : await lookupStreets(q, env.__fetch || fetch);
         return new Response(JSON.stringify({ results }), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=86400' } });
       } catch (e) { console.error('suggest address', e && e.message); return j({ results: [], offline: true }); }
     }
