@@ -180,7 +180,7 @@ async function openWalk() {
     for (const v of R.views) if (v.photo) { const im = new Image(); im.src = base + v.photo; }
 
     // ---- state (plan coords: x east, y north; three = x, -z)
-    const V = R.views.map(v => { const dx = v.look[0] - v.pos[0], dy = v.look[1] - v.pos[1], l = Math.hypot(dx, dy) || 1; return { ...v, real: v.clip || v.photo || null, dir: [dx / l, dy / l], label: v.clip ? '▶ ' + v.name.replace(/^Photo\b/, 'AI walk') : v.photo ? '◉ ' + v.name.replace(/^Photo\b/, 'AI render') : v.name }; }).map(v => ({ ...v, yaw: Math.atan2(-(v.look[0] - v.pos[0]), v.look[1] - v.pos[1]) }));
+    const V = R.views.map(v => { const dx = v.look[0] - v.pos[0], dy = v.look[1] - v.pos[1], l = Math.hypot(dx, dy) || 1; return { ...v, real: v.clip || v.photo || null, dir: [dx / l, dy / l], label: v.clip ? '▶ ' + v.name.replace(/^Photo\b/, 'AI preview') : v.photo ? '◉ ' + v.name.replace(/^Photo\b/, 'AI preview') : v.name }; }).map(v => ({ ...v, yaw: Math.atan2(-(v.look[0] - v.pos[0]), v.look[1] - v.pos[1]) }));
     let px = V[0].pos[0], py = V[0].pos[1], yaw = V[0].yaw, pitch = V[0].pitch, glide = null, photoOn = -1;
     const ok = (x, y) => { if (!R.walk.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])) return false;
       for (const k of R.boxes) if (x > k[0] && x < k[2] && y > k[1] && y < k[3]) return false; return true; };
@@ -246,10 +246,10 @@ async function openWalk() {
     // so the demand count is interest minus cancels.
     // PROMISE is a commitment to visitors: the photoreal render queue must be ordered by votes (interest − cancels), highest first.
     const PROMISE = 'Homes with the most votes are made photoreal first.';
-    const NOT_VOTED = `Not open yet. ${PROMISE} A vote is free: no payment, no sign-up, and you can cancel it any time.`;
+    const NOT_VOTED = `${PROMISE} A vote is free: no payment, no sign-up, and you can cancel it any time.`;
     let voted = wanted();
     const paintWant = () => { want.classList.toggle('done', voted); want.disabled = voted; want.textContent = voted ? 'Voted ✓' : 'Vote for this home — free';
-      $('wantFine').textContent = voted ? `Thanks — your vote is counted. ${PROMISE} Nothing is charged and nobody will contact you.` : NOT_VOTED; $('unvote').hidden = !voted; };
+      $('wantFine').textContent = voted ? `Thanks — your vote is counted. ${PROMISE} Nothing is charged. Want to know when it’s done? Leave an email above.` : NOT_VOTED; $('unvote').hidden = !voted; };
     // The sample GIF loads when the card opens. A home without its own AI walk shows the sample from another home, and says so.
     const own = L.sample ? base + L.sample : null;
     const showSample = () => { const im = $('sampleGif'); if (im.getAttribute('src')) return; im.src = own || SAMPLE.gif; im.alt = own ? `AI walk sample of the ${L.name}` : `AI walk sample from the ${SAMPLE.name}`; $('sampleCap').textContent = own ? 'AI walk of this home — sample' : `Sample from another home (${SAMPLE.name})`; };
@@ -260,6 +260,16 @@ async function openWalk() {
     want.onclick = () => { if (voted) return; voted = true; track('upgrade_interest', { cta: L.source === 'plan' ? 'has-plan' : 'needs-plan' }); try { localStorage.setItem(key, '1'); } catch { /* private mode: counted for this visit */ } paintWant(); };
     $('unvote').onclick = () => { if (!voted) return; voted = false; track('upgrade_interest_cancel', { cta: 'card' }); try { localStorage.removeItem(key); } catch { /* nothing stored */ } paintWant(); };
 
+    // "Email me when it's ready": one address per home, deleted after that one email (src/suggest.js /api/suggest/notify).
+    $('notify').addEventListener('submit', async e => {
+      e.preventDefault(); const em = $('notifyEmail').value.trim(), msg = $('notifyMsg');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { msg.textContent = 'That email does not look right.'; return; }
+      $('notifyBtn').disabled = true;
+      const r = await post('/api/suggest/notify', { p: slug, email: em });
+      if (!r.ok) { msg.textContent = r.data.error || 'Could not save that. Try again.'; $('notifyBtn').disabled = false; return; }
+      msg.textContent = `Done — one email to ${em} when this home is photoreal. Then the address is deleted.`; $('notify').hidden = true;
+      if (!voted) want.click();
+    });
     const st = $('stick'), kn = $('knob');
     const stick = e => { const b = st.getBoundingClientRect(); let x = (e.clientX - b.left - 52) / 38, y = (e.clientY - b.top - 52) / 38; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } jx = x; jy = y; kn.style.left = 32 + x * 32 + 'px'; kn.style.top = 32 + y * 32 + 'px'; };
     st.addEventListener('pointerdown', e => { cap(st, e); stick(e); });

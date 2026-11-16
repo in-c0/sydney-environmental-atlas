@@ -24,7 +24,7 @@
   const DARK = document.documentElement.dataset.theme === 'dark', INK = DARK ? '#ece4d3' : '#202c2b', PAPER = DARK ? '#15181d' : '#f6f3ec';
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
-  const state = { display: store.get().displayV2 === 'visual' ? 'visual' : 'numbers', act: 1, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
+  const state = { display: store.get().displayV2 === 'visual' ? 'visual' : 'numbers', act: 0, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
   let PRO = false; // set from the signed-in account (/api/auth/me → pro); everyone else sees Pro previewed blurred
   let A = null, centroids = {}, R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
   const evidence = new Map();
@@ -184,7 +184,7 @@
       if (map.queryRenderedFeatures(e.point, { layers: ['pc-nodes-n', 'pc-nodes-v'] }).length) return;
       if (state.act < 3) {
         const f = map.queryRenderedFeatures(e.point, { layers: ['pc-fill'] })[0];
-        if (f && state.act === 1) { const s = suburbs.filter(x => x.pci === f.properties.pci).sort((a, b) => b.n - a.n)[0]; if (s) choosePlace(s); }
+        if (f && state.act <= 1) { const s = suburbs.filter(x => x.pci === f.properties.pci).sort((a, b) => b.n - a.n)[0]; if (s) choosePlace(s); }
         return;
       }
       selectPoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
@@ -392,8 +392,9 @@
 
   // ---------- act 3 ----------
   function renderWants() {
-    $('wants').innerHTML = Object.entries(C.WANTS).map(([k, w]) => {
-      const note = w.scope === 'home' ? `<small>checked at each home${PRO ? '' : ' · Pro'}</small>` : !A && !w.custom ? '<small>not measured yet</small>' : '';
+    // Only choices we can actually check are offered: area measures that did not load are left out, not shown as dead chips.
+    $('wants').innerHTML = Object.entries(C.WANTS).filter(([, w]) => w.scope === 'home' || A || w.custom).map(([k, w]) => {
+      const note = w.scope === 'home' ? `<small>checked at each home${PRO ? '' : ' · Pro'}</small>` : '';
       return `<button type="button" data-want="${k}" aria-pressed="${!!state.wants[k]}">${esc(w.label)}${note}<span class="hair"></span></button>`;
     }).join('');
     $('commuteBox').hidden = !state.wants.commute;
@@ -442,7 +443,7 @@
       if (state.pendingBudget) { const k = RENT_STEPS.findIndex(v => v >= state.pendingBudget); $('budget').value = String(k < 0 ? RENT_STEPS.length - 1 : k); state.pendingBudget = null; setBudgetFromSlider(); }
       setTimeout(() => $('budget').focus(), 50);
     }
-    if (n === 3) { renderWants(); setTimeout(demoChip, 400); }
+    if (n === 3) renderWants(); // no auto demo: controls only move when the visitor moves them
     if (n === 4) {
       $('q4').textContent = state.place?.kind === 'suburb'
         ? `${state.place.name} NSW ${state.place.postcode}` : (state.place?.name || 'Explore Sydney');
@@ -610,7 +611,7 @@
       <polyline points="${line}" class="med"/>
       ${stats.map((s, k) => s.n ? `<circle cx="${xs(k).toFixed(1)}" cy="${ys(s.med).toFixed(1)}" r="3" class="pt"><title>${fmtYm(R.months[k])}: median ${C.weekly(s.med)} · middle half ${C.weekly(s.lo)}–${C.weekly(s.hi)} · ${s.n} leases</title></circle>` : '').join('')}
       ${R.months.map((ym, k) => `<text x="${xs(k).toFixed(1)}" y="${H - 2}" class="ax" text-anchor="middle">${new Date(Date.UTC(Math.floor(ym / 100), ym % 100 - 1, 1)).toLocaleDateString('en-AU', { month: 'narrow', timeZone: 'UTC' })}</text>`).join('')}
-    </svg><figcaption>${C.weekly(first.med)} → <b>${C.weekly(last.med)}</b>${change != null ? ` <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : ''}${change}%</span>` : ''} · line = median, band = middle half, bars = leases per month (${fmtYm(R.months[0])}–${fmtYm(R.months.at(-1))})</figcaption></figure>`;
+    </svg><figcaption>Monthly median ${fmtYm(R.months[stats.indexOf(first)])} ${C.weekly(first.med)} → ${fmtYm(R.months[stats.lastIndexOf(last)])} <b>${C.weekly(last.med)}</b>${change != null ? ` <span class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : ''}${change}%</span>` : ''} · line = median, band = middle half, bars = leases per month (${fmtYm(R.months[0])}–${fmtYm(R.months.at(-1))})</figcaption></figure>`;
   }
   function paneRent(p) {
     if (p.pci == null) return `<div class="fact"><b>—</b><span>${tag('unknown')} no rental bond records for this point's postcode</span></div>`;
@@ -881,6 +882,16 @@
   $('budget').max = String(RENT_STEPS.length); $('budget').value = String(RENT_STEPS.length);
   document.querySelectorAll('#tabs button').forEach(b => { b.dataset.label = b.textContent.trim(); });
   setDisplay(state.display);
-  loadData().then(() => { initMap(); go(1); renderPresets(true); onWhere(); setMode('rent'); })
-    .catch(e => { initMap(); go(1); $('c1').textContent = '—'; $('whereHint').textContent = 'Records could not load: ' + e.message; });
+  // Start screen (act 0): walk a home, check a suburb, or builders. Tapping a postcode on the map also starts the rent flow.
+  const startAct = () => 0;
+  document.querySelectorAll('#act0 [data-path]').forEach(el => el.addEventListener('click', () => {
+    const cta = el.dataset.path; window.SH && SH.track && SH.track('start_path', { cta });
+    if (cta === 'rent') go(1);
+  }));
+  fetch('./walk/data/index.json').then(r => r.ok ? r.json() : null).then(d => {
+    const homes = (d && d.items || []).filter(i => i.kind === 'walk' && i.poster).slice(0, 2);
+    $('pathShots').innerHTML = homes.map(i => `<span style="background-image:url('./walk/${esc(i.poster.replace(/^\.\//, ''))}')"><em>${esc(i.name)}</em></span>`).join('');
+  }).catch(() => {});
+  loadData().then(() => { initMap(); go(startAct()); renderPresets(true); onWhere(); setMode('rent'); })
+    .catch(e => { initMap(); go(startAct()); $('c1').textContent = '—'; $('whereHint').textContent = 'Records could not load: ' + e.message; });
 })();

@@ -131,6 +131,20 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 body[data-act="2"] .explore-stage #act2,
 body[data-act="3"] .explore-stage #act3 { top: 0; bottom: auto; transform: none; }
 body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
+body[data-act="0"] .explore-stage #act0 { opacity: 1; pointer-events: auto; }
+body[data-act="0"] .explore-shell .cuts, body[data-act="0"] .view-meter, body[data-act="0"] .selection { display: none; }
+#act0 .path { display: block; width: 100%; text-align: left; margin: 0 0 10px; padding: 13px 14px; border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); border-radius: 13px; background: color-mix(in srgb, var(--paper) 70%, white); color: var(--ink); text-decoration: none; font: inherit; cursor: pointer; transition: border-color .15s ease, transform .15s ease; }
+#act0 .path:hover, #act0 .path:focus-visible { border-color: var(--terracotta); transform: translateY(-1px); outline: none; }
+#act0 .path b { display: flex; justify-content: space-between; font: 650 15px/1.3 var(--sans); }
+#act0 .path b i { font-style: normal; color: var(--terracotta); }
+#act0 .path small { display: block; margin-top: 3px; color: var(--ink-2); font: 400 12.5px/1.45 var(--sans); }
+#act0 .path-walk { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
+#act0 .path-walk b i, #act0 .path-walk small { color: #fff; }
+#act0 .path-walk small { opacity: .88; }
+#act0 .path-shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 0 0 11px; }
+#act0 .path-shots:empty { display: none; }
+#act0 .path-shots span { aspect-ratio: 16/10; border-radius: 8px; background: #1b1f24 center/cover no-repeat; position: relative; }
+#act0 .path-shots em { position: absolute; left: 6px; bottom: 5px; font: 600 11px/1 var(--sans); font-style: normal; background: rgba(20,24,28,.72); padding: 4px 7px; border-radius: 99px; }
 .explore-stage .act h2 { margin: 0 0 14px; font: 650 21px/1.27 var(--serif); letter-spacing: -.035em; }
 .explore-stage .field { display: flex; flex-direction: column; align-items: stretch; border: 0; gap: 10px; }
 .explore-stage .field input {

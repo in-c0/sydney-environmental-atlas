@@ -16,10 +16,15 @@
 <main id="gallery" hidden>
   <header class="g-top">
     <a class="brand" href="../" aria-label="SHOWHAUS map">SHOWHAUS<span>Sydney, before you sign</span></a>
-    <a class="g-map" href="../">← Map</a>
+    <nav class="g-nav" aria-label="SHOWHAUS"><a href="../?src=walk-nav">Suburb rents</a><a href="#builders">For builders</a></nav>
   </header>
   <h1>Walk it before you visit.</h1>
-  <p class="g-lead">Every home starts with a free base walk. Photoreal upgrades are opening soon — open a home and tell us which one first.</p>
+  <p class="g-lead">Walk NSW home designs in your browser — free, no sign-up. Each home is built from its published floor plan, so the rooms and sizes follow the plan.</p>
+  <ul class="g-legend" aria-label="What is real and what is estimated">
+    <li><b>Base walk</b> layout and room sizes from the floor plan</li>
+    <li><b>AI preview</b> same layout, finishes and furniture imagined</li>
+    <li><b>Photoreal</b> coming — most-voted homes first</li>
+  </ul>
   <div id="cards" class="g-cards"></div>
   <form class="g-suggest" id="suggest" novalidate autocomplete="off">
     <label for="sgUrl" id="sgLabel">Want to walk another home? Type its address.</label>
@@ -31,7 +36,15 @@
     <input id="sgEmail" class="g-email" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="Optional: email me the link once it’s ready (one email, no spam)" aria-label="Optional: email me the link once it is ready">
     <p class="g-note" id="sgNote" aria-live="polite">Free, no sign-up. A home that’s already built: type its address and we model it from aerial photos. Building on a block? Paste your floor-plan link instead. Most-asked homes are built first.</p>
   </form>
-  <p class="g-foot">Own, build or market one of these? Open it and claim it — free.</p>
+  <section class="g-builders" id="builders" aria-labelledby="bH">
+    <h2 id="bH">Builders, designers and agents</h2>
+    <div class="g-bgrid">
+      <div><b>Your design is here?</b><span>Claim it free: your name on it and a link to share. Nothing new goes public under your name without your sign-off.</span></div>
+      <div><b>Want it down?</b><span>Claim it and switch it to private — it disappears from the gallery, the map and every link.</span></div>
+      <div><b>Want your plans walkable?</b><span>Paste the link to a published plan in the box above. Most-asked homes are built first, free.</span></div>
+    </div>
+    <p class="g-foot">Open any home and press <b>Is this yours? Claim it</b>. Questions: <a href="mailto:hello@showhaus.app">hello@showhaus.app</a></p>
+  </section>
 </main>
 
 <!-- viewer: /walk/?p=<slug> -->
@@ -55,20 +68,25 @@
 <div id="wipe"></div>
 <div id="veil"><div id="card" role="dialog" aria-labelledby="cardH">
   <button id="x" type="button" aria-label="Close">×</button>
-  <h2 id="cardH">Want a better walk?</h2>
-  <p>Upgrade this home to a photoreal walkthrough — for everyone who visits it.</p>
+  <h2 id="cardH">Want this walk photoreal?</h2>
+  <p>We re-render this home as a photoreal walk — free to watch for everyone who opens it.</p>
   <figure id="sample"><img id="sampleGif" alt="" width="480" height="264"><figcaption id="sampleCap"></figcaption></figure>
   <div class="need"><div class="ic" id="needPlanIc">1</div><div><b>Floor plan</b><span id="needPlan"></span></div></div>
-  <div class="need"><div class="ic">2</div><div><b>One price, in dollars</b><span>You see the price and the time limit before anything starts.</span></div></div>
+  <div class="need"><div class="ic">2</div><div><b>Not open yet — no price, no date</b><span>Before anything starts you see one price in dollars and a time limit. Nothing is ever charged without that.</span></div></div>
   <details id="terms"><summary>Size limit, time cap and refunds</summary>
   <ul>
     <li>Requests over the size limit are declined up front — nothing is charged.</li>
     <li>Every render has a time cap. If it stops at the cap, you are refunded.</li>
   </ul></details>
   <p class="basisline" id="cardbasis"></p>
-  <p class="own" id="ownLine">Build or own this home? <a id="ownClaim" href="#">Claim it first</a>, so the photoreal walk shows your real finishes.</p>
+  <p class="own" id="ownLine">Build or own this home? <a id="ownClaim" href="#">Claim it first</a> — free. Nothing new goes public under your name without your sign-off.</p>
+  <form id="notify" class="notify" novalidate>
+    <input id="notifyEmail" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="you@email.com" aria-label="Email me when this walk is photoreal">
+    <button type="submit" id="notifyBtn">Email me when it’s ready</button>
+  </form>
+  <p class="fine" id="notifyMsg" aria-live="polite">One email when this home is photoreal, then your address is deleted.</p>
   <p class="fine" id="wantFine"></p>
-  <div class="row"><button id="see" type="button">See the sample</button><button id="want" type="button">Vote for this home — free</button></div>
+  <div class="row"><button id="see" type="button">See the AI preview</button><button id="want" type="button">Vote for this home — free</button></div>
   <button id="unvote" type="button" hidden>Cancel vote</button>
 </div></div>
 <div id="chips"></div>
