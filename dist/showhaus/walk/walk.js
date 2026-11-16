@@ -204,9 +204,9 @@ async function openWalk() {
     V.forEach((v, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.label; if (v.real) b.className = 'ph'; b.onclick = () => go(i, 'chip'); $('chips').append(b); });
 
     // ---- mini plan, sized from the room outline
-    const P = R.plan, S = innerWidth <= 560 ? 8 : 11, pad = 0.5;
+    const P = R.plan, S = innerWidth <= 560 ? 8 : 11, pad = 1.1;
     const xs = P.room.map(p => p[0]).concat(P.alfresco ? [P.alfresco[0], P.alfresco[2]] : []), ys = P.room.map(p => p[1]).concat(P.alfresco ? [P.alfresco[1], P.alfresco[3]] : []);
-    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - 0.3, y1 = Math.max(...ys) + 0.2, north = Math.max(...P.room.map(p => p[1]));
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - 0.3, y1 = Math.max(...ys) + 1.1, north = Math.max(...P.room.map(p => p[1]));
     const mx = x => ((x - x0) * S).toFixed(1), my = y => ((y1 - y) * S).toFixed(1), mw = (x1 - x0) * S, mh = (y1 - y0) * S;
     let svg = `<svg width="${mw}" height="${mh}" viewBox="0 0 ${mw} ${mh}" role="img" aria-label="Floor plan: tap to walk there">`;
     if (P.alfresco) svg += `<rect x="${mx(P.alfresco[0])}" y="${my(P.alfresco[3])}" width="${(P.alfresco[2] - P.alfresco[0]) * S}" height="${(P.alfresco[3] - P.alfresco[1]) * S}" fill="#e9e4da" stroke="#14181c" stroke-width="1" stroke-dasharray="3 3"/>`;
@@ -214,6 +214,11 @@ async function openWalk() {
     for (const o of P.openings || []) { const [ax, ay, bx, by] = o.length === 4 ? o : [o[0], north, o[1], north]; // [x0, y0, x1, y1] on any wall; [a, b] = on the north wall
       svg += `<line x1="${mx(ax)}" y1="${my(ay)}" x2="${mx(bx)}" y2="${my(by)}" stroke="#7fb6e6" stroke-width="3"/>`; }
     for (const k of R.solid) svg += `<rect x="${mx(k[0])}" y="${my(k[3])}" width="${(k[2] - k[0]) * S}" height="${(k[3] - k[1]) * S}" rx="2" fill="#d9d4ca"/>`;
+    // Overall room size from the plan, in metres: the one measured fact visitors asked to see (panel 2026-11-16).
+    { const rx = P.room.map(p => p[0]), ry = P.room.map(p => p[1]), W = Math.max(...rx) - Math.min(...rx), D = Math.max(...ry) - Math.min(...ry);
+      const lab = (x, y, t, rot) => `<text x="${x}" y="${y}" font-size="${S >= 11 ? 10 : 9}" font-family="system-ui,sans-serif" font-weight="600" fill="#14181c" text-anchor="middle"${rot ? ` transform="rotate(-90 ${x} ${y})"` : ''}>${t}</text>`;
+      svg += lab(((+mx(Math.min(...rx)) + +mx(Math.max(...rx))) / 2).toFixed(1), (+my(Math.max(...ry)) - 4).toFixed(1), W.toFixed(1) + ' m');
+      svg += lab((+mx(Math.min(...rx)) - 4).toFixed(1), ((+my(Math.min(...ry)) + +my(Math.max(...ry))) / 2).toFixed(1), D.toFixed(1) + ' m', true); }
     svg += `<g id="me"><path d="M0 0 L-9 -17 A19 19 0 0 1 9 -17 Z" fill="#e8743b" opacity=".35"/><circle r="4.5" fill="#e8743b" stroke="#fff" stroke-width="1.5"/></g></svg>`;
     $('map').innerHTML = svg; const me = $('me');
     $('map').addEventListener('pointerdown', e => { const b = $('map').querySelector('svg').getBoundingClientRect(); let x = (e.clientX - b.left) / S + x0, y = y1 - (e.clientY - b.top) / S;
