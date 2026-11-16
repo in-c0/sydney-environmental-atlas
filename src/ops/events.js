@@ -12,11 +12,12 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   // upgrade_interest is the demand signal for the photoreal tier while it has no price; upgrade_interest_cancel takes one vote back
   // (demand = interest − cancels).
   'walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest', 'upgrade_interest_cancel',
-  'start_path', // homepage start screen: props.cta = walk | rent | builder
+  'start_path', // homepage start screen: props.cta = walk | rent | builder | hunt
+  'hunt_view', 'hunt_add', 'hunt_remove', // hunt board (dist/showhaus/hunt): props.kind = shared | own
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
   'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified',
-  'listing_private', 'finishes_requested', 'home_suggested', 'fix_reported', 'upgrade_notify']); // a claimant made a listing private / asked for their real finishes (paid)
+  'listing_private', 'finishes_requested', 'home_suggested', 'fix_reported', 'upgrade_notify', 'hunt_check', 'hunt_share', 'hunt_comment']); // a claimant made a listing private / asked for their real finishes (paid)
 // Events that page the owner during a sprint (CVF polls them; see /api/ops/summary).
 export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted', 'listing_private', 'finishes_requested']);
 

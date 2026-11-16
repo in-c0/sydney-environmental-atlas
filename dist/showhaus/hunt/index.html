@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Your shortlist, checked · SHOWHAUS</title>
+<meta name="description" content="Paste any NSW listing link or address. Each home gets its rent, zoning, flood, bush fire and aircraft noise checked from NSW government data. Share the shortlist with your partner. No sign-up.">
+<meta property="og:title" content="Your shortlist, checked · SHOWHAUS">
+<link rel="stylesheet" href="./hunt.css">
+</head>
+<body>
+<main id="hunt">
+  <header class="h-top">
+    <a class="brand" href="../?src=hunt-nav" aria-label="SHOWHAUS home">SHOWHAUS<span>NSW homes, before you sign</span></a>
+    <nav class="h-nav" aria-label="SHOWHAUS"><a href="../walk/?src=hunt-nav">Walk homes</a><a href="../?src=hunt-nav">Suburb rents</a></nav>
+  </header>
+
+  <section class="h-head" id="ownHead">
+    <h1>Your shortlist, checked.</h1>
+    <p class="lead">Paste a listing link or an address for every home you’re looking at. Each one gets its rent, zoning, flood, bush fire and aircraft noise checked from NSW government data. Saved in this browser — no sign-up.</p>
+  </section>
+  <section class="h-head" id="sharedHead" hidden>
+    <p class="eyebrow">Shared shortlist</p>
+    <h1 id="sharedTitle">Our shortlist</h1>
+    <p class="lead">Someone shared these homes with you. Leave a comment on any of them — no sign-up.</p>
+  </section>
+
+  <form id="add" class="h-add" novalidate autocomplete="off">
+    <label for="q" class="sr">Listing link or address</label>
+    <div class="h-row">
+      <input id="q" name="q" type="text" inputmode="text" maxlength="300" placeholder="Paste a Domain or realestate.com.au link, or type 12 Smith St Blacktown" aria-describedby="addMsg" list="acList">
+      <select id="beds" aria-label="Bedrooms"><option value="">Beds</option><option value="0">Studio</option><option value="1">1 bed</option><option value="2">2 bed</option><option value="3">3 bed</option><option value="4">4+ bed</option></select>
+      <input id="price" type="number" inputmode="numeric" min="50" max="20000" step="10" placeholder="Rent $/wk" aria-label="Asking rent per week (optional)">
+      <button type="submit" id="addBtn">Check it</button>
+    </div>
+    <datalist id="acList"></datalist>
+    <p class="h-msg" id="addMsg" aria-live="polite"></p>
+  </form>
+
+  <div class="h-bar" id="bar" hidden>
+    <span id="count"></span>
+    <button type="button" id="share">Share with partner</button>
+  </div>
+  <p class="h-shared" id="shareMsg" aria-live="polite" hidden></p>
+
+  <div id="cards" class="h-cards"></div>
+
+  <section class="h-empty" id="empty">
+    <h2>What each home gets</h2>
+    <ul>
+      <li><b>Rent check</b> — what new leases in that postcode actually went for, by bedrooms, from every NSW rental bond. Enter the asking rent to see if it’s above or below the middle.</li>
+      <li><b>Flood and bush fire</b> — NSW Planning Portal hazard layers for that exact address.</li>
+      <li><b>Zoning</b> — what can be built there, and next door.</li>
+      <li><b>Aircraft noise</b> — Western Sydney Airport contours (Sydney Airport coming).</li>
+      <li><b>Tree canopy</b> — share of the area under trees.</li>
+      <li><b>3D walk</b> — when SHOWHAUS has one for that home.</li>
+    </ul>
+    <p class="fine">Sources are named on every card. Nothing is fetched from the listing site — we only read the address from the link you paste.</p>
+  </section>
+  <footer class="h-foot">Questions or something wrong? <a href="mailto:hello@showhaus.app">hello@showhaus.app</a></footer>
+</main>
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script src="../lib/core.js"></script>
+<script src="./hunt.js"></script>
+</body>
+</html>

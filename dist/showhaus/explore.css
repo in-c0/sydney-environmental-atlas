@@ -133,6 +133,13 @@ body[data-act="3"] .explore-stage #act3 { top: 0; bottom: auto; transform: none;
 body[data-act="4"] .explore-stage #act4 { opacity: 1; pointer-events: auto; }
 body[data-act="0"] .explore-stage #act0 { opacity: 1; pointer-events: auto; }
 body[data-act="0"] .explore-shell .cuts, body[data-act="0"] .view-meter, body[data-act="0"] .selection { display: none; }
+#act0 .paste { margin: 0 0 16px; padding: 13px 14px; border-radius: 13px; background: var(--ink); color: #fff; }
+#act0 .paste label { display: block; font: 650 15px/1.3 var(--sans); margin-bottom: 8px; }
+#act0 .paste div { display: flex; gap: 6px; }
+#act0 .paste input[type="text"] { flex: 1; min-width: 0; font: 14px/1.2 var(--sans); border: 0; border-radius: 9px; padding: 10px 11px; }
+#act0 .paste button { border: 0; border-radius: 9px; background: var(--terracotta); color: #fff; font: 650 14px/1 var(--sans); padding: 0 14px; cursor: pointer; }
+#act0 .paste small { display: block; margin-top: 7px; font: 400 12px/1.4 var(--sans); opacity: .8; }
+#act0 h2#q0 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); margin: 4px 0 8px; }
 #act0 .path { display: block; width: 100%; text-align: left; margin: 0 0 10px; padding: 13px 14px; border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); border-radius: 13px; background: color-mix(in srgb, var(--paper) 70%, white); color: var(--ink); text-decoration: none; font: inherit; cursor: pointer; transition: border-color .15s ease, transform .15s ease; }
 #act0 .path:hover, #act0 .path:focus-visible { border-color: var(--terracotta); transform: translateY(-1px); outline: none; }
 #act0 .path b { display: flex; justify-content: space-between; font: 650 15px/1.3 var(--sans); }
