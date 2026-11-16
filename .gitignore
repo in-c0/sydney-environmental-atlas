@@ -2,3 +2,6 @@
 node_modules
 .wrangler/
 .dev.vars
+
+# Python bytecode from running the walk pipeline locally
+showhaus/walk-pipeline/__pycache__/estimate.*.pyc
