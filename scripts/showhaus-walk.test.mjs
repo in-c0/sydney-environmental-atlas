@@ -245,6 +245,17 @@ test('suggest: a fix report is a room and one line on a real, public walk; nothi
   assert.equal((await suggestSummary(env)).fixes[0].slug, 'buildtec-avalon');
 });
 
+test('suggest: "email me when it is photoreal" keeps one address per home, only for a real public walk', async () => {
+  const env = makeEnv();
+  assert.equal((await sg(env, '/api/suggest/notify', { p: 'buildtec-avalon', email: 'A@B.co ' })).status, 200);
+  assert.equal((await sg(env, '/api/suggest/notify', { p: 'buildtec-avalon', email: 'a@b.co' })).status, 200);
+  assert.equal((await sg(env, '/api/suggest/notify', { p: 'buildtec-avalon', email: 'nope' })).status, 400);
+  assert.equal((await sg(env, '/api/suggest/notify', { p: 'no-such-home', email: 'a@b.co' })).status, 404);
+  const rows = env.OPS_DB._db.prepare('SELECT k, email FROM sh_suggest_notify').all();
+  assert.deepEqual(rows.map(r => [r.k, r.email]), [['photoreal:buildtec-avalon', 'a@b.co']]);
+  assert.equal(env.OPS_DB._db.prepare("SELECT COUNT(*) n FROM sh_events WHERE name = 'upgrade_notify'").get().n, 1);
+});
+
 test('suggest: ten submissions per connection per hour, then 429', async () => {
   const env = makeEnv();
   for (let i = 0; i < PER_HOUR; i++) assert.equal((await sg(env, '/api/suggest/home', { url: 'https://site.com.au/plan-' + i }, '198.51.100.20')).status, 200);

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SHOWHAUS · Sydney, before you sign</title>
-<meta name="description" content="Every new NSW lease on one map, with the road, the sun, the trees, the land records and the planning overlays around each home — from public records, with sources.">
+<title>SHOWHAUS · Walk the home, check the street</title>
+<meta name="description" content="Walk NSW home designs in 3D for free, before you visit. Then check the rents, sun and noise around any street — from public records, with sources.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&family=Manrope:wght@400;500;600;650;700;750&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="./styles.css">
 <link rel="stylesheet" href="./explore.css">
 </head>
-<body data-act="1">
+<body data-act="0">
 <div id="map" aria-label="Map of Sydney rents by postcode"></div>
 <canvas id="overlay" aria-hidden="true"></canvas>
 <div class="map-status" id="mapStatus" role="status" aria-live="polite">Loading the Sydney rent atlas…</div>
@@ -22,8 +22,6 @@
   <nav class="views" aria-label="Ways to explore SHOWHAUS">
     <button type="button" class="view on" aria-current="page">Explore</button>
     <a class="view" id="walkNav" href="./walk/?src=map-nav">Walk</a>
-    <button type="button" class="view" disabled title="Discover neighbourhood stories is planned">Discover <small>planned</small></button>
-    <button type="button" class="view" disabled title="Urban Intelligence analysis is planned">Analyse <small>planned</small></button>
   </nav>
   <div class="live" id="live" title="Rental bond records and date coverage">records —</div>
   <button type="button" class="acct" id="acct" aria-haspopup="dialog" aria-controls="acctDlg" hidden>Sign in</button>
@@ -53,9 +51,9 @@
 
 <aside class="explore-shell" aria-label="Explore Sydney housing">
   <div class="explore-head">
-    <p class="eyebrow">THE CITY, BEFORE YOU SIGN</p>
-    <h1>Find your place in the city.</h1>
-    <p>See what new leases cost, explore Sydney and check the evidence before you commit.</p>
+    <p class="eyebrow">NSW HOMES, BEFORE YOU SIGN</p>
+    <h1>Walk the home. Check the street.</h1>
+    <p>Walk NSW home designs in 3D for free, then check rents, sun and noise around any street — from public records.</p>
   </div>
   <ol class="cuts" aria-label="Explore steps">
     <li data-cut="1"><button type="button">01<span> Where</span></button></li>
@@ -71,6 +69,16 @@
     </div>
   </div>
   <div class="explore-stage">
+<section class="act" id="act0" aria-labelledby="q0">
+  <h2 id="q0">What brings you here?</h2>
+  <a class="path path-walk" href="./walk/?src=home-start" data-path="walk">
+    <span class="path-shots" id="pathShots" aria-hidden="true"></span>
+    <b>Walk a home design <i>→</i></b>
+    <small>Free 3D walks built from published floor plans. No sign-up.</small>
+  </a>
+  <button type="button" class="path" data-path="rent"><b>Check a suburb’s rents <i>→</i></b><small>Median rent from every NSW bond lodged, by postcode.</small></button>
+  <a class="path" href="./walk/?src=home-start#builders" data-path="builder"><b>I build, design or sell homes <i>→</i></b><small>Claim your design for free, take it down, or get your plans walkable.</small></a>
+</section>
 <section class="act" id="act1" aria-labelledby="q1">
   <h2 id="q1">Where would you like to live?</h2>
   <div class="field">

@@ -11,6 +11,8 @@
 //   POST /api/suggest/fix  { p, room, note, anon }   "something is wrong here" on an existing walk: a room and one line.
 //                                               Optional `email`: "tell me when it is ready" — kept only until that one
 //                                               email is sent (POST /api/ops/suggest-built, OIDC), then deleted.
+//   POST /api/suggest/notify { p, email, anon }  "email me when this walk is photoreal": one address per home, kept in
+//                                               sh_suggest_notify under key `photoreal:<slug>` until that one email is sent.
 //   GET  /api/suggest/count                     { homes } — how many distinct homes have been suggested (a number only).
 // Read side (GitHub-OIDC only): /api/ops/summary → suggestions { homes (by votes), fixes (newest) }.
 import { db, pseudo } from './ops/store.js';
@@ -195,6 +197,17 @@ export async function handleSuggest(request, env, ctx) {
       }
       if (fresh) await done(track(env, { name: 'home_suggested', env: environment, source: 'server', actor, path, props: { kind: 'walk:gallery', step: votes === 1 ? 'new' : 'vote', ref: n.host, method: geo ? (geo.verified ? 'address' : 'address:unverified') : 'link' } }).catch(() => {}));
       return j({ ok: true, votes, counted: fresh, host: n.host, notify, ...(geo ? { address: n.url, verified: !!geo.verified } : {}) });
+    }
+    if (path === '/api/suggest/notify') {
+      const slug = String(body.p || '');
+      if (!/^[a-z0-9-]{3,80}$/.test(slug)) return j({ error: 'Unknown home.' }, 404);
+      const r = await env.ASSETS.fetch(new Request(`${url.origin}/showhaus/walk/data/${slug}.json`)).catch(() => null);
+      if (!r || !r.ok || await isPrivate(env, slug)) return j({ error: 'Unknown home.' }, 404);
+      const email = String(body.email || '').trim().toLowerCase();
+      if (!EMAIL_RE.test(email) || email.length > 120) return j({ error: 'That email does not look right.' }, 400);
+      const added = await d.prepare('INSERT OR IGNORE INTO sh_suggest_notify (k, email, at) VALUES (?, ?, ?)').bind('photoreal:' + slug, email, now).run();
+      if (added.meta && added.meta.changes) await done(track(env, { name: 'upgrade_notify', env: environment, source: 'server', actor, path, props: { kind: 'walk:' + slug } }).catch(() => {}));
+      return j({ ok: true });
     }
     if (path === '/api/suggest/fix') {
       const slug = String(body.p || '');
