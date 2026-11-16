@@ -8,7 +8,7 @@ import worker, { rewrite } from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
 import { resetClaimsForTests, claimSummary, claimFile } from '../src/claim.js';
 import { recordStripeEvent } from '../src/ops/stripe.js';
-import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR, suggestBuilt, walkQueue } from '../src/suggest.js';
+import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR, suggestBuilt, walkQueue, normalizeAddress, prettyAddress, suggestionKey, GURAS } from '../src/suggest.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 import { labels, BASIS } from '../dist/showhaus/walk/walk.js';
@@ -18,7 +18,7 @@ const read = async p => JSON.parse(await readFile(WALK + p, 'utf8'));
 const exists = p => access(WALK + p).then(() => true, () => false);
 const UA = { 'user-agent': 'Mozilla/5.0 Safari' };
 const ctx = () => { const p = []; return { waitUntil: x => p.push(x), done: () => Promise.all(p) }; };
-function makeEnv() { resetForTests(); resetClaimsForTests(); resetSuggestForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate', 'sh_suggest', 'sh_suggest_votes', 'sh_fixes', 'sh_suggest_notify']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
+function makeEnv() { resetForTests(); resetClaimsForTests(); resetSuggestForTests(); for (const t of ['sh_claims', 'sh_events', 'sh_private', 'sh_private_pending', 'sh_finishes', 'sh_finish_files', 'sh_claim_rate', 'sh_suggest', 'sh_suggest_votes', 'sh_fixes', 'sh_suggest_notify', 'sh_suggest_geo']) { try { localEnv.OPS_DB._db.exec(`DELETE FROM ${t}`); } catch { /* table not created yet */ } } return localEnv; }
 const get = (env, path, host = 'https://showhaus.app') => worker.fetch(new Request(host + path, { headers: UA, redirect: 'manual' }), env, ctx());
 
 test('labels: the basis line follows the data source and never claims a plan that is not there', () => {
@@ -293,4 +293,74 @@ test('queue: asked-for homes by votes, photoreal by net votes (last vote or canc
   assert.deepEqual(q.base.map(b => [b.host, b.votes]), [['b.com.au', 3], ['c.com.au', 2], ['a.com.au', 1]], 'production only, most votes first');
   assert.deepEqual(q.photoreal, [{ slug: 'other-home', votes: 2 }, { slug: 'buildtec-avalon', votes: 1 }]);
   assert.deepEqual(q.finishes, []);
+});
+
+// A stand-in for the NSW address register (GURAS ArcGIS query): prefix LIKE and exact = on `address`.
+const REGISTER = [['199 FOREST ROAD ARNCLIFFE', 151.134659, -33.941236], ['1/229 FOREST ROAD ARNCLIFFE', 151.1331, -33.9401], ['199 FOREST ROAD KIRRAWEE', 151.077778, -34.040384], ["12 O'CONNELL STREET SYDNEY", 151.2105, -33.8651]];
+function fakeGuras(calls = []) {
+  return async (u) => {
+    const url = new URL(u); assert.equal(url.origin + url.pathname, GURAS); calls.push(url.searchParams.get('where'));
+    const w = url.searchParams.get('where'), m = w.match(/^address (LIKE|=) '(.*)'$/); const v = m[2].replace(/''/g, "'");
+    const rows = REGISTER.filter(([a]) => (m[1] === '=' ? a === v : a.startsWith(v.replace(/%$/, ''))));
+    return new Response(JSON.stringify({ features: rows.slice(0, Number(url.searchParams.get('resultRecordCount'))).map(([a, x, y]) => ({ attributes: { address: a }, geometry: { x, y } })) }));
+  };
+}
+
+test('address: what people type becomes the register form; anything without a house number is not an address', () => {
+  assert.equal(normalizeAddress('199 Forest Rd, Arncliffe NSW 2205'), '199 FOREST ROAD ARNCLIFFE');
+  assert.equal(normalizeAddress('Unit 1 229 forest rd arncliffe'), '1/229 FOREST ROAD ARNCLIFFE');
+  assert.equal(normalizeAddress('1 / 229 Forest Rd'), '1/229 FOREST ROAD');
+  assert.equal(normalizeAddress('12 O’Connell St, Sydney, Australia'), "12 O'CONNELL STREET SYDNEY");
+  assert.equal(normalizeAddress('St Kilda Rd'), null); assert.equal(normalizeAddress('12'), null); assert.equal(normalizeAddress("1 X'); DROP TABLE x;--"), "1 X' DROP TABLE X --");
+  assert.equal(prettyAddress('199 FOREST ROAD ARNCLIFFE'), '199 Forest Road, Arncliffe NSW');
+  assert.equal(prettyAddress("12 O'CONNELL STREET SYDNEY"), "12 O'Connell Street, Sydney NSW");
+  assert.equal(suggestionKey('addr:199 forest rd arncliffe'), 'addr:199 FOREST ROAD ARNCLIFFE');
+  assert.equal(suggestionKey('https://www.a.com.au/x/?utm_source=1'), 'https://a.com.au/x');
+});
+
+test('address: autocomplete proxies the NSW register with a map point, never the visitor, and degrades to free text', async () => {
+  const env = makeEnv(), calls = [];
+  env.__fetch = fakeGuras(calls);
+  try {
+    const r = await (await get(env, '/api/suggest/address?q=' + encodeURIComponent('199 forest rd'))).json();
+    assert.deepEqual(r.results.map(x => x.label), ['199 Forest Road, Arncliffe NSW', '199 Forest Road, Kirrawee NSW']);
+    assert.deepEqual(r.results[0].lngLat, [151.134659, -33.941236]);
+    assert.equal(calls[0], "address LIKE '199 FOREST ROAD%'");
+    assert.deepEqual((await (await get(env, '/api/suggest/address?q=forest')).json()).results, [], 'no house number → no lookup');
+    assert.equal(calls.length, 1);
+    await (await get(env, '/api/suggest/address?q=' + encodeURIComponent("12 o'connell"))).json();
+    assert.equal(calls[1], "address LIKE '12 O''CONNELL%'", 'quotes are escaped for the register query');
+    env.__fetch = async () => { throw new Error('down'); };
+    assert.deepEqual(await (await get(env, '/api/suggest/address?q=199+forest')).json(), { results: [], offline: true });
+  } finally { delete env.__fetch; }
+});
+
+test('address: a suggested address adds up as votes with its link-free key, is verified when the register knows it, and joins the base queue', async () => {
+  const env = makeEnv();
+  env.__fetch = fakeGuras();
+  try {
+    const a = await (await sg(env, '/api/suggest/home', { address: '199 Forest Rd, Arncliffe NSW 2205', anon: 'visitor-adr-1', email: 'pat@example.com' })).json();
+    assert.deepEqual([a.ok, a.votes, a.verified, a.address, a.host], [true, 1, true, '199 Forest Road, Arncliffe NSW', 'address']);
+    assert.equal((await (await sg(env, '/api/suggest/home', { address: '199 FOREST ROAD ARNCLIFFE', anon: 'visitor-adr-2' }, '198.51.100.71')).json()).votes, 2, 'any spelling is the same home');
+    const lot = await (await sg(env, '/api/suggest/home', { address: '7 Newlot Ave, Box Hill', anon: 'visitor-adr-3' }, '198.51.100.72')).json();
+    assert.deepEqual([lot.ok, lot.verified, lot.address], [true, false, '7 Newlot Avenue, Box Hill NSW'], 'a lot the register does not know yet is kept, unverified');
+    assert.equal((await sg(env, '/api/suggest/home', { address: '12 Smith' })).status, 400, 'number and street and suburb');
+    assert.equal((await sg(env, '/api/suggest/home', { address: 'hello there' })).status, 400);
+    env.__fetch = async () => { throw new Error('down'); };
+    assert.equal((await (await sg(env, '/api/suggest/home', { address: '199 Forest Rd Arncliffe', anon: 'visitor-adr-4' }, '198.51.100.73')).json()).votes, 3, 'register down: still counted');
+    const q = await walkQueue(env);
+    const top = q.base[0];
+    assert.deepEqual({ ...top, at: undefined }, { kind: 'address', key: 'addr:199 FOREST ROAD ARNCLIFFE', address: '199 Forest Road, Arncliffe NSW', lngLat: [151.134659, -33.941236], verified: true, host: 'address', votes: 3, notify: 1, at: undefined }, 'a down register never erases the verified point');
+    assert.deepEqual(q.base[1].lngLat, null);
+    const sum = JSON.stringify(await suggestSummary(env));
+    assert.ok(!sum.includes('pat@example.com'));
+    assert.deepEqual(await suggestBuilt(env, { url: top.key, slug: 'arncliffe-199-forest' }), { ok: true, sent: 0, waiting: 1, note: 'no mail route configured; addresses kept' });
+    assert.equal((await walkQueue(env)).base.length, 1, 'built homes leave the queue');
+  } finally { delete env.__fetch; }
+});
+
+test('address: the gallery takes an address first, with a listbox for the register matches', async () => {
+  const html = await readFile(WALK + 'index.html', 'utf8'), js = await readFile(WALK + 'walk.js', 'utf8');
+  assert.match(html, /Type its address/); assert.match(html, /role="combobox"/); assert.match(html, /id="sgList"[^>]*role="listbox"/);
+  assert.match(js, /\/api\/suggest\/address\?q=/); assert.doesNotMatch(js, /portal\.spatial\.nsw\.gov\.au/, 'the page never calls the register directly');
 });
