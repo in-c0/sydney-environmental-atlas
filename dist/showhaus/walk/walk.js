@@ -89,8 +89,9 @@ async function openGallery() {
     $('sgBtn').disabled = false;
     if (!r.ok) return say(r.data.error || 'Could not save it. Try again.', 'bad');
     inp.value = ''; $('sgEmail').value = ''; picked = null;
-    const what = r.data.address ? r.data.address + ': ' : '';
-    say((r.data.notify ? 'We’ll email you once, when it’s ready, then delete your address. ' : '') + what + (r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.'), 'ok');
+    const count = r.data.votes > 1 ? `Counted. ${r.data.votes} people have asked for this home.` : 'Counted. You are the first to ask for this home.';
+    const how = (r.data.address ? ` We’ll model ${r.data.address} from aerial photos and the lot map — the inside is estimated.` : '') + ' The most-asked homes are built first and appear in this gallery.';
+    say(count + how + (r.data.notify ? ' We’ll email you the link once, then delete your address.' : ''), 'ok');
     track('cta', { cta: 'suggest:' + (body.url ? 'link' : picked || r.data.verified ? 'address' : 'address:unverified') });
   });
 }

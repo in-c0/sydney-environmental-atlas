@@ -253,7 +253,7 @@ test('suggest: ten submissions per connection per hour, then 429', async () => {
 
 test('suggest: the page offers both inputs with no sign-up and never lists submitted links', async () => {
   const html = await readFile(WALK + 'index.html', 'utf8'), js = await readFile(WALK + 'walk.js', 'utf8');
-  assert.match(html, /id="suggest"/); assert.match(html, /id="fixOpen"/); assert.match(html, /No sign-up/);
+  assert.match(html, /id="suggest"/); assert.match(html, /id="fixOpen"/); assert.match(html, /no sign-up/i);
   assert.doesNotMatch(html, /type="file"/, 'links only: no file upload from visitors');
   assert.doesNotMatch(js, /api\/suggest\/(homes|list)/);
 });
