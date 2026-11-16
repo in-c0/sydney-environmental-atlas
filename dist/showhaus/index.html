@@ -70,7 +70,12 @@
   </div>
   <div class="explore-stage">
 <section class="act" id="act0" aria-labelledby="q0">
-  <h2 id="q0">What brings you here?</h2>
+  <form class="paste" id="pasteForm" action="./hunt/" method="get" data-path="hunt">
+    <label for="pasteQ">Looking at a home? Paste the listing or address.</label>
+    <div><input id="pasteQ" name="q" type="text" maxlength="300" placeholder="domain.com.au link or 12 Smith St Blacktown"><input type="hidden" name="src" value="home-start"><button type="submit">Check</button></div>
+    <small>Rent vs the street, flood, bush fire, zoning and aircraft noise — saved to your shortlist, no sign-up.</small>
+  </form>
+  <h2 id="q0">Or start here</h2>
   <a class="path path-walk" href="./walk/?src=home-start" data-path="walk">
     <span class="path-shots" id="pathShots" aria-hidden="true"></span>
     <b>Walk a home design <i>→</i></b>

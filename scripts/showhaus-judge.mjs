@@ -96,7 +96,7 @@ for (const [w, h] of VIEWPORTS) {
   }));
   check(`${tag} modern readable type is applied`, typography.body.includes('Inter') && typography.heading.includes('Manrope') && typography.brand.includes('Manrope'), JSON.stringify(typography));
   // Start screen: three paths (walk, rents, builders); the walk path leads with home posters.
-  check(`${tag} start screen offers walk, rents and builders`, await page.locator('#act0').isVisible() && await page.locator('#act0 [data-path]').count() === 3
+  check(`${tag} start screen offers walk, rents and builders`, await page.locator('#act0').isVisible() && await page.locator('#act0 .path[data-path]').count() === 3 && await page.locator('#pasteForm').isVisible()
     && (await page.locator('#act0 [data-path="walk"]').getAttribute('href')).includes('walk/'));
   await noOverflow(page, `${tag} start`);
   if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.screenshot({ path: `${shotsDir}/act0-${w}x${h}.png` }); }
