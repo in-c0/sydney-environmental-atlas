@@ -33,6 +33,7 @@ const isPrivate = s => getJSON(`/api/claim/public?p=${s}`).then(c => !!(c && c.p
 
 async function openGallery() {
   document.body.dataset.mode = 'gallery'; $('gallery').hidden = false;
+  initSuggest(); // before any network wait: the box must answer from the first keystroke
   const idx = await getJSON('./data/index.json');
   const hidden = new Set();
   await Promise.all(((idx && idx.items) || []).filter(it => it.kind === 'walk').map(async it => { if (await isPrivate(it.slug)) hidden.add(it.slug); }));
@@ -47,6 +48,9 @@ async function openGallery() {
       <div class="txt"><b>${esc(it.name)}</b><span class="by">${esc([it.type, it.by && 'by ' + it.by, it.by && it.kind === 'walk' && 'not affiliated'].filter(Boolean).join(' · '))}</span><span class="line">${esc(it.line)}</span></div>
     </a>`).join('') || '<p>No walkthroughs yet.</p>';
   $('cards').addEventListener('click', e => { const a = e.target.closest('.g-card'); if (a) track('cta', { cta: 'open:' + a.dataset.slug }); });
+}
+
+function initSuggest() {
   // Suggest a home, no sign-up: a NSW street address (autocompleted from the NSW address register) or a link to a
   // published plan. Both are counted as votes and never shown to other visitors.
   const inp = $('sgUrl'), list = $('sgList'), note = $('sgNote'), say = (t, c) => { note.textContent = t; note.className = 'g-note ' + c; };
@@ -54,17 +58,23 @@ async function openGallery() {
   let picked = null, items = [], active = -1, timer = 0, seq = 0;
   const close = () => { list.hidden = true; list.innerHTML = ''; items = []; active = -1; inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant'); };
   const mark = i => { active = i; [...list.children].forEach((li, k) => li.setAttribute('aria-selected', String(k === i))); if (i >= 0) inp.setAttribute('aria-activedescendant', 'sgOpt' + i); };
-  const pick = i => { const it = items[i]; if (!it) return; picked = it; inp.value = it.label; close(); say('Found on the NSW address register. Tap Suggest.', 'ok'); $('sgBtn').focus(); };
+  const pick = i => {
+    const it = items[i]; if (!it) return;
+    close();
+    // A street, no number yet: keep the street, put the cursor in front of it for the house number.
+    if (it.kind === 'street') { picked = null; inp.value = ' ' + it.fill; inp.focus(); inp.setSelectionRange(0, 0); say('Now type the house number in front — e.g. 12 ' + it.fill + '.', 'ok'); return; }
+    picked = it; inp.value = it.label; say('Found on the NSW address register. Tap Suggest.', 'ok'); $('sgBtn').focus();
+  };
   inp.addEventListener('input', () => {
     picked = null; clearTimeout(timer);
     const v = inp.value.trim();
-    if (v.length < 4 || looksLink(v) || !/^\d/.test(v)) { close(); return; }
+    if (v.length < 3 || looksLink(v) || !/[a-z]{2}/i.test(v)) { close(); return; }
     timer = setTimeout(async () => {
       const my = ++seq, d = await getJSON('/api/suggest/address?q=' + encodeURIComponent(v));
       if (my !== seq || inp.value.trim() !== v) return;
       items = (d && d.results) || [];
-      if (!items.length) { close(); return; }
-      list.innerHTML = items.map((it, i) => `<li id="sgOpt${i}" role="option" aria-selected="false" data-i="${i}"><span class="pin" aria-hidden="true">⌂</span>${esc(it.label)}</li>`).join('');
+      if (!items.length) { close(); if (d && !d.offline && /^\d/.test(v)) say('No match in the NSW address register yet. Check the spelling — or tap Suggest anyway.', ''); return; }
+      list.innerHTML = items.map((it, i) => `<li id="sgOpt${i}" role="option" aria-selected="false" data-i="${i}"><span class="pin" aria-hidden="true">${it.kind === 'street' ? '⟋' : '⌂'}</span><span class="lbl">${esc(it.label)}</span>${it.kind === 'street' ? '<small>add no.</small>' : ''}</li>`).join('');
       list.hidden = false; inp.setAttribute('aria-expanded', 'true'); mark(-1);
       try { list.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* old browsers */ }
     }, 220);
@@ -78,6 +88,9 @@ async function openGallery() {
   });
   list.addEventListener('pointerdown', e => { const li = e.target.closest('li'); if (li) { e.preventDefault(); pick(Number(li.dataset.i)); } });
   inp.addEventListener('blur', () => setTimeout(close, 150));
+  // Arriving from the map's search bar with an address (?a=…): fill it in and look it up.
+  const pre = new URLSearchParams(location.search).get('a');
+  if (pre) { inp.value = pre.slice(0, 200); $('suggest').scrollIntoView({ block: 'center' }); inp.focus(); inp.dispatchEvent(new Event('input')); }
   $('suggest').addEventListener('submit', async e => {
     e.preventDefault(); close();
     const v = inp.value.trim();
@@ -95,6 +108,7 @@ async function openGallery() {
     track('cta', { cta: 'suggest:' + (body.url ? 'link' : picked || r.data.verified ? 'address' : 'address:unverified') });
   });
 }
+
 const anonId = () => { try { return localStorage.getItem('sh_a') || undefined; } catch { return undefined; } };
 const synth = () => { try { return sessionStorage.getItem('sh_synth') === '1' || /[?&]synthetic=1/.test(location.search) ? 'synthetic' : undefined; } catch { return undefined; } };
 async function post(path, body) {

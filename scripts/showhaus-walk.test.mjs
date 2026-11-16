@@ -8,7 +8,7 @@ import worker, { rewrite } from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
 import { resetClaimsForTests, claimSummary, claimFile } from '../src/claim.js';
 import { recordStripeEvent } from '../src/ops/stripe.js';
-import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR, suggestBuilt, walkQueue, normalizeAddress, prettyAddress, suggestionKey, GURAS } from '../src/suggest.js';
+import { normalizePlanUrl, suggestSummary, resetSuggestForTests, PER_HOUR, suggestBuilt, walkQueue, normalizeAddress, prettyAddress, suggestionKey, GURAS, PHOTON } from '../src/suggest.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 import { labels, BASIS } from '../dist/showhaus/walk/walk.js';
@@ -299,7 +299,12 @@ test('queue: asked-for homes by votes, photoreal by net votes (last vote or canc
 const REGISTER = [['199 FOREST ROAD ARNCLIFFE', 151.134659, -33.941236], ['1/229 FOREST ROAD ARNCLIFFE', 151.1331, -33.9401], ['199 FOREST ROAD KIRRAWEE', 151.077778, -34.040384], ["12 O'CONNELL STREET SYDNEY", 151.2105, -33.8651]];
 function fakeGuras(calls = []) {
   return async (u) => {
-    const url = new URL(u); assert.equal(url.origin + url.pathname, GURAS); calls.push(url.searchParams.get('where'));
+    const url = new URL(u);
+    if (url.origin + url.pathname === PHOTON) { calls.push('photon:' + url.searchParams.get('q')); return new Response(JSON.stringify({ features: [
+      { properties: { name: 'Forest Road', district: 'Arncliffe', state: 'New South Wales' }, geometry: { coordinates: [151.1342, -33.9409] } },
+      { properties: { name: 'Forest Road', district: 'Arncliffe', state: 'New South Wales' }, geometry: { coordinates: [151.1350, -33.9420] } },
+      { properties: { name: 'Forest Road', city: 'Melbourne', state: 'Victoria' }, geometry: { coordinates: [145.0, -37.8] } }] })); }
+    assert.equal(url.origin + url.pathname, GURAS); calls.push(url.searchParams.get('where'));
     const w = url.searchParams.get('where'), m = w.match(/^address (LIKE|=) '(.*)'$/); const v = m[2].replace(/''/g, "'");
     const rows = REGISTER.filter(([a]) => (m[1] === '=' ? a === v : a.startsWith(v.replace(/%$/, ''))));
     return new Response(JSON.stringify({ features: rows.slice(0, Number(url.searchParams.get('resultRecordCount'))).map(([a, x, y]) => ({ attributes: { address: a }, geometry: { x, y } })) }));
@@ -324,12 +329,16 @@ test('address: autocomplete proxies the NSW register with a map point, never the
   try {
     const r = await (await get(env, '/api/suggest/address?q=' + encodeURIComponent('199 forest rd'))).json();
     assert.deepEqual(r.results.map(x => x.label), ['199 Forest Road, Arncliffe NSW', '199 Forest Road, Kirrawee NSW']);
+    assert.ok(r.results.every(x => x.kind === 'address'));
     assert.deepEqual(r.results[0].lngLat, [151.134659, -33.941236]);
     assert.equal(calls[0], "address LIKE '199 FOREST ROAD%'");
-    assert.deepEqual((await (await get(env, '/api/suggest/address?q=forest')).json()).results, [], 'no house number → no lookup');
-    assert.equal(calls.length, 1);
+    const st = (await (await get(env, '/api/suggest/address?q=' + encodeURIComponent('forest rd arncliffe'))).json()).results;
+    assert.deepEqual(st, [{ kind: 'street', label: 'Forest Road, Arncliffe NSW', fill: 'Forest Road, Arncliffe', lngLat: [151.1342, -33.9409] }], 'no house number yet → NSW streets, one per street and suburb');
+    assert.equal(calls[1], 'photon:forest rd arncliffe');
+    assert.deepEqual((await (await get(env, '/api/suggest/address?q=12')).json()).results, [], 'nothing to look up');
+    assert.equal(calls.length, 2);
     await (await get(env, '/api/suggest/address?q=' + encodeURIComponent("12 o'connell"))).json();
-    assert.equal(calls[1], "address LIKE '12 O''CONNELL%'", 'quotes are escaped for the register query');
+    assert.equal(calls[2], "address LIKE '12 O''CONNELL%'", 'quotes are escaped for the register query');
     env.__fetch = async () => { throw new Error('down'); };
     assert.deepEqual(await (await get(env, '/api/suggest/address?q=199+forest')).json(), { results: [], offline: true });
   } finally { delete env.__fetch; }
@@ -362,5 +371,5 @@ test('address: a suggested address adds up as votes with its link-free key, is v
 test('address: the gallery takes an address first, with a listbox for the register matches', async () => {
   const html = await readFile(WALK + 'index.html', 'utf8'), js = await readFile(WALK + 'walk.js', 'utf8');
   assert.match(html, /Type its address/); assert.match(html, /role="combobox"/); assert.match(html, /id="sgList"[^>]*role="listbox"/);
-  assert.match(js, /\/api\/suggest\/address\?q=/); assert.doesNotMatch(js, /portal\.spatial\.nsw\.gov\.au/, 'the page never calls the register directly');
+  assert.match(js, /\/api\/suggest\/address\?q=/); assert.match(js, /initSuggest\(\); \/\/ before any network wait/); assert.doesNotMatch(js, /portal\.spatial\.nsw\.gov\.au/, 'the page never calls the register directly');
 });

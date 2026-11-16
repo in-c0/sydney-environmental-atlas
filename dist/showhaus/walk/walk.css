@@ -111,6 +111,8 @@ canvas { position: fixed; inset: 0; width: 100% !important; height: 100% !import
 .g-list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; border-radius: 12px; background: var(--g-paper); border: 1px solid rgba(127,127,127,.35); box-shadow: 0 10px 28px rgba(0,0,0,.18); max-height: 264px; overflow-y: auto; }
 .g-list li { display: flex; gap: 10px; align-items: center; padding: 10px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; line-height: 1.25; }
 .g-list li .pin { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: rgba(196,98,45,.14); color: #c4622d; font-size: 13px; }
+.g-list li .lbl { flex: 1; }
+.g-list li small { flex: none; font-size: 11px; opacity: .6; }
 .g-list li:hover, .g-list li[aria-selected="true"] { background: rgba(196,98,45,.12); }
 .g-note { margin: 8px 0 0; font-size: 13px; color: var(--g-ink2); }
 .g-note.ok { color: #1c7a36; } .g-note.bad { color: #b3261e; }

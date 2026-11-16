@@ -332,6 +332,7 @@
     if (q.kind === 'short') hint.textContent = 'Keep typing — 3 letters or a 4-digit postcode.';
     else if (q.kind === 'price') hint.innerHTML = `That looks like a budget (${q.value < 10000 ? C.weekly(q.value) : C.money(q.value)}). It goes in the next step — <kbd>Enter</kbd> to keep it.`;
     else if (r.scope === 'elsewhere') hint.textContent = 'SHOWHAUS covers New South Wales for now — rental bond records outside NSW are held by other states.';
+    else if (!sugg.length && /^\d+[a-z]?(\/\d+[a-z]?)?\s+[a-z]/i.test(raw.trim())) hint.innerHTML = `This box finds suburbs. Looking for one home? <a href="/walk/?a=${encodeURIComponent(raw.trim())}#suggest">Find ${esc(raw.trim())} →</a>`;
     else if (q.kind === 'text' && !sugg.length) hint.innerHTML = suggestion ? `No suburb called “${esc(raw)}”. Did you mean <b>${esc(suggestion.name)}</b>? <kbd>Tab</kbd>` : `No NSW suburb, council or area matches “${esc(raw)}”.`;
     else if (q.kind === 'postcode' && !sugg.length) hint.textContent = `Postcode ${q.value} has no NSW rental bond records.`;
     else if (sugg.length) hint.textContent = r.scope === 'postcode' ? `Postcode ${q.value}: ${sugg.length} suburb${sugg.length > 1 ? 's' : ''}` : r.scope === 'exact' ? 'Exact match' : 'Close matches';
