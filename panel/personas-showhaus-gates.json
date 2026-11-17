@@ -1,0 +1,209 @@
+{
+ "segment": "SHOWHAUS gate panel: Sydney home hunters (renters, buyers) arriving cold on a phone, plus 3 property pros",
+ "grounding": "Attributes written from recurring r/sydney, r/AusProperty and r/AusFinance themes (flight paths in the inner west and Bayside, 'just use REA', rent increases at renewal, FHB sold-price checks); the four S5/O1/B1/B2 personas are reused from personas-showhaus-walk.json. Saved 2026-11-17 so later gates reuse the same 12.",
+ "personas": [
+  {
+   "id": "R1",
+   "group": "renter",
+   "device": "phone",
+   "who": "Chloe, 26, physio, renting in Newtown with a flatmate",
+   "attrs": [
+    "lease ends in 7 weeks",
+    "budget $750/wk for a 2-bed",
+    "checks Domain and Flatmates daily",
+    "high tech comfort",
+    "impatient: decides in seconds",
+    "worried about plane noise after a friend's Tempe flat",
+    "shares every listing in a group chat",
+    "pays for nothing online"
+   ],
+   "last_time": "Rented a Marrickville flat off a photo set and only learned at the first inspection that planes went over every 90 seconds."
+  },
+  {
+   "id": "R3",
+   "group": "renter",
+   "device": "phone",
+   "who": "Mei, 29, grad accountant, moving from Melbourne to Sydney",
+   "attrs": [
+    "doesn't know Sydney suburbs",
+    "budget $600/wk 1-bed",
+    "wants commute + safety + quiet",
+    "high tech comfort",
+    "reads everything",
+    "spreadsheet of listings",
+    "asks Reddit r/sydney",
+    "will share with partner in Melbourne"
+   ],
+   "last_time": "Posted 'which suburbs are quiet but near the CBD' on r/sydney and got 40 contradicting replies."
+  },
+  {
+   "id": "E1",
+   "group": "buyer",
+   "device": "phone",
+   "who": "James, 44, IT manager, upgrading from a unit in Ryde to a house",
+   "attrs": [
+    "budget $1.9m",
+    "two kids, school zones matter",
+    "road noise and orientation matter",
+    "high tech comfort",
+    "sceptical of 'AI' sites",
+    "uses REA and Domain apps with alerts",
+    "orders strata/contract reviews",
+    "pays a buyer's agent for advice"
+   ],
+   "last_time": "Lost a weekend inspecting a house that turned out to back onto a main road the listing photos hid."
+  },
+  {
+   "id": "E2",
+   "group": "buyer",
+   "device": "phone",
+   "who": "Anita, 38, nurse unit manager, first home buyer, looking in Bayside and St George",
+   "attrs": [
+    "budget $1.1m",
+    "FHB with partner",
+    "heard about flight paths in Arncliffe/Rockdale",
+    "medium tech comfort",
+    "wants sold prices",
+    "reads strata reports",
+    "spends Saturday at opens",
+    "shares with partner on WhatsApp"
+   ],
+   "last_time": "Nearly offered on a Kogarah townhouse until her dad said 'check the flight path' and she couldn't find a clear answer."
+  },
+  {
+   "id": "N2",
+   "group": "buyer",
+   "device": "phone",
+   "who": "Raj, 41, engineer, buying off the plan in Wolli Creek / Mascot",
+   "attrs": [
+    "investor + future PPOR",
+    "budget $850k 2-bed apartment",
+    "knows ANEF exists, wants the contour number",
+    "high tech comfort",
+    "sceptic of developer marketing",
+    "reads planning portal himself",
+    "compares 10 projects in a spreadsheet",
+    "needs proof, not vibes"
+   ],
+   "last_time": "Spent an evening on the Sydney Airport master plan PDF trying to read which ANEF band a Wolli Creek tower was in."
+  },
+  {
+   "id": "X1",
+   "group": "buyer",
+   "device": "phone",
+   "sceptic": true,
+   "who": "Steve, 57, tradie, buying an investment house in Western Sydney",
+   "attrs": [
+    "happy with REA, says 'it's all on REA'",
+    "budget $1m",
+    "low patience",
+    "medium tech comfort",
+    "distrusts new websites",
+    "wants yield and sold prices",
+    "talks to local agents",
+    "never shares links"
+   ],
+   "last_time": "Bought his last investment after two phone calls with the agent and a drive-by."
+  },
+  {
+   "id": "X2",
+   "group": "buyer",
+   "device": "phone",
+   "low_tech": true,
+   "who": "Margaret, 68, retiree downsizing from Baulkham Hills",
+   "attrs": [
+    "low tech comfort, big font on phone",
+    "budget $1.2m villa/townhouse",
+    "quiet street, near shops and doctor",
+    "daughter helps her",
+    "afraid of scams",
+    "reads slowly",
+    "opens links only from family",
+    "no app installs"
+   ],
+   "last_time": "Her daughter sent her three REA links and she called her back to read them out together."
+  },
+  {
+   "id": "O1",
+   "group": "outside",
+   "device": "phone",
+   "who": "Liam, 27, renter in Marrickville, not buying",
+   "attrs": [
+    "came from the SHOWHAUS rent map",
+    "browses homes for fun",
+    "tech comfort high",
+    "would not pay for anything about a home he is not buying",
+    "short attention, leaves in under a minute if bored",
+    "likes games, WASD is natural",
+    "shares funny or impressive links with friends"
+   ],
+   "last_time": "Scrolled real-estate listings on the train with no intention to buy."
+  },
+  {
+   "id": "S5",
+   "group": "seeker",
+   "device": "desktop",
+   "who": "Wei, 37, software tester, Schofields",
+   "attrs": [
+    "house-and-land package buyer with two kids",
+    "tech comfort very high",
+    "price sensitive but pays for tools that save weekends",
+    "reads every disclaimer",
+    "has used builder virtual tours (Matterport style) of real display homes",
+    "notices fake-looking renders immediately",
+    "patience medium"
+   ],
+   "last_time": "Used a builder's virtual tour to rule out two designs without leaving the house."
+  },
+  {
+   "id": "B1",
+   "group": "builder",
+   "device": "desktop",
+   "who": "Jess, 29, marketing coordinator at a mid-size NSW project builder",
+   "attrs": [
+    "found her company's design on the site by accident",
+    "owns the builder's website and socials",
+    "tech comfort high",
+    "small monthly marketing budget she can spend without sign-off",
+    "measured on enquiry numbers",
+    "protective of brand: wrong finishes on a design is a problem",
+    "knows display homes cost a fortune and cannot show every design"
+   ],
+   "last_time": "Paid a rendering studio for stills of three designs that have no display home."
+  },
+  {
+   "id": "B2",
+   "group": "builder",
+   "device": "desktop",
+   "sceptic": true,
+   "who": "Greg, 55, sales manager at a volume builder",
+   "attrs": [
+    "irritated that a third party is showing his design without asking",
+    "thinks about calling legal",
+    "tech comfort medium",
+    "believes buyers need to walk a real display home to trust workmanship",
+    "has an existing virtual-tour supplier",
+    "no patience for start-ups",
+    "would only act if it brought enquiries"
+   ],
+   "last_time": "Signed a yearly contract with a virtual tour company for the flagship displays."
+  },
+  {
+   "id": "X3",
+   "group": "pro",
+   "device": "phone",
+   "who": "Daniel, 35, sales agent at an inner-west real estate agency",
+   "attrs": [
+    "lists 3-5 homes a month in Marrickville/Tempe/Sydenham",
+    "buyers ask about planes constantly",
+    "wants vendor-friendly material",
+    "medium-high tech comfort",
+    "busy, 10 s per link",
+    "would forward a useful page to buyers",
+    "hates anything that makes the listing look bad",
+    "never pays without a trial"
+   ],
+   "last_time": "Told a buyer 'it's not that bad, come to the Saturday open and listen' when asked about aircraft noise."
+  }
+ ]
+}

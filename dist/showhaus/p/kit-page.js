@@ -43,7 +43,7 @@
     if (!r.ok) return fail(r.status === 404 ? 'This property link is not (or no longer) on SHOWHAUS.' : 'Could not load this property (HTTP ' + r.status + ').');
     kit = await r.json();
     document.title = `${kit.address} · SHOWHAUS`;
-    renderHead(); renderFacts(); renderRent(); renderSources();
+    renderHead(); renderFacts(); renderRent(); renderSources(); loadNoise();
     document.body.dataset.state = 'facts';
     track('view');
     // Sun hours for the visitor's today and 21 June, from the stored buildings (deterministic; the judge recounts the same way).
@@ -91,8 +91,7 @@
     const canopyFact = !cn.ok ? `<li class="fact unknown" data-k="canopy" data-v="unknown"><div class="k">Tree canopy</div><div class="v">unknown ${tag('unknown')}</div><div class="s">NSW canopy service did not answer · ${fmtDate(cn.fetched)}</div></li>`
       : !crow ? `<li class="fact unknown" data-k="canopy" data-v="unknown"><div class="k">Tree canopy</div><div class="v">unknown ${tag('unknown')}</div><div class="s">outside the NSW 2024–25 canopy grid · ${fmtDate(cn.fetched)}</div></li>`
       : `<li class="fact" data-k="canopy" data-v="${Math.round(crow.Canopy_pc * 100)}"><div class="k">Tree canopy</div><div class="v">${Math.round(crow.Canopy_pc * 100)}% <small>of this hexagon</small></div><div class="s">NSW 2024–25 canopy H3 cell around the address · fetched ${fmtDate(cn.fetched)}</div></li>`;
-    const wsa = kit.aircraft.wsa_anec;
-    const airFact = `<li class="fact unknown" data-k="aircraft" data-v="unknown"><div class="k">Aircraft noise (ANEF)</div><div class="v">unknown ${tag('unknown')}</div><div class="s">Sydney Airport ANEF 2039 has no public GIS layer · Western Sydney ANEC: ${wsa.ok ? (wsa.rows.length ? 'ANEC ' + esc(wsa.rows.map(x => x.ANEF_CODE).join(', ')) : 'outside') : 'unknown'} · ${fmtDate(wsa.fetched)}</div></li>`;
+    const airFact = aircraftFact();
     const pl = kit.planning;
     $('facts').innerHTML = [
       sunFact('sun-today', `Sun · today ${fmtDay(d.today)}`, sun?.today),
@@ -102,6 +101,31 @@
       planRow('bushfire', 'Bush fire prone land', pl.bushfire, a => a.d_Category || `Category ${a.Category}`, 'not mapped as prone', 'RFS certified map · '),
       planRow('zoning', 'Zoning', pl.zoning, a => `${a.SYM_CODE} ${titleCase(a.LAY_CLASS)}`, 'no LEP zone mapped', `${esc(pl.zoning.rows[0]?.EPI_NAME || '')} · `),
     ].join('');
+  }
+  // Aircraft noise: the live Worker answer for this lot point (Sydney Airport ANEF 2039 + NSW plan maps), else what the kit stored.
+  // Neither answered → unknown, never "quiet".
+  let noise = null;
+  function loadNoise() {
+    if (REC || !kit.geocode) return;
+    fetch(`/api/hunt/noise?ll=${kit.geocode.lng},${kit.geocode.lat}`).then(r => r.ok ? r.json() : null).then(d => { if (d && d.aircraft !== undefined) { noise = d; renderFacts(); renderSources(); } }).catch(() => {});
+  }
+  function aircraftFact() {
+    const st = kit.aircraft || {}, a = noise ? noise.aircraft : storedAircraft(st), when = noise ? fmtDay(noise.checked) : fmtDate(st.wsa_anec?.fetched || kit.generated_at);
+    const k = '<div class="k">Aircraft noise (ANEF)</div>';
+    if (!a) return `<li class="fact unknown" data-k="aircraft" data-v="unknown">${k}<div class="v">unknown ${tag('unknown')}</div><div class="s">Sydney Airport ANEF 2039 and the NSW airport noise maps did not answer · ${when}</div></li>`;
+    if (a.hit) return `<li class="fact flag" data-k="aircraft" data-v="${esc(a.band || 'inside')}">${k}<div class="v">ANEF ${esc(a.band || '')}</div><div class="s">${esc(a.text)} · ${when}</div></li>`;
+    if (a.partial) return `<li class="fact unknown" data-k="aircraft" data-v="partial">${k}<div class="v">partly checked ${tag('unknown')}</div><div class="s">${esc(a.text)} · ${when}</div></li>`;
+    return `<li class="fact" data-k="aircraft" data-v="outside">${k}<div class="v">outside the contours</div><div class="s">${esc(a.text)} · ${when}</div></li>`;
+  }
+  // Kits built before 2026-11-17 stored only the NSW layer; the Sydney Airport answer is then unknown.
+  function storedAircraft(st) {
+    const w = st.wsa_anec || { ok: false }, s = st.sydney_anef && st.sydney_anef.ok ? st.sydney_anef : { ok: false };
+    const lep = w.ok && w.rows.length ? w.rows[0] : null, syd = s.ok && s.rows.length ? s.rows[0] : null;
+    if (syd) return { hit: true, band: syd.band, text: `Sydney Airport ANEF 2039 noise contour ${syd.band}` };
+    if (lep) return { hit: true, band: lep.ANEF_CODE, text: `${lep.EPI_NAME || 'NSW plan'} aircraft noise contour ${lep.ANEF_CODE}` };
+    if (w.ok && s.ok) return { hit: false, text: 'Outside the Sydney Airport ANEF 2039 and Western Sydney Airport noise contours (planes can still be heard outside them)' };
+    if (w.ok) return { hit: false, partial: true, text: 'Outside the Western Sydney Airport noise contours; Sydney Airport (Mascot) ANEF not checked for this page yet' };
+    return null;
   }
   function renderRent() {
     const r = kit.rent;
@@ -128,7 +152,8 @@
         ${li(k.planning.zoning.name, k.planning.zoning.url, k.planning.zoning.fetched)}
         ${li(k.planning.flood.name, k.planning.flood.url, k.planning.flood.fetched, 'only some councils’ flood maps are in this state layer, so “not in the layer” is not “won’t flood”')}
         ${li(k.planning.bushfire.name, k.planning.bushfire.url, k.planning.bushfire.fetched)}
-        ${li(k.aircraft.wsa_anec.name, k.aircraft.wsa_anec.url, k.aircraft.wsa_anec.fetched, esc(k.aircraft.sydney_anef.why))}
+        ${li(k.aircraft.wsa_anec.name, k.aircraft.wsa_anec.url, k.aircraft.wsa_anec.fetched)}
+        ${noise ? li(noise.sources.sydney_anef, noise.urls.sydney_anef, noise.checked + 'T00:00:00Z', 'checked live for this lot point; the endorsed map itself: <a href="' + esc(noise.urls.sydney_anef_pdf) + '" rel="noopener" target="_blank">Airservices PDF</a>') : k.aircraft.sydney_anef?.ok ? li(k.aircraft.sydney_anef.name, k.aircraft.sydney_anef.url, k.aircraft.sydney_anef.fetched) : `<li><b>Sydney Airport ANEF 2039</b> — not checked for this page yet (the live check did not answer).</li>`}
         ${k.rent ? `<li><b>Rents</b> — ${esc(k.rent.source)}; medians computed by SHOWHAUS from every lodgement in the postcode (data built ${fmtDate(k.rent.built)}).</li>` : ''}
       </ul>
       <p><b>Sun method.</b> NOAA solar position every 10 minutes, shadows cast on level ground by OpenStreetMap building footprints (no trees, no terrain, no fences). Ground sun is the median over ${k.ground.points.length} open-ground points on the lot. It is reported only when every building within ${K.NEAR_M} m of the lot has a mapped height (or mapped storeys); otherwise it reads "unknown".${ifEst(s.today)}${ifEst(s.winter)} Sun below 6° or shadows longer than 220 m count as uncertain, never as sun.</p>

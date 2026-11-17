@@ -6,7 +6,7 @@ import worker from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
 import { resetClaimsForTests } from '../src/claim.js';
 import { resetSuggestForTests } from '../src/suggest.js';
-import { parsePasted, summarise, resetHuntForTests, COMMENTS_PER_HOUR } from '../src/hunt.js';
+import { parsePasted, summarise, resetHuntForTests, COMMENTS_PER_HOUR, anefFromFile } from '../src/hunt.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 
@@ -25,6 +25,7 @@ function fakeFetch(url) {
   if (u.includes('/MapServer/229/')) return json({ features: [] });
   if (u.includes('/MapServer/230/')) return json({ features: [{ attributes: { LAY_CLASS: 'Flood Planning Area' } }] });
   if (u.includes('Protection/MapServer/2')) return json({ error: { message: 'down' } });
+  if (u.includes('ANEF2039/MapServer/')) return json({ features: u.includes('/MapServer/2/query') ? [{ attributes: { anef: 25 } }] : u.includes('/MapServer/3/query') ? [{ attributes: { anef: 20 } }] : [] });
   if (u.includes('VegStrata')) return json({ features: [{ attributes: { Canopy_pc: 0.176 } }] });
   return Promise.resolve(new Response('nope', { status: 404 }));
 }
@@ -52,7 +53,14 @@ test('summarise: a failed service is unknown, never "none"; hits and misses are 
   assert.equal(s.canopy.pct, 31); assert.equal(s.zoning.code, 'R2');
   assert.equal(summarise({ zoning: { ok: false }, bushfire: { ok: false }, flood: { ok: false }, anec: { ok: false }, canopy: { ok: true, rows: [{ Canopy_pc: 0 }] } }).canopy.pct, 0, 'a real zero is a number, not unknown');
   const clear = summarise({ zoning: { ok: true, rows: [] }, bushfire: { ok: true, rows: [] }, flood: { ok: true, rows: [] }, anec: { ok: true, rows: [] }, canopy: { ok: true, rows: [] } });
-  assert.match(clear.aircraft.text, /Sydney Airport \(Mascot\) noise is not checked/, 'no airport row is not a promise of quiet');
+  assert.match(clear.aircraft.text, /Mascot\) ANEF could not be checked/, 'Sydney Airport not answering is said, not hidden');
+  assert.equal(clear.aircraft.partial, true);
+  const both = summarise({ zoning: { ok: true, rows: [] }, bushfire: { ok: true, rows: [] }, flood: { ok: true, rows: [] }, anec: { ok: true, rows: [] }, sydney_anef: { ok: true, rows: [] }, canopy: { ok: true, rows: [] } });
+  assert.equal(both.aircraft.hit, false); assert.match(both.aircraft.text, /Outside the Sydney Airport ANEF 2039.*planes can still be heard/);
+  const syd = summarise({ zoning: { ok: true, rows: [] }, bushfire: { ok: true, rows: [] }, flood: { ok: true, rows: [] }, anec: { ok: false }, sydney_anef: { ok: true, rows: [{ band: '20–25', anef: 20 }] }, canopy: { ok: true, rows: [] } });
+  assert.equal(syd.aircraft.hit, true); assert.match(syd.aircraft.text, /20–25.*conditionally acceptable/);
+  const cess = summarise({ zoning: { ok: true, rows: [] }, bushfire: { ok: true, rows: [] }, flood: { ok: true, rows: [] }, anec: { ok: true, rows: [{ ANEF_CODE: '25 - 30', EPI_NAME: 'Cessnock Local Environmental Plan 2011' }] }, sydney_anef: { ok: true, rows: [] }, canopy: { ok: true, rows: [] } });
+  assert.match(cess.aircraft.text, /^Cessnock Local Environmental Plan 2011 aircraft noise contour 25 - 30/, 'a regional airport map is named, not called Western Sydney');
   assert.match(clear.flood.text, /some councils are not in it/);
 });
 
@@ -62,13 +70,32 @@ test('check: an address resolves through the NSW register and comes back with ch
   assert.equal(r.status, 200); const d = await r.json();
   assert.equal(d.address, '12 SMITH STREET BLACKTOWN'); assert.equal(d.postcode, '2148'); assert.equal(d.from, 'domain.com.au');
   assert.deepEqual(d.lngLat, [150.9061, -33.7713]);
-  assert.equal(d.checks.flood.hit, true); assert.equal(d.checks.bushfire.hit, false); assert.equal(d.checks.aircraft, null); assert.equal(d.checks.canopy.pct, 18);
+  assert.equal(d.checks.flood.hit, true); assert.equal(d.checks.bushfire.hit, false); assert.equal(d.checks.aircraft.hit, true); assert.equal(d.checks.aircraft.band, '25–30'); assert.match(d.checks.aircraft.text, /Sydney Airport ANEF 2039.*25–30.*unacceptable/); assert.equal(d.checks.canopy.pct, 18);
   assert.ok(Object.values(d.sources).every(Boolean));
   assert.ok(!calls.some(u => u.includes('domain.com.au')), 'the listing site itself is never fetched');
   const need = await (await get(env, '/api/hunt/check?q=' + encodeURIComponent('https://www.realestate.com.au/property-unit-nsw-parramatta-145123456'))).json();
   assert.equal(need.need, 'address'); assert.equal(need.suburb, 'Parramatta');
   const nope = await (await get(env, '/api/hunt/check?q=' + encodeURIComponent('Blacktown'))).json();
   assert.equal(nope.need, 'address'); assert.match(nope.error, /house or unit number/);
+});
+
+test('noise: a map point gets the Sydney Airport ANEF band and its sources; outside NSW is refused', async () => {
+  const env = makeEnv();
+  const d = await (await get(env, '/api/hunt/noise?ll=151.1655,-33.9165')).json();
+  assert.equal(d.aircraft.band, '25–30'); assert.match(d.sources.sydney_anef, /Airservices/); assert.match(d.urls.sydney_anef, /ANEF2039\/MapServer$/);
+  assert.equal((await get(env, '/api/hunt/noise?ll=0,0')).status, 400);
+});
+
+test('ANEF file: the highest band whose polygon holds the point; a hole is outside; outside every band is a clean miss', () => {
+  const sq = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+  const fc = { source: { fetched: '2026-11-18T00:00:00+00:00' }, features: [
+    { properties: { band: '20-25' }, geometry: { type: 'Polygon', coordinates: [sq(0, 0, 10, 10), sq(8, 8, 9, 9)] } },
+    { properties: { band: '30-35' }, geometry: { type: 'MultiPolygon', coordinates: [[sq(2, 2, 4, 4)]] } },
+  ] };
+  assert.deepEqual(anefFromFile(fc, [3, 3]).rows, [{ band: '30–35', anef: null }]);
+  assert.deepEqual(anefFromFile(fc, [6, 6]).rows, [{ band: '20–25', anef: null }]);
+  assert.deepEqual(anefFromFile(fc, [8.5, 8.5]).rows, [], 'inside a hole');
+  assert.equal(anefFromFile(fc, [20, 20]).ok, true);
 });
 
 test('board: share, read, only the sharer can change it, comments land on a real home', async () => {
