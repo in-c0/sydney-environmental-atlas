@@ -131,13 +131,24 @@ export function rentRows(rent) {
   return [row('all', 'All new leases'), row('units', 'Flats and units'), row('houses', 'Houses'), row('b1', '1 bedroom'), row('b2', '2 bedrooms'), row('b3', '3 bedrooms'), row('b4', '4+ bedrooms')];
 }
 
+// The one-line verdict never claims more than the checks: a flag is named, an unknown is named, "no flag" only for checks that answered.
+export function lede(F) {
+  const risk = F.filter(f => ['aircraft', 'flood', 'bushfire'].includes(f.k));
+  const flag = risk.filter(f => f.state === 'flag'), unk = risk.filter(f => f.state === 'unknown'), clear = risk.filter(f => f.state === 'clear');
+  const names = a => a.map(f => esc(f.label.toLowerCase())).join(' or ').replace(/ or ([^ ]+)$/, ' or $1');
+  const parts = [];
+  if (flag.length) parts.push(`<b>${flag.length} thing${flag.length > 1 ? 's' : ''} to look into:</b> ${flag.map(f => esc(f.label.toLowerCase())).join(', ')}.`);
+  if (clear.length) parts.push(`<b>No ${names(clear)} flag</b> in the NSW maps checked here.`);
+  if (unk.length) parts.push(`<b>${unk.map(f => esc(f.label)).join(' and ')}: not checked yet</b> — see below.`);
+  return parts.join(' ');
+}
 function renderPlace({ slug, where, checks, raw, pc, rent, L, walk, checked }) {
   const label = where.label, [street, suburbPart] = label.split(', ');
   const place = [pc.suburb || (suburbPart || '').replace(/ NSW$/, ''), 'NSW', pc.postcode].filter(Boolean).join(' ');
   const F = facts(checks, raw), R = rentRows(rent), flagged = F.filter(f => f.state === 'flag');
   const air = checks.aircraft;
   const title = `${street}, ${place} — flood, bush fire, aircraft noise, zoning, rent`;
-  const desc = `${street}, ${place}: ${F.filter(f => f.k !== 'canopy').map(f => `${f.label.toLowerCase()} ${f.state === 'unknown' ? 'unknown' : f.v.replace(/\s*\(.*?\)\s*/g, ' ').trim()}`).join('; ')}${R[0] && R[0].median ? `; median new lease in ${pc.postcode} ${weekly(R[0].median)}` : ''}. From NSW government data, each with its source.`.slice(0, 300);
+  const desc = `${street}, ${place}: ${F.filter(f => f.k !== 'canopy').map(f => `${f.label.toLowerCase()} ${f.state === 'unknown' ? 'not checked yet' : f.v.replace(/\s*\(.*?\)\s*/g, ' ').trim()}`).join('; ')}${R[0] && R[0].median ? `; median new lease in ${pc.postcode} ${weekly(R[0].median)}` : ''}. From NSW government data, each with its source.`.slice(0, 300);
   const q = encodeURIComponent(label);
   const ld = { '@context': 'https://schema.org', '@type': 'Place', name: label, address: { '@type': 'PostalAddress', streetAddress: street, addressLocality: pc.suburb || undefined, addressRegion: 'NSW', postalCode: pc.postcode || undefined, addressCountry: 'AU' }, geo: { '@type': 'GeoCoordinates', longitude: where.lngLat[0], latitude: where.lngLat[1] } };
   const factLi = f => `<li class="f ${f.state}" data-k="${f.k}" data-state="${f.state}"><b>${esc(f.label)}</b><span>${esc(f.v)}${f.state === 'unknown' ? ' <em class="tag">unknown</em>' : ''}</span><small>${esc(f.src)}</small></li>`;
@@ -147,13 +158,14 @@ function renderPlace({ slug, where, checks, raw, pc, rent, L, walk, checked }) {
 <header class="top"><a class="brand" href="/">SHOWHAUS</a><form class="go" action="/p/go" method="get" role="search"><input name="q" placeholder="Paste another address or listing link" aria-label="Another address or listing link" autocomplete="street-address"><button>Check</button></form></header>
 <main class="place">
   <h1>${esc(street)}<span>${esc(place)}</span></h1>
-  <p class="lede">${flagged.length ? `<b>${flagged.length} thing${flagged.length > 1 ? 's' : ''} to look into:</b> ${flagged.map(f => esc(f.label.toLowerCase())).join(', ')}.` : '<b>No flood, bush fire or aircraft-noise flag</b> in the NSW maps checked here.'} For renters and buyers alike — from NSW government data, checked ${esc(checked)}.</p>
+  <p class="lede">${lede(F)} For renters and buyers alike — from NSW government data, checked ${esc(checked)}.</p>
   <nav class="acts">
     <a class="btn main" href="/hunt/?q=${q}&src=place" data-cta="hunt">＋ Add to my shortlist</a>
     ${walk ? `<a class="btn" href="/walk/?p=${esc(walk.slug)}&src=place" data-cta="walk">▶ Walk it in 3D</a>` : `<a class="btn" href="/walk/?a=${q}&src=place" data-cta="walk-ask">Ask for a 3D walk of this home</a>`}
     <a class="btn" href="/?src=place" data-cta="map">Sydney rents map</a>
   </nav>
   <ul class="facts">${F.map(factLi).join('')}</ul>
+  ${!air || air.partial ? `<p class="note">Sydney Airport’s noise map could not be read for this page yet. You can check the address yourself on the official <a href="${SYD_ANEF_PDF}" rel="noopener">Sydney Airport ANEF 2039 map (Airservices, PDF)</a>: 20+ is where NSW planning starts to treat noise as an issue.</p>` : ''}
   ${air && air.hit && air.source === 'sydney_anef' ? `<p class="note">ANEF is the forecast yearly average of aircraft noise; it is what NSW planning uses. The endorsed map: <a href="${SYD_ANEF_PDF}" rel="noopener">Sydney Airport ANEF 2039 (Airservices)</a>.</p>` : ''}
   <section class="rent" aria-labelledby="rentH">
     <h2 id="rentH">Rent in ${pc.postcode ? 'postcode ' + esc(pc.postcode) : 'this area'}</h2>
@@ -244,9 +256,10 @@ async function tileSitemap(x, y, fetchImpl) {
 // ---------- responses ----------
 const text = (body, type, cache = 'public, max-age=86400', status = 200) => new Response(body, { status, headers: { 'content-type': type + '; charset=utf-8', 'cache-control': cache } });
 const html = (body, status = 200, cache = 'public, max-age=3600') => new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': status === 200 ? cache : 'public, max-age=600' } });
+export const CACHE_V = 2; // bump when the page template changes, so edge copies of the old one are not served
 // Edge cache for rendered pages: a crawler or a second visitor never re-asks the NSW services within the day.
 async function cached(request, ctx, ttl, make) {
-  const cache = typeof caches !== 'undefined' ? caches.default : null, key = new Request(new URL(request.url).origin + new URL(request.url).pathname, { method: 'GET' });
+  const cache = typeof caches !== 'undefined' ? caches.default : null, key = new Request(new URL(request.url).origin + new URL(request.url).pathname + '?v=' + CACHE_V, { method: 'GET' });
   if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
   const res = await make();
   if (cache && res.status === 200) {
