@@ -9,9 +9,18 @@ import { env as localEnv } from './showhaus-local-worker.mjs';
 const ctx = () => ({ waitUntil: () => {} });
 const REG = { '12 SMITH STREET BLACKTOWN': [150.9061, -33.7713], '4/17 FLOOD STREET CLOVELLY': [151.2627, -33.9116], '1 BOTANY ROAD MASCOT': [151.1872, -33.9230] };
 const calls = [];
-function fakeFetch(url) {
+function fakeFetch(url, init = {}) {
   const u = String(url); calls.push(u);
   const json = o => Promise.resolve(new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } }));
+  if (u.includes('maps.six.nsw.gov.au')) { // SIX Maps: addresses without geometry; points via returnExtentOnly; boxes by ids
+    if (init.method === 'POST') return json({ features: Object.keys(REG).map(a => ({ attributes: { address: a } })).concat([{ attributes: { address: 'LOT 5 NOWHERE' } }]) });
+    const sp = new URL(u).searchParams, where = sp.get('where') || '';
+    if (sp.get('returnIdsOnly') === 'true') return json({ objectIds: [3, 1, 2, 4] });
+    const eq = where.match(/^address = '(.*)'$/), like = where.match(/^address LIKE '(.*)%'$/);
+    const rows = Object.entries(REG).filter(([a]) => eq ? a === eq[1].replace(/''/g, "'") : like ? a.startsWith(like[1]) : false);
+    if (sp.get('returnExtentOnly') === 'true') return json(rows[0] ? { extent: { xmin: rows[0][1][0], xmax: rows[0][1][0], ymin: rows[0][1][1], ymax: rows[0][1][1] } } : { extent: { xmin: 'NaN' } });
+    return json({ features: rows.map(([a]) => ({ attributes: { address: a } })) });
+  }
   if (u.includes('NSW_Geocoded_Addressing_Theme')) {
     const sp = new URL(u).searchParams, where = sp.get('where') || '';
     if (sp.get('geometryType') === 'esriGeometryEnvelope') return json({ features: Object.keys(REG).map(a => ({ attributes: { address: a } })).concat([{ attributes: { address: 'LOT 5 NOWHERE' } }]) });
