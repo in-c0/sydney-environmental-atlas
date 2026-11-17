@@ -12,6 +12,7 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   // upgrade_interest is the demand signal for the photoreal tier while it has no price; upgrade_interest_cancel takes one vote back
   // (demand = interest − cancels).
   'walk_open', 'walk_room', 'upgrade_open', 'upgrade_interest', 'upgrade_interest_cancel',
+  'leave', // one per page view: props.secs visible, props.scroll deepest %
   'start_path', // homepage start screen: props.cta = walk | rent | builder | hunt
   'hunt_view', 'hunt_add', 'hunt_remove', // hunt board (dist/showhaus/hunt): props.kind = shared | own
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
@@ -41,6 +42,11 @@ function cleanProps(name, p = {}) {
   if (p.ref) { try { out.ref = new URL(p.ref).hostname.slice(0, 80); } catch { /* not a URL: drop */ } }
   if (p.postcode != null && /^\d{4}$/.test(String(p.postcode))) out.postcode = String(p.postcode); // area, not a person
   if (p.kit != null && /^[a-z0-9-]{3,80}$/.test(String(p.kit))) out.kit = String(p.kit); // listing-kit slug = a street address page, not a person
+  if (name === 'leave') { // dwell time: whole seconds (capped at 6 h) and deepest scroll %
+    const secs = Number(p.secs), scroll = Number(p.scroll);
+    if (Number.isFinite(secs) && secs >= 0) out.secs = Math.min(Math.round(secs), 21600);
+    if (Number.isFinite(scroll) && scroll >= 0) out.scroll = Math.min(Math.round(scroll), 100);
+  }
   return Object.keys(out).length ? out : undefined;
 }
 
