@@ -95,8 +95,9 @@ for (const [w, h] of VIEWPORTS) {
     brand: getComputedStyle(document.querySelector('.bar .brand')).fontFamily,
   }));
   check(`${tag} modern readable type is applied`, typography.body.includes('Inter') && typography.heading.includes('Manrope') && typography.brand.includes('Manrope'), JSON.stringify(typography));
-  // Start screen: four paths (walk, rents, will-my-furniture-fit, builders); the walk path leads with home posters.
-  check(`${tag} start screen offers walk, rents, arrange and builders`, await page.locator('#act0').isVisible() && await page.locator('#act0 .path[data-path]').count() === 4 && await page.locator('#pasteForm').isVisible()
+  // Start screen: the address paste box (→ /p/go) first, then four paths (walk, rents, will-my-furniture-fit, builders).
+  check(`${tag} start screen leads with the address paste box (→ /p/go), then walk, rents, arrange and builders`, await page.locator('#act0').isVisible() && await page.locator('#act0 .path[data-path]').count() === 4 && await page.locator('#pasteForm').isVisible()
+    && (await page.locator('#pasteForm').getAttribute('action')) === './p/go'
     && (await page.locator('#act0 [data-path="walk"]').getAttribute('href')).includes('walk/') && (await page.locator('#act0 [data-path="arrange"]').getAttribute('href')).includes('arrange/'));
   await noOverflow(page, `${tag} start`);
   if (shotsDir) { await mkdir(shotsDir, { recursive: true }); await page.screenshot({ path: `${shotsDir}/act0-${w}x${h}.png` }); }

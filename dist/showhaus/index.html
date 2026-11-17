@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SHOWHAUS · Walk the home, check the street</title>
-<meta name="description" content="Walk NSW home designs in 3D for free, before you visit. Then check the rents, sun and noise around any street — from public records, with sources.">
+<title>SHOWHAUS · Check any Sydney address before you sign</title>
+<meta name="description" content="Renting or buying in Sydney? Paste an address or a listing link: flood, bush fire, aircraft noise, zoning and what the area rents for, from NSW government data. Free, no sign-up.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&family=Manrope:wght@400;500;600;650;700;750&display=swap" rel="stylesheet">
@@ -51,9 +51,9 @@
 
 <aside class="explore-shell" aria-label="Explore Sydney housing">
   <div class="explore-head">
-    <p class="eyebrow">NSW HOMES, BEFORE YOU SIGN</p>
-    <h1>Walk the home. Check the street.</h1>
-    <p>Walk NSW home designs in 3D for free, then check rents, sun and noise around any street — from public records.</p>
+    <p class="eyebrow">RENTING OR BUYING IN SYDNEY</p>
+    <h1>Check any address before you sign.</h1>
+    <p>Flood, bush fire, aircraft noise, zoning and what the area rents for — from NSW government data. Free, no sign-up.</p>
   </div>
   <ol class="cuts" aria-label="Explore steps">
     <li data-cut="1"><button type="button">01<span> Where</span></button></li>
@@ -70,12 +70,13 @@
   </div>
   <div class="explore-stage">
 <section class="act" id="act0" aria-labelledby="q0">
-  <form class="paste" id="pasteForm" action="./hunt/" method="get" data-path="hunt">
-    <label for="pasteQ">Looking at a home? Paste the listing or address.</label>
-    <div><input id="pasteQ" name="q" type="text" maxlength="300" placeholder="domain.com.au link or 12 Smith St Blacktown"><input type="hidden" name="src" value="home-start"><button type="submit">Check</button></div>
-    <small>Rent vs the street, flood, bush fire, zoning and aircraft noise — saved to your shortlist, no sign-up.</small>
+  <form class="paste" id="pasteForm" action="./p/go" method="get" data-path="address">
+    <label for="pasteQ">Paste the address or the listing link</label>
+    <div><input id="pasteQ" name="q" type="text" maxlength="300" placeholder="12 Smith St Blacktown, or a domain.com.au link" autocomplete="street-address" enterkeyhint="go"><button type="submit">Check</button></div>
+    <small>Opens that address’s page. Save it to a shortlist you can share with your partner or flatmates.</small>
   </form>
-  <h2 id="q0">Or start here</h2>
+  <p class="paste-eg" id="pasteEg">Try one: <a href="./p/4-chalmers-crescent-mascot?src=home-eg" data-path="example">4 Chalmers Cres, Mascot</a></p>
+  <h2 id="q0">Or</h2>
   <a class="path path-walk" href="./walk/?src=home-start" data-path="walk">
     <span class="path-shots" id="pathShots" aria-hidden="true"></span>
     <b>Walk a home design <i>→</i></b>
