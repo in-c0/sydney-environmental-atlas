@@ -106,15 +106,17 @@ export function anefFromFile(fc, [lng, lat]) {
 }
 // Second choice: the contour set read through the AuRelay Durable Object in Oceania (src/au-relay.js), kept in memory.
 let RELAY_FC = null, RELAY_AT = 0;
+export let RELAY_LAST = null; // last relay outcome, shown by /api/hunt/noise so a failure is visible without logs
 async function relayFile(env) {
   if (RELAY_FC && Date.now() - RELAY_AT < 6 * 3600e3) return RELAY_FC;
   if (!env || !env.AU_RELAY) return null;
   try {
     const stub = env.AU_RELAY.get(env.AU_RELAY.idFromName('anef2039-oc'), { locationHint: 'oc' });
     const r = await stub.fetch('https://relay/anef2039', { signal: AbortSignal.timeout(25000) });
-    const fc = r.ok ? await r.json() : null;
-    if (fc && Array.isArray(fc.features) && fc.features.length) { RELAY_FC = fc; RELAY_AT = Date.now(); return fc; }
-  } catch (e) { console.error('au relay', e && e.message); }
+    const fc = await r.json().catch(() => null);
+    if (r.ok && fc && Array.isArray(fc.features) && fc.features.length) { RELAY_FC = fc; RELAY_AT = Date.now(); RELAY_LAST = { ok: true, features: fc.features.length, fetched: fc.source && fc.source.fetched }; return fc; }
+    RELAY_LAST = { ok: false, status: r.status, error: String((fc && fc.error) || '').slice(0, 200) };
+  } catch (e) { RELAY_LAST = { ok: false, error: String(e && e.message || e).slice(0, 200) }; console.error('au relay', e && e.message); }
   return null;
 }
 export async function sydneyAnef(fetchImpl, lngLat, env) {
@@ -209,7 +211,7 @@ export async function handleHunt(request, env, ctx) {
       if (!(await hit(d, 'hc:' + ip, CHECKS_PER_HOUR, 3600e3))) return j({ error: 'Too many checks this hour. Try again later.' }, 429);
       const lngLat = ll.map(n => Math.round(n * 1e5) / 1e5);
       const [anec, sydney_anef] = await Promise.all([point(fetchImpl, SVC.anec[1], SVC.anec[2], lngLat), sydneyAnef(fetchImpl, lngLat, env)]);
-      return j({ lngLat, aircraft: aircraft(anec, sydney_anef), raw: { anec, sydney_anef }, sources: { anec: SVC.anec[0], sydney_anef: SVC.sydney_anef[0] }, urls: { sydney_anef: SYD_ANEF, sydney_anef_pdf: SYD_ANEF_PDF, anec: SVC.anec[1].replace(/\/query$/, '') }, checked: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) }, 200, 'public, max-age=86400');
+      return j({ lngLat, aircraft: aircraft(anec, sydney_anef), raw: { anec, sydney_anef, relay: RELAY_LAST }, sources: { anec: SVC.anec[0], sydney_anef: SVC.sydney_anef[0] }, urls: { sydney_anef: SYD_ANEF, sydney_anef_pdf: SYD_ANEF_PDF, anec: SVC.anec[1].replace(/\/query$/, '') }, checked: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) }, 200, 'public, max-age=86400');
     }
 
     if (path === '/api/hunt/board' && request.method === 'GET') {
