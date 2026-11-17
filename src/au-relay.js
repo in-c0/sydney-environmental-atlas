@@ -15,6 +15,9 @@ export class AuRelay {
     if (want !== '/anef2039') return new Response('not found', { status: 404 });
     const kept = await this.ctx.storage.get('anef2039');
     if (kept && Date.now() - kept.at < MAX_AGE) return Response.json(kept.fc);
+    // Randwick answers this relay with 403 (2026-11-17): a refusal is respected, not retried per visitor — one try a day.
+    const failed = await this.ctx.storage.get('anef2039-failed');
+    if (failed && Date.now() - failed.at < 864e5) return kept ? Response.json(kept.fc) : Response.json({ error: failed.error, since: new Date(failed.at).toISOString() }, { status: 502 });
     try {
       const features = [];
       for (const [layer, band] of LAYERS) {
@@ -29,6 +32,7 @@ export class AuRelay {
       await this.ctx.storage.put('anef2039', { at: Date.now(), fc });
       return Response.json(fc);
     } catch (e) {
+      await this.ctx.storage.put('anef2039-failed', { at: Date.now(), error: String(e && e.message || e).slice(0, 200) });
       if (kept) return Response.json(kept.fc); // stale beats nothing; the fetched date is in the file
       return Response.json({ error: String(e && e.message || e) }, { status: 502 });
     }
