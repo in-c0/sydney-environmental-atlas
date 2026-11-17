@@ -158,7 +158,7 @@ export function buildRoom(THREE, plan, opts = {}) {
           if (c.chairs || it.t === 'desk') {
             const n = it.t === 'desk' ? 1 : Math.max(1, Math.floor(w / 0.6)), seats = [];
             for (let k = 0; k < n; k++) { const u = -W + w * (k + 0.5) / n; seats.push([u, D + 0.3, 1]); if (it.t !== 'desk') seats.push([u, -D - 0.3, -1]); }
-            if (it.t === 'desk') seats[0] = [0, off + dd / 2 + 0.3, 1];
+            if (it.t === 'desk') seats[0] = [0, off + dd / 2 - 0.05, 1]; /* chair tucked in: the desk's footprint is the desk */
             for (const [u, v, s] of seats) { B(u - 0.21, u + 0.21, v - 0.21, v + 0.21, 0.43, 0.47, '#4a423b'); B(u - 0.21, u + 0.21, v + s * 0.17, v + s * 0.21, 0.47, 0.88, '#4a423b'); }
           }
           break; }
