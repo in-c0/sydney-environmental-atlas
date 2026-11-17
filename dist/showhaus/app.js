@@ -25,7 +25,7 @@
   const RAMP = ['#f3e3c0', '#e8b974', '#d98a45', '#c4622d', '#9a3d22', '#5e2416'];
 
   const state = { display: store.get().displayV2 === 'visual' ? 'visual' : 'numbers', act: 0, place: null, mode: 'rent', maxRent: null, beds: new Set(), types: new Set(), wants: {}, commute: null, lens: 'map', point: null, tab: 'rent', pin: null };
-  let PRO = false; // set from the signed-in account (/api/auth/me → pro); everyone else sees Pro previewed blurred
+  const PRO = true; // nothing is sold: every view and every street detail is open to everyone (no Pro tier, no lock)
   let A = null, centroids = {}, R = null, P = null, suburbs = [], pcFC = null, map = null, mapReady = false, pcIndexOf = new Map();
   const evidence = new Map();
 
@@ -394,7 +394,7 @@
   function renderWants() {
     // Only choices we can actually check are offered: area measures that did not load are left out, not shown as dead chips.
     $('wants').innerHTML = Object.entries(C.WANTS).filter(([, w]) => w.scope === 'home' || A || w.custom).map(([k, w]) => {
-      const note = w.scope === 'home' ? `<small>checked at each home${PRO ? '' : ' · Pro'}</small>` : '';
+      const note = w.scope === 'home' ? '<small>checked at each home</small>' : '';
       return `<button type="button" data-want="${k}" aria-pressed="${!!state.wants[k]}">${esc(w.label)}${note}<span class="hair"></span></button>`;
     }).join('');
     $('commuteBox').hidden = !state.wants.commute;
@@ -576,9 +576,9 @@
     document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
     if (state.tab === 'rent') $('pane').innerHTML = paneRent(p);
     else {
-      // Advanced (Pro): the real evidence, previewed under a blur until Pro exists.
+      // Street details: the real evidence for this exact spot, open to everyone.
       const sections = [['Road', paneRoad], ['Sun', paneSun], ['Trees', paneTrees], ['Land records', paneLand], ['Planning', panePlan]];
-      $('pane').innerHTML = `<div class="pro-wrap"><div class="pro-body${PRO ? '' : ' locked'}" aria-hidden="${!PRO}">${sections.map(([t, f]) => `<section><h3>${t}</h3>${f(p, ev)}</section>`).join('')}</div>${PRO ? '' : proLock('Road distance, sun hours, tree cover, land records and planning overlays for this exact spot.')}</div>`;
+      $('pane').innerHTML = `<div class="pro-wrap"><div class="pro-body">${sections.map(([t, f]) => `<section><h3>${t}</h3>${f(p, ev)}</section>`).join('')}</div></div>`;
     }
     renderCompare();
   }
@@ -590,9 +590,6 @@
     window.SH && SH.track('feedback', { kind: 'wrong', cta: state.tab, ...(p.pci != null ? { postcode: String(R.postcodes[p.pci]).padStart(4, '0') } : {}) });
     flag.dataset.done = '1'; flag.textContent = 'Thanks — logged';
   });
-  function proLock(what) {
-    return `<div class="pro-lock" role="note"><b>SHOWHAUS Pro</b><p>${what}</p><span class="soon">Coming soon</span></div>`;
-  }
   function rentChart(byM) {
     // History timeline: monthly median (line), middle half (band), leases lodged (bars), every month labelled.
     const W = 320, H = 150, L = 34, Rr = 8, T = 14, B = 34, M = byM.length, xs = k => L + (W - L - Rr) * (M === 1 ? .5 : k / (M - 1));
@@ -722,10 +719,7 @@
   // ---------- lenses ----------
   function setLens(l) {
     state.lens = l; body.dataset.lens = l;
-    body.classList.toggle('pro-preview', !PRO && l !== 'map');
-    $('proLens').hidden = PRO || l === 'map';
-    if (!PRO && l !== 'map' && window.SH) SH.track('pro_interest', { lens: l });
-    if (!PRO && l !== 'map') $('proLensWhat').textContent = { '3d': 'Rent terrain in 3D — every postcode raised by its median rent.', strata: 'Every layer at the chosen place, stacked: rent, roads, trees, sun path, land records.', time: 'Twelve months of leases at a glance, by bedrooms.' }[l];
+    if (l !== 'map' && window.SH) SH.track('cta', { cta: 'lens', lens: l });
     document.querySelectorAll('#lenses button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lens === l)));
     if (!mapReady) return;
     const is3d = l === '3d';
@@ -856,14 +850,7 @@
   document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(Number(b.dataset.go))));
   document.querySelectorAll('.cuts button').forEach(b => b.addEventListener('click', () => go(Number(b.parentElement.dataset.cut))));
   $('wants').addEventListener('click', e => { const b = e.target.closest('button[data-want]'); if (b) toggleWant(b.dataset.want); });
-  $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; state.tab = b.dataset.tab; if (!PRO && b.dataset.tab === 'adv' && window.SH) SH.track('pro_interest', { lens: 'advanced' }); cue(); renderCard(); drawPick(); });
-  addEventListener('sh:account', () => {
-    const next = !!(window.SH && SH.pro);
-    if (next === PRO) return;
-    PRO = next; document.body.classList.toggle('pro', PRO);
-    if (R) { setLens(state.lens); renderCard(); drawPick(); } // before the records load, the first render already reads PRO
-    if (PRO) toast('Pro unlocked');
-  });
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; state.tab = b.dataset.tab; if (b.dataset.tab === 'adv' && window.SH) SH.track('cta', { cta: 'street_details' }); cue(); renderCard(); drawPick(); });
   $('lenses').addEventListener('click', e => { const b = e.target.closest('button[data-lens]'); if (b) setLens(b.dataset.lens); });
   $('selection').addEventListener('click', e => { const b = e.target.closest('button[data-tok]'); if (b) removeToken(b.dataset.tok); });
   $('pinA').addEventListener('click', () => {
@@ -872,8 +859,6 @@
   });
   $('commuteWhere').addEventListener('input', () => { clearTimeout(commuteTimer); commuteTimer = setTimeout(geocodeCommute, 450); });
   $('commuteKm').addEventListener('input', () => { if (state.commute) { state.commute.km = Number($('commuteKm').value); $('commuteKmLabel').textContent = state.commute.km + ' km'; applyFilter(); renderWants(); } else geocodeCommute(); });
-  $('proClose').addEventListener('click', () => setLens('map'));
-  if ($('proWant')) $('proWant').addEventListener('click', () => { if (window.SH && (SH.signedIn || !SH.canSignIn)) { SH.track('pro_interest', { cta: 'count_me_in' }); toast('Counted. Thank you.'); setLens('map'); return; } setLens('map'); window.SH && SH.openSignIn('pro'); });
   addEventListener('resize', () => { map?.resize(); syncMapPadding(); drawOverlay(); });
 
   // ---------- boot ----------

@@ -261,7 +261,7 @@ for (const [w, h] of VIEWPORTS) {
   const wantPts = monthsWithLeases(pci, [2], 1000);
   check(`${tag} rent history timeline has one point per month with leases`, pts === wantPts && pts > 0, `${pts} vs ${wantPts}`);
   await page.click('[data-tab="adv"]');
-  check(`${tag} Advanced is behind the Pro lock (blurred, labelled coming soon)`, await page.locator('#pane .pro-lock').isVisible() && await page.locator('#pane .pro-body.locked').count() === 1);
+  check(`${tag} street details are open: no lock, no blur, no Pro label anywhere`, await page.locator('#pane .pro-lock').count() === 0 && await page.locator('#pane .pro-body.locked').count() === 0 && await page.locator('#pane .pro-body section').count() === 5 && !(await page.locator('body').innerText()).match(/\bPro\b|Coming soon/));
   await page.click('#pinA');
   check(`${tag} compare says what it does`, (await page.locator('#pinA').innerText()) === 'Stop comparing' && (await page.locator('#compare').innerText()).includes('pinned'));
   await page.click('#pinA');
@@ -269,14 +269,14 @@ for (const [w, h] of VIEWPORTS) {
   // Dispatch its click here only to verify lens/state synchronisation at every viewport.
   await page.locator('[data-display="visual"]').dispatchEvent('click');
   await page.click('[data-lens="3d"]');
-  check(`${tag} 3D lens is a Pro preview`, await page.locator('#proLens').isVisible());
+  check(`${tag} 3D lens opens with no paywall`, await page.locator('#proLens').count() === 0 && await page.evaluate(() => window.SHOWHAUS.state.lens === '3d' && !document.body.classList.contains('pro-preview')));
   check(`${tag} non-map lens hides both marker layers`, await page.evaluate(() => {
     const m = window.SHOWHAUS.map;
     return m.getLayoutProperty('pc-nodes-v', 'visibility') === 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
   }));
-  await page.click('#proClose');
-  check(`${tag} closing the Pro preview returns to the map`, await page.locator('#proLens').isHidden() && await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
-  check(`${tag} returning from Pro preview restores the Visual selection`, await page.evaluate(() => {
+  await page.click('[data-lens="map"]');
+  check(`${tag} back to the map lens`, await page.evaluate(() => window.SHOWHAUS.state.lens === 'map'));
+  check(`${tag} returning from the 3D lens restores the Visual selection`, await page.evaluate(() => {
     const m = window.SHOWHAUS.map;
     return m.getLayoutProperty('pc-nodes-v', 'visibility') !== 'none' && m.getLayoutProperty('pc-nodes-n', 'visibility') === 'none';
   }));
