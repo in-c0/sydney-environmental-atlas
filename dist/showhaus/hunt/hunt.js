@@ -6,14 +6,19 @@
   const $ = id => document.getElementById(id);
   const C = window.ShowhausCore;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const qs = new URLSearchParams(location.search), shared = /^[a-z0-9]{10}$/.test(qs.get('b') || '') ? qs.get('b') : null;
+  const qs = new URLSearchParams(location.search), boardId = /^[a-z0-9]{10}$/.test(qs.get('b') || '') ? qs.get('b') : null;
+  const hashEdit = (location.hash.match(/[#&]e=([a-z0-9]{24})/) || [])[1] || null;
   const src = qs.get('src') || undefined;
   const track = (name, props = {}) => { try { window.SH && SH.track(name, { kind: shared ? 'shared' : 'own', utm_source: src, ...props }); } catch { /* never breaks the page */ } };
   const store = {
     get() { try { return JSON.parse(localStorage.getItem('sh_hunt') || '{}'); } catch { return {}; } },
     set(v) { try { localStorage.setItem('sh_hunt', JSON.stringify(v)); } catch { /* private mode: board lives for this visit */ } },
   };
-  let board = shared ? { items: [] } : { items: [], ...store.get() };
+  const local = store.get();
+  // Owner = has the edit token (from this browser, or from the #e= part of their own link). Anyone else reads and comments.
+  const ownEdit = boardId ? (hashEdit || (local.share && local.share.id === boardId ? local.share.edit : null)) : null;
+  const shared = boardId && !ownEdit ? boardId : null; // read-only view
+  let board = boardId ? { items: [] } : { items: [], ...local };
   let comments = [];
   const save = () => { if (!shared) { store.set(board); syncShared(); } };
 
@@ -76,6 +81,7 @@
     $('empty').hidden = n > 0;
     $('bar').hidden = n === 0 || !!shared;
     $('count').textContent = n === 1 ? '1 home' : `${n} homes`;
+    paintKeep();
     $('cards').innerHTML = board.items.map((it, i) => card(it, i, null)).join('');
     if (!n) return;
     const D = await data();
@@ -106,7 +112,7 @@
       const link = isLink ? raw : board.pendingLink || null;
       board.items.unshift({ key, label: d.label, lngLat: d.lngLat, postcode: d.postcode, beds, price, link, note: '', checks: d.checks, checked: d.checked });
       delete board.pendingLink; suburbHint = null;
-      save(); track('hunt_add', { cta: isLink ? 'link' : 'address' });
+      save(); track('hunt_add', { cta: isLink ? 'link' : 'address' }); ensureLink().then(paintKeep);
       msg.textContent = d.exact ? '' : `Closest match in the NSW address register: ${d.label}. Remove it if that’s not the home.`;
       $('q').value = ''; $('price').value = '';
       render();
@@ -144,6 +150,36 @@
     comments.push({ item: body.key, name: body.name, text: body.text }); render();
   });
 
+  // ---------- keep it: every board with a home gets its own link (portable across phones and computers) ----------
+  const ownerLink = () => board.share ? `${location.origin}${location.pathname}?b=${board.share.id}#e=${board.share.edit}` : null;
+  const partnerLink = () => board.share ? `${location.origin}${location.pathname}?b=${board.share.id}` : null;
+  async function ensureLink() {
+    if (shared || board.share || !board.items.length) return;
+    const r = await fetch('/api/hunt/board', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items: board.items }) }).catch(() => null);
+    const d = r && await r.json().catch(() => ({}));
+    if (!r || !r.ok || !d.id) return;
+    board.share = { id: d.id, edit: d.edit }; store.set(board);
+    try { history.replaceState(null, '', ownerLink()); } catch { /* old browsers: the link is still in Copy link */ }
+  }
+  function paintKeep() {
+    $('keep').hidden = !!shared || !board.items.length;
+    $('iosTip').hidden = !(/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone);
+  }
+  $('sendSelf').addEventListener('click', async () => {
+    await ensureLink(); const url = ownerLink(); if (!url) { $('keepMsg').textContent = 'Could not make a link right now. Try again in a moment.'; return; }
+    track('cta', { cta: 'keep:send' });
+    if (navigator.share) { try { await navigator.share({ title: 'My SHOWHAUS shortlist', text: 'The homes I’m looking at, checked:', url }); return; } catch { /* cancelled: fall through to email */ } }
+    location.href = `mailto:?subject=${encodeURIComponent('My SHOWHAUS shortlist')}&body=${encodeURIComponent('The homes I’m looking at, checked: ' + url)}`;
+  });
+  $('copyLink').addEventListener('click', async () => {
+    await ensureLink(); const url = ownerLink(); if (!url) return;
+    try { await navigator.clipboard.writeText(url); $('keepMsg').textContent = 'Link copied. Paste it into your notes or a message to yourself.'; } catch { $('keepMsg').textContent = url; }
+    track('cta', { cta: 'keep:copy' });
+  });
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('install').hidden = false; });
+  $('install').addEventListener('click', async () => { if (!installEvt) return; installEvt.prompt(); const c = await installEvt.userChoice.catch(() => null); track('cta', { cta: 'keep:install:' + (c && c.outcome) }); installEvt = null; $('install').hidden = true; });
+
   // ---------- share ----------
   let syncT = 0;
   function syncShared() {
@@ -159,7 +195,7 @@
       if (!r.ok) { m.textContent = d.error || 'Could not make a link right now.'; return; }
       board.share = { id: d.id, edit: d.edit }; store.set(board);
     }
-    const link = `${location.origin}${location.pathname}?b=${board.share.id}`;
+    const link = partnerLink();
     try { await navigator.clipboard.writeText(link); m.innerHTML = `Link copied: <a href="${esc(link)}">${esc(link)}</a> — anyone with it can see these homes and comment. It updates when you change your list.`; }
     catch { m.innerHTML = `Send this link: <a href="${esc(link)}">${esc(link)}</a>`; }
     track('cta', { cta: 'share' });
@@ -172,7 +208,13 @@
       if (d.error) { $('sharedTitle').textContent = 'This shortlist is not available.'; return; }
       board = { items: d.items || [] }; comments = d.comments || []; $('sharedTitle').textContent = d.title || 'Our shortlist'; render();
     });
+  } else if (boardId && ownEdit) {
+    fetch('/api/hunt/board?id=' + boardId).then(r => r.json()).then(d => {
+      if (d.error) { render(); return; }
+      board = { items: d.items || [], share: { id: boardId, edit: ownEdit } }; comments = d.comments || []; store.set(board); render();
+    }).catch(() => render());
   } else {
+    if (board.share) { try { history.replaceState(null, '', ownerLink() + (qs.get('q') ? '' : '')); } catch { /* ignore */ } }
     const pre = qs.get('q'); if (pre) { $('q').value = pre; setTimeout(() => $('add').requestSubmit(), 0); }
     render();
   }

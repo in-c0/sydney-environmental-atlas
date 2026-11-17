@@ -7,6 +7,10 @@
 <meta name="description" content="Paste any NSW listing link or address. Each home gets its rent, zoning, flood, bush fire and aircraft noise checked from NSW government data. Share the shortlist with your partner. No sign-up.">
 <meta property="og:title" content="Your shortlist, checked · SHOWHAUS">
 <link rel="stylesheet" href="./hunt.css">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#c8562a">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Shortlist">
 </head>
 <body>
 <main id="hunt">
@@ -17,7 +21,7 @@
 
   <section class="h-head" id="ownHead">
     <h1>Your shortlist, checked.</h1>
-    <p class="lead">Paste a listing link or an address for every home you’re looking at. Each one gets its rent, zoning, flood, bush fire and aircraft noise checked from NSW government data. Saved in this browser — no sign-up.</p>
+    <p class="lead">Paste a listing link or an address for every home you’re looking at. Each one gets its rent, zoning, flood, bush fire and aircraft noise checked from NSW government data. Your list gets its own link — no sign-up.</p>
   </section>
   <section class="h-head" id="sharedHead" hidden>
     <p class="eyebrow">Shared shortlist</p>
@@ -43,6 +47,17 @@
   </div>
   <p class="h-shared" id="shareMsg" aria-live="polite" hidden></p>
 
+  <section class="h-keep" id="keep" hidden aria-labelledby="keepH">
+    <h2 id="keepH">Don’t lose this list</h2>
+    <p>It lives at its own link — open it on any phone or computer.</p>
+    <div class="h-keep-row">
+      <button type="button" id="sendSelf">Send the link to myself</button>
+      <button type="button" id="install" hidden>Add to home screen</button>
+      <button type="button" id="copyLink" class="ghost">Copy link</button>
+    </div>
+    <p class="fine" id="keepMsg" aria-live="polite"></p>
+    <p class="fine" id="iosTip" hidden>On iPhone: tap <b>Share</b> → <b>Add to Home Screen</b> to keep it next to your other apps.</p>
+  </section>
   <div id="cards" class="h-cards"></div>
 
   <section class="h-empty" id="empty">
