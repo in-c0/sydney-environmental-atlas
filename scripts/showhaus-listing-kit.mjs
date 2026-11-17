@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
+import * as HUNT from '../src/hunt.js';
 
 const require = createRequire(import.meta.url);
 const C = require('../dist/showhaus/lib/core.js');
@@ -173,7 +174,7 @@ const SVC = {
   zoning: ['NSW Planning Portal — Land Zoning (EPI Primary Planning Layers)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/EPI_Primary_Planning_Layers/MapServer/2/query', 'SYM_CODE,LAY_CLASS,EPI_NAME'],
   bushfire: ['NSW Planning Portal — Bush Fire Prone Land (RFS certified)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Hazard/MapServer/229/query', 'd_Category,Category'],
   flood: ['NSW Planning Portal — Flood Planning (state layer)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Hazard/MapServer/230/query', 'LAY_CLASS,EPI_NAME,LGA_NAME'],
-  anec: ['NSW Planning — Airport noise (Western Sydney Airport ANEC, SEPP Precincts—Western Parkland City)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query', 'ANEF_CODE,EPI_NAME'],
+  anec: ['NSW Planning Portal — Airport Noise (LEP and SEPP maps; Western Sydney Airport ANEC)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query', 'ANEF_CODE,EPI_NAME'],
 };
 
 async function buildData() {
@@ -195,7 +196,7 @@ async function buildData() {
     listing_url: opt('--listing'),
     geocode: g, lot, buildings: b, roads: road, ground,
     canopy: s.canopy, planning: { zoning: s.zoning, bushfire: s.bushfire, flood: s.flood },
-    aircraft: { wsa_anec: s.anec, sydney_anef: { ok: false, status: 'not connected', why: 'Sydney Airport ANEF 2039 has no verified GIS service (published as Master Plan PDF figures only); shown as unknown, never as quiet.' } },
+    aircraft: { wsa_anec: s.anec, sydney_anef: { name: HUNT.SVC.sydney_anef[0], url: HUNT.SYD_ANEF, fetched: nowIso(), ...(await HUNT.sydneyAnef(fetch, [pt.lng, pt.lat])) } },
     rent: rent && { ...rent, suburbs: suburbsInPc, source: R.sources.map(x => `${x.name} (${x.licence})`).join(' · '), built: R.generatedAt },
   };
   const sunKit = K.groundSun(kit, today), sunWinter = K.groundSun(kit, today.slice(0, 4) + '-06-21');
