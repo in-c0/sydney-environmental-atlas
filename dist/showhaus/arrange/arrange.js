@@ -94,6 +94,7 @@ async function openEditor() {
     const m = room.match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/); if (!m) return failEditor('Room size not understood.');
     key = `sh_arr:r:${m[1]}x${m[2]}`; layout = cleanLayout(store.get(key)) || { room: { w: +m[1], d: +m[2] }, items: [] }; track('arrange_view', { kind: 'room' });
   }
+  if (!layout) return failEditor('This link is not complete. Open the layout from the link you were sent, or start your own.');
   if (layout.plan) {
     plan = await getJSON(`./plans/${layout.plan}.json`);
     if (!plan) return failEditor('This floor plan is not available.');
