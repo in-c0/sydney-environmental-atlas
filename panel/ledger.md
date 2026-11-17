@@ -81,3 +81,11 @@ Not yet checked.
 - Top gaps named: Sydney Airport (Mascot) ANEF noise (N2, R1, X1, E2), road noise and orientation (E1), sold prices for buyers (X1, E2), alerts so they don't paste each listing (R1, E2), a walk of the actual listing (R3, E2).
 - Predictions: (19) among visitors who add ≥2 homes, ≥40% return within 14 days; (20) ≥25% of boards with ≥2 homes get shared; (21) renters return more than buyers.
 - Check against: `hunt_add`, `hunt_share`, `hunt_comment`, `hunt_view` cta=returning. Result: open.
+
+## 2026-11-17 — the return test: what people do on day 5 and day 20 (12 personas, sonnet/haiku, live site)
+- Method change: instead of "would you come back?", each persona follows its own day 0 → day 5 → day 20 after arriving from a Reddit comment, with SHOWHAUS unable to contact them. Asked the old way an hour earlier, 4 of 12 said "several times a week"; walked through their days, 0 of 12 came back. **Stated return intent is worthless here; only the day-by-day walk is used from now on for retention.**
+- v1 (board only in the browser): saved the link 0/12, returned day 5 0/12, day 20 0/12. Why: no name recall, the board is trapped in one phone browser, nothing reminds them.
+- v2 (#54: board link in the address bar from the first home, send-to-myself / copy / add to home screen): saved or shared the link **11/12** (notes app, email to self, WhatsApp to partner, flatmate group chat); returned day 5 **0/12**, day 20 0/12 (2 "might, for one new address"). The link is now findable, but nobody looks for it.
+- What would have pulled them back, in their words: a message when one of their homes changes (rent drop, relisted, leased/sold, new flag) — 6/12; the checks delivered inside what they already use (REA alerts, their spreadsheet, the group chat) — 3/12; a walk of the actual listing — 2/12; a person to call — 1/12.
+- Decision: retention needs an outbound trigger. Blocked on a delivery channel: production has no mail route (`/api/auth/me` → `available:false`), and no web-push keys. Change data needs the listing crawl (CVF #604, first run 2026-11-18 03:45) or the Domain API.
+- Prediction (22): once alerts exist, day-5 return among people who saved the link > 25%; without them ≤ 5%.
