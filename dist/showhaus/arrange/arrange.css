@@ -109,3 +109,13 @@ h1 { font: 700 clamp(32px, 7vw, 54px)/1.04 Georgia, serif; margin: 0 0 12px; let
   #tray { grid-column: 2; grid-row: 4; border: 0; }
   .palette { display: flex; flex-wrap: wrap; overflow: visible; }
 }
+
+.remind { margin: 6px 0 2px; border-radius: 10px; background: var(--paper2); font-size: 13.5px; }
+.remind summary { cursor: pointer; padding: 8px 12px; font-weight: 600; list-style: none; }
+.remind summary::-webkit-details-marker { display: none; }
+.remind summary::before { content: '\1F4C5  '; }
+.remind .rbody { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 12px 10px; }
+.remind input[type=date] { border: 1px solid #cfc3ab; background: #fff; border-radius: 10px; padding: 8px 9px; font: inherit; }
+.remind button, .remind .btn { border: 0; border-radius: 10px; padding: 9px 13px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+.remind .btn { background: #fff; color: var(--ink); border: 1px solid #cfc3ab; }
+.remind .msg { flex: 1 0 100%; margin: 0; font-size: 12px; color: var(--ink2); }

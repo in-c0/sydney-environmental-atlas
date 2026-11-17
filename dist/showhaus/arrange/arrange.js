@@ -289,20 +289,25 @@ function wire() {
   $('reset').onclick = () => { items = planItems.filter(i => !i.fixed).map(i => ({ ...i, id: newId() })); sel = null; changed(); };
   $('reset').hidden = !planItems.some(i => !i.fixed);
   $('v2d').onclick = () => setMode('2d'); $('v3d').onclick = () => setMode('3d');
+  $('remindRow').addEventListener('toggle', () => { if ($('remindRow').open) track('arrange_remind', { cta: 'open' }); });
+  $('remind').onclick = remind; $('selfWa').addEventListener('click', () => track('arrange_remind', { cta: 'wa-self' }));
   $('share').onclick = share; $('shareX').onclick = () => { $('shareBox').hidden = true; };
   $('shareBox').addEventListener('pointerdown', e => { if (e.target === $('shareBox')) $('shareBox').hidden = true; });
   $('copy').onclick = async () => { try { await navigator.clipboard.writeText($('shareUrl').value); say($('shareMsg'), 'Copied.', 'ok'); } catch { $('shareUrl').select(); say($('shareMsg'), 'Select and copy the link above.'); } track('cta', { cta: 'arrange-copy-link' }); };
 }
 
 // ------------------------------------------------------------------ share (no sign-up): ?b=<id>, and #e=<edit> for the maker
-async function share() {
+async function ensureBoard() {
+  if (board && owner) return true;
   const layout = { plan: plan.slug || null, room: plan.slug ? null : { w: bounds(plan.outline)[2], d: bounds(plan.outline)[3] }, items: items.map(({ id, ...i }) => i), title: $('eName').textContent };
-  if (!board || !owner) {
-    $('share').disabled = true; const r = await post('/api/arrange/board', { layout }); $('share').disabled = false;
-    if (!r.ok) { $('status').textContent = r.data.error || 'Could not make a link. Try again.'; return; }
-    board = { id: r.data.id, edit: r.data.edit }; owner = true; store.set('sh_arr_edit:' + board.id, board.edit); key = 'sh_arr:b:' + board.id;
-    history.replaceState(null, '', `./?b=${board.id}#e=${board.edit}`); banner(); save();
-  }
+  $('share').disabled = true; const r = await post('/api/arrange/board', { layout }); $('share').disabled = false;
+  if (!r.ok) { $('status').textContent = r.data.error || 'Could not make a link. Try again.'; return false; }
+  board = { id: r.data.id, edit: r.data.edit }; owner = true; store.set('sh_arr_edit:' + board.id, board.edit); key = 'sh_arr:b:' + board.id;
+  history.replaceState(null, '', `./?b=${board.id}#e=${board.edit}`); banner(); save();
+  return true;
+}
+async function share() {
+  if (!(await ensureBoard())) return;
   const url = `${location.origin}/arrange/?b=${board.id}`;
   $('shareUrl').value = url;
   const text = `Here’s how our furniture fits — ${$('eName').textContent}: ${url}`;
@@ -313,6 +318,34 @@ async function share() {
 async function fork() {
   board = null; owner = false; track('arrange_copy');
   await share();
+}
+
+// ------------------------------------------------------------------ come back on the day (no account): a calendar file + a note to self
+// The 21-day walk panel (2026-11-17): 0/12 came back because of anything SHOWHAUS sent; the ask was "bring my layout back before moving day".
+export function icsFor({ date, title, url, now = new Date() }) {
+  const d = date.replace(/-/g, ''), next = new Date(Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10) + 1)).toISOString().slice(0, 10).replace(/-/g, '');
+  const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const esc = s => String(s).replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
+  const alarm = (t, what) => ['BEGIN:VALARM', 'ACTION:DISPLAY', `TRIGGER:${t}`, `DESCRIPTION:${esc(what)}`, 'END:VALARM'];
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SHOWHAUS//arrange//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+    `UID:arrange-${d}-${Math.abs([...url].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))}@showhaus.app`, `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${next}`, `SUMMARY:${esc('Moving day — check your furniture layout')}`,
+    `DESCRIPTION:${esc(`Your layout for ${title}: ${url}`)}`, `URL:${url}`,
+    ...alarm('-P3D', 'Moving in 3 days — does everything still fit? ' + url), ...alarm('-PT15H', 'Tomorrow: your furniture layout ' + url),
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n') + '\r\n';
+}
+async function remind() {
+  const date = $('moveDate').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { say($('remindMsg'), 'Pick the day first.'); $('moveDate').focus(); return; }
+  if (!(await ensureBoard())) return;
+  const url = `${location.origin}/arrange/?b=${board.id}#e=${board.edit}`;
+  const blob = new Blob([icsFor({ date, title: $('eName').textContent, url })], { type: 'text/calendar' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'moving-day-layout.ics'; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  $('selfWa').href = 'https://wa.me/?text=' + encodeURIComponent(`My furniture layout (keep this, it opens on any phone): ${url}`); $('selfWa').hidden = false;
+  say($('remindMsg'), 'Calendar file ready — open it to add the reminders. The link inside opens this layout on any phone.', 'ok');
+  const days = Math.round((Date.parse(date) - Date.now()) / 864e5);
+  track('arrange_remind', { cta: 'ics', kind: days < 0 ? 'past' : days <= 7 ? '0-7d' : days <= 30 ? '8-30d' : '30d+' });
 }
 
 // ------------------------------------------------------------------ 3D: built here from the plan, no bake

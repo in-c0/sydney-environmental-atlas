@@ -1,0 +1,13 @@
+# 2026-11-17 arrange 21-day walk, live site (no reminder). Condensed: RETURNS / TRIGGER per persona (full day logs in the session transcript).
+A1 sonnet: none / none — "a phone alert a few days before moving: your sofa layout"
+A2 haiku: D1 (partner opened shared WhatsApp link), D21 (Safari history) — "the layout link popping back into our WhatsApp around exchange and move"
+A3 sonnet: none / none — multi-room plan with stairs and door swings
+A4 haiku: D7 (Safari history → Reddit thread) — "my villa plan already in the page"
+A5 sonnet: none / none — "a heads-up the day before with my room's result"
+A6 haiku: D21 (browser history; had to re-enter the room) — "a reminder near moving day that opens my saved layout"
+V1 sonnet: D21 hedged (history, by chance) — "tell me my listing plan is ready; send this link to buyers"
+V2 haiku: D7 (Google search again) — "the link inside the viewing-enquiry text"
+V3 sonnet: none / none — "plan PDF → link ready in hours, paste into the ad"
+V4 haiku: D7 searched, did not open page — "link already in my reply to the tenant"
+O1 sonnet: none / none — export image/PDF and the layout coming back to me
+O2 haiku: D7 (customer asked on WhatsApp; same phone browser) — "the layout link arriving back in the customer chat"
