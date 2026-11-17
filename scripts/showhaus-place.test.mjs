@@ -100,6 +100,13 @@ test('sitemaps: index of Sydney tiles, a tile lists register addresses only, rob
   assert.match(await (await get(e, '/robots.txt')).text(), /Sitemap: https:\/\/showhaus.app\/sitemap.xml/);
 });
 
+test('lede: never says "no aircraft-noise flag" when aircraft noise was not checked', async () => {
+  const { lede } = await import('../src/place.js');
+  const t = lede([{ k: 'aircraft', label: 'Aircraft noise', state: 'unknown' }, { k: 'flood', label: 'Flood', state: 'clear' }, { k: 'bushfire', label: 'Bush fire', state: 'clear' }]);
+  assert.doesNotMatch(t, /aircraft-noise flag|aircraft noise flag/i); assert.match(t, /No flood or bush fire flag/); assert.match(t, /Aircraft noise: not checked yet/);
+  assert.match(lede([{ k: 'aircraft', label: 'Aircraft noise', state: 'flag' }, { k: 'flood', label: 'Flood', state: 'clear' }]), /1 thing to look into:<\/b> aircraft noise\. <b>No flood flag/);
+});
+
 test('rent rows: fewer than 10 leases never shows a median', () => {
   const rows = rentRows({ all: [120, 700, 600, 800], b4: [7, 1500, 1400, 1600] });
   assert.equal(rows[0].median, 700); assert.equal(rows.find(r => r.key === 'b4').median, null); assert.equal(rows.find(r => r.key === 'houses').n, 0);

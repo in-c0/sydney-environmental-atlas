@@ -884,7 +884,8 @@
   setDisplay(state.display);
   // Start screen (act 0): walk a home, check a suburb, or builders. Tapping a postcode on the map also starts the rent flow.
   const startAct = () => 0;
-  $('pasteForm').addEventListener('submit', e => { if (!$('pasteQ').value.trim()) { e.preventDefault(); location.href = './hunt/?src=home-start'; } window.SH && SH.track && SH.track('start_path', { cta: 'hunt' }); });
+  $('pasteForm').addEventListener('submit', e => { if (!$('pasteQ').value.trim()) { e.preventDefault(); $('pasteQ').focus(); return; } window.SH && SH.track && SH.track('start_path', { cta: 'address' }); });
+  if ($('pasteEg')) $('pasteEg').addEventListener('click', e => { if (e.target.closest('a')) window.SH && SH.track && SH.track('start_path', { cta: 'example' }); });
   document.querySelectorAll('#act0 .path[data-path]').forEach(el => el.addEventListener('click', () => {
     const cta = el.dataset.path; window.SH && SH.track && SH.track('start_path', { cta });
     if (cta === 'rent') go(1);
