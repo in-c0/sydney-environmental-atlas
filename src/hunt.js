@@ -79,8 +79,38 @@ async function point(fetchImpl, url, fields, [lng, lat]) {
     return { ok: true, rows: (d.features || []).map(f => f.attributes || {}) };
   } catch { return { ok: false }; }
 }
-// Sydney Airport ANEF 2039: one query per band; the highest band the point falls in. Any band failing = unknown.
-export async function sydneyAnef(fetchImpl, lngLat) {
+// Sydney Airport ANEF 2039. First choice: the vendored copy (dist/showhaus/data/anef2039-sydney.json, fetched monthly
+// from Randwick's GIS on an Australian connection by CVF cvf/anef_fetch.py), checked point-in-polygon here. Randwick's
+// server resets connections from outside Australia, so the live query below only answers when this Worker runs in AU.
+let ANEF_FILE;
+async function anefFile(env) {
+  if (ANEF_FILE !== undefined) return ANEF_FILE;
+  try {
+    const r = env && env.ASSETS ? await env.ASSETS.fetch(new Request('https://showhaus.app/showhaus/data/anef2039-sydney.json')) : null;
+    ANEF_FILE = r && r.ok ? await r.json() : null;
+  } catch { ANEF_FILE = null; }
+  return ANEF_FILE;
+}
+export function resetAnefForTests() { ANEF_FILE = undefined; }
+const inRing = (x, y, ring) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+const inPoly = (x, y, rings) => inRing(x, y, rings[0]) && !rings.slice(1).some(h => inRing(x, y, h));
+export function anefFromFile(fc, [lng, lat]) {
+  const order = SYD_ANEF_LAYERS.map(([, b]) => b), hits = new Set();
+  for (const f of fc.features || []) {
+    const g = f.geometry || {}, band = String((f.properties || {}).band || '').replace('-', '–');
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    if (polys.some(r => inPoly(lng, lat, r))) hits.add(band);
+  }
+  const best = order.find(b => hits.has(b));
+  return { ok: true, file: true, fetched: fc.source && fc.source.fetched || null, rows: best ? [{ band: best, anef: null }] : [] };
+}
+export async function sydneyAnef(fetchImpl, lngLat, env) {
+  const fc = await anefFile(env);
+  if (fc && Array.isArray(fc.features) && fc.features.length) return anefFromFile(fc, lngLat);
+  return sydneyAnefLive(fetchImpl, lngLat);
+}
+// Live: one query per band; the highest band the point falls in. Any band failing = unknown.
+export async function sydneyAnefLive(fetchImpl, lngLat) {
   const rs = await Promise.all(SYD_ANEF_LAYERS.map(([id]) => point(fetchImpl, `${SYD_ANEF}/${id}/query`, 'anef', lngLat)));
   if (rs.some(r => !r.ok)) return { ok: false };
   const i = rs.findIndex(r => r.rows.length);
@@ -91,8 +121,8 @@ export function anefMeaning(band) {
   if (band === '20–25') return 'AS 2021 calls a new house here "conditionally acceptable" (noise insulation expected)';
   return 'AS 2021 calls a new house here "unacceptable"';
 }
-export async function checkPoint(fetchImpl, lngLat) {
-  const entries = await Promise.all(Object.entries(SVC).map(async ([k, [, u, f]]) => [k, k === 'sydney_anef' ? await sydneyAnef(fetchImpl, lngLat) : await point(fetchImpl, u, f, lngLat)]));
+export async function checkPoint(fetchImpl, lngLat, env) {
+  const entries = await Promise.all(Object.entries(SVC).map(async ([k, [, u, f]]) => [k, k === 'sydney_anef' ? await sydneyAnef(fetchImpl, lngLat, env) : await point(fetchImpl, u, f, lngLat)]));
   return Object.fromEntries(entries);
 }
 
@@ -147,7 +177,7 @@ export async function handleHunt(request, env, ctx) {
       if (!(await hit(d, 'hc:' + ip, CHECKS_PER_HOUR, 3600e3))) return j({ error: 'Too many checks this hour. Try again later.' }, 429);
       const where = await resolve(parsed, fetchImpl);
       if (!where) return j({ need: 'address', error: 'That address is not in the NSW address register. Check the spelling, or try the street without the unit.' });
-      const raw = await checkPoint(fetchImpl, where.lngLat);
+      const raw = await checkPoint(fetchImpl, where.lngLat, env);
       const body = {
         address: where.address, label: where.label || prettyAddress(where.address), lngLat: where.lngLat, exact: where.exact,
         postcode: parsed.postcode || null, from: parsed.link || null,
@@ -165,7 +195,7 @@ export async function handleHunt(request, env, ctx) {
       if (ll.length !== 2 || !inNSW(ll[0], ll[1])) return j({ error: 'll=lng,lat inside NSW' }, 400);
       if (!(await hit(d, 'hc:' + ip, CHECKS_PER_HOUR, 3600e3))) return j({ error: 'Too many checks this hour. Try again later.' }, 429);
       const lngLat = ll.map(n => Math.round(n * 1e5) / 1e5);
-      const [anec, sydney_anef] = await Promise.all([point(fetchImpl, SVC.anec[1], SVC.anec[2], lngLat), sydneyAnef(fetchImpl, lngLat)]);
+      const [anec, sydney_anef] = await Promise.all([point(fetchImpl, SVC.anec[1], SVC.anec[2], lngLat), sydneyAnef(fetchImpl, lngLat, env)]);
       return j({ lngLat, aircraft: aircraft(anec, sydney_anef), raw: { anec, sydney_anef }, sources: { anec: SVC.anec[0], sydney_anef: SVC.sydney_anef[0] }, urls: { sydney_anef: SYD_ANEF, sydney_anef_pdf: SYD_ANEF_PDF, anec: SVC.anec[1].replace(/\/query$/, '') }, checked: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) }, 200, 'public, max-age=86400');
     }
 
