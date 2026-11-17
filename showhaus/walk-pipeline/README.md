@@ -50,6 +50,8 @@ in the JSON and listed under `assumptions` (the page shows them).
 | `outdoor` | `{"rect": [x0, y0, x1, y1], "roof": 2.7}`: a covered deck. A slider that opens onto it becomes a doorway you can walk through. |
 | `finishes` | `floor`: `oak` \| `tile` \| `concrete` \| `carpet`; `wall`, `cabinet`, `stone`, `splash`: `[r, g, b]`. This is where a claimant's real finishes go. |
 | `items` | `{"type", "at": [x, y], "rot": 0 \| 90 \| 180 \| 270, …}`. `at` is the footprint centre; `rot` 0 = back to the south, facing north. Types: `kitchen_run`, `island`, `tall`, `fridge`, `dining`, `sofa`, `armchair`, `coffee_table`, `rug`, `tv_unit`, `art`, `plant`, `floor_lamp`, `pendant`, `bed`, `bedside`, `desk`, `outdoor_table`, `box`. `kitchen_run` takes `sink`, `sink_at`, `cooktop` and `window_gap: [u0, u1]` (local x, no splash or overheads there, so a window over the sink stays open); `island` takes `sink: false` when the plan's island is a plain bench. |
+| `walls` | Internal walls (multi-room plans): `{"from": [x, y], "to": [x, y], "t": 0.09, "doors": [{"a", "b", "head", "swing"}]}`, horizontal or vertical, inside the outline. `a..b` is the absolute x (horizontal wall) or y (vertical wall) of a doorway; doorways are open so you can walk between rooms (`swing` ±1 only draws the arc on the arrange plan). They block walking, get a header above each doorway, and show on both mini plans. |
+| `spaces` | Room labels `{"name": "Bed 1", "at": [x, y]}` for the arrange plan and the walk's mini plan. |
 | `views` | `{"name", "pos": [x, y], "look": [x, y], "pitch"}`: the room chips. A view standing in a wall or an object is refused. |
 
 `check` refuses a plan that is not rectilinear, has an opening that does not fit its wall or rises above the ceiling,
@@ -67,7 +69,7 @@ places an item outside the room, puts a camera inside something, or lists no ass
 
 - A full-resolution Avalon bake with `walkgen.py` (the live Avalon still uses the `avalon.py` bake, which its photos and clips are aligned to).
 - Reading a floor plan image into the JSON. That step is still done by a person or an agent with the plan in front of it.
-- Rooms that are not one rectilinear space: internal walls, curves, stairs, more than one level.
+- Curves, stairs and more than one level. (Internal walls and several rooms inside one rectilinear outline: `walls`, `spaces`, since 17 Nov 2026; `plans/fixture-apartment.plan.json` is the invented test plan.)
 - Reading the plan is done by the nightly scheduled session (an agent with the plan image in front of it), not by code.
 
 ## Live homes built with walkgen
@@ -79,3 +81,10 @@ places an item outside the room, puts a camera inside something, or lists no ass
 - Base: `/api/ops/summary` → `queue.base`, taken nightly (see the repo CLAUDE.md). Photoreal: `scripts/showhaus-photoreal-queue.mjs`.
 
 The builder's plan image is theirs and is not stored here; the JSON records where it came from.
+
+## Arrange (no bake)
+
+`node scripts/showhaus-arrange-plans.mjs` copies the plans listed in its `PUBLISH` array to `dist/showhaus/arrange/plans/` and
+writes the index. The arrange page (`showhaus.app/arrange/?p=<slug>`) builds the room in the browser from that JSON
+(`dist/showhaus/walk/plan-core.js` geometry, `plan-room.js` three.js scene: hemisphere + sun light, contact shadows) — a plan
+is usable there the moment its JSON passes `check`, long before (or without) a Cycles bake.

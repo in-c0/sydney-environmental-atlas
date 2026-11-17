@@ -1,35 +1,216 @@
 {
   "slug": "fixture-studio",
-  "name": "Fixture studio (test only)",
+  "name": "Sample studio (invented plan)",
   "by": "SHOWHAUS",
   "type": "Test fixture",
-  "rooms": "Living · Kitchenette · Bed · Deck",
+  "rooms": "Living \u00b7 Kitchenette \u00b7 Bed \u00b7 Deck",
   "source": "estimate",
-  "assumptions": ["Invented plan used to test the builder. It is not a real home and is never published."],
-  "outline": [[0, 0], [7, 0], [7, 4], [4, 4], [4, 7], [0, 7]],
-  "ceiling": { "type": "flat", "h": 2.7 },
-  "openings": [
-    { "edge": 0, "type": "window", "a": 1.0, "b": 3.0, "sill": 0.9, "head": 2.1 },
-    { "edge": 1, "type": "slider", "a": 0.6, "b": 3.2, "head": 2.3 },
-    { "edge": 4, "type": "window", "a": 1.0, "b": 3.0, "sill": 0.9, "head": 2.1 },
-    { "edge": 5, "type": "door", "a": 3.4, "b": 4.3, "head": 2.1 }
+  "assumptions": [
+    "Invented plan used to test the builder and to show how arranging works. It is not a real home."
   ],
-  "outdoor": [{ "rect": [7.11, 0.2, 10.0, 3.8], "roof": 2.6 }],
-  "finishes": { "floor": "tile", "cabinet": [0.20, 0.26, 0.24], "stone": [0.86, 0.85, 0.82] },
+  "outline": [
+    [
+      0,
+      0
+    ],
+    [
+      7,
+      0
+    ],
+    [
+      7,
+      4
+    ],
+    [
+      4,
+      4
+    ],
+    [
+      4,
+      7
+    ],
+    [
+      0,
+      7
+    ]
+  ],
+  "ceiling": {
+    "type": "flat",
+    "h": 2.7
+  },
+  "openings": [
+    {
+      "edge": 0,
+      "type": "window",
+      "a": 1.0,
+      "b": 3.0,
+      "sill": 0.9,
+      "head": 2.1
+    },
+    {
+      "edge": 1,
+      "type": "slider",
+      "a": 0.6,
+      "b": 3.2,
+      "head": 2.3
+    },
+    {
+      "edge": 4,
+      "type": "window",
+      "a": 1.0,
+      "b": 3.0,
+      "sill": 0.9,
+      "head": 2.1
+    },
+    {
+      "edge": 5,
+      "type": "door",
+      "a": 3.4,
+      "b": 4.3,
+      "head": 2.1
+    }
+  ],
+  "outdoor": [
+    {
+      "rect": [
+        7.11,
+        0.2,
+        10.0,
+        3.8
+      ],
+      "roof": 2.6
+    }
+  ],
+  "finishes": {
+    "floor": "tile",
+    "cabinet": [
+      0.2,
+      0.26,
+      0.24
+    ],
+    "stone": [
+      0.86,
+      0.85,
+      0.82
+    ]
+  },
   "items": [
-    { "type": "kitchen_run", "at": [5.3, 0.325], "rot": 0, "len": 2.4, "sink": true, "cooktop_at": -0.5, "sink_at": 0.6 },
-    { "type": "sofa", "at": [0.5, 1.8], "rot": 270, "len": 2.2 },
-    { "type": "coffee_table", "at": [2.0, 1.8] },
-    { "type": "tv_unit", "at": [5.5, 3.78], "rot": 180, "len": 1.8 },
-    { "type": "bed", "at": [2.0, 5.94], "rot": 180, "size": "queen", "throw": "rust" },
-    { "type": "bedside", "at": [0.9, 6.78], "rot": 180 },
-    { "type": "bedside", "at": [3.1, 6.78], "rot": 180 },
-    { "type": "pendant", "at": [2.0, 1.8] },
-    { "type": "outdoor_table", "at": [8.6, 2.0], "rot": 90, "len": 1.6 }
+    {
+      "type": "kitchen_run",
+      "at": [
+        5.3,
+        0.325
+      ],
+      "rot": 0,
+      "len": 2.4,
+      "sink": true,
+      "cooktop_at": -0.5,
+      "sink_at": 0.6
+    },
+    {
+      "type": "sofa",
+      "at": [
+        0.5,
+        1.8
+      ],
+      "rot": 270,
+      "len": 2.2
+    },
+    {
+      "type": "coffee_table",
+      "at": [
+        2.0,
+        1.8
+      ]
+    },
+    {
+      "type": "tv_unit",
+      "at": [
+        5.5,
+        3.78
+      ],
+      "rot": 180,
+      "len": 1.8
+    },
+    {
+      "type": "bed",
+      "at": [
+        2.0,
+        5.94
+      ],
+      "rot": 180,
+      "size": "queen",
+      "throw": "rust"
+    },
+    {
+      "type": "bedside",
+      "at": [
+        0.9,
+        6.78
+      ],
+      "rot": 180
+    },
+    {
+      "type": "bedside",
+      "at": [
+        3.1,
+        6.78
+      ],
+      "rot": 180
+    },
+    {
+      "type": "pendant",
+      "at": [
+        2.0,
+        1.8
+      ]
+    },
+    {
+      "type": "outdoor_table",
+      "at": [
+        8.6,
+        2.0
+      ],
+      "rot": 90,
+      "len": 1.6
+    }
   ],
   "views": [
-    { "name": "Living", "pos": [3.2, 3.0], "look": [5.5, 0.6], "pitch": -0.12 },
-    { "name": "Bed", "pos": [2.6, 4.2], "look": [2.0, 6.5], "pitch": -0.14 },
-    { "name": "Deck", "pos": [9.6, 0.6], "look": [5.0, 2.4], "pitch": -0.05 }
+    {
+      "name": "Living",
+      "pos": [
+        3.2,
+        3.0
+      ],
+      "look": [
+        5.5,
+        0.6
+      ],
+      "pitch": -0.12
+    },
+    {
+      "name": "Bed",
+      "pos": [
+        2.6,
+        4.2
+      ],
+      "look": [
+        2.0,
+        6.5
+      ],
+      "pitch": -0.14
+    },
+    {
+      "name": "Deck",
+      "pos": [
+        9.6,
+        0.6
+      ],
+      "look": [
+        5.0,
+        2.4
+      ],
+      "pitch": -0.05
+    }
   ]
 }

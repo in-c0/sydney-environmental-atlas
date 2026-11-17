@@ -1,0 +1,25 @@
+# 2026-11-17 arrange mode — BEFORE (live site, phone/laptop screenshots). persona|model|gate|action|text
+A1|sonnet|G1 home from Reddit|TAP|headline about walking a home; map with rent bubbles looks like suburb stats, not furniture fitting; tap Walk to see if I can put my own floor plan in.
+A1|sonnet|G2 baked walk|LEAVE|nice room but a builder's display design, not my flat; furniture estimated; no way to upload my agent's floor plan or drop in my sofa.
+A2|haiku|G1|TAP|paste box is about rent and noise, not my dining table; Walk a home design is the only thing that sounds like furniture.
+A2|haiku|G2|TAP|cannot tell us whether our 6-seat table fits; tap Dining anyway; would measure against our strata plan before believing it.
+A3|sonnet|G1|TAP|nothing mentions measuring or my own plan; no sign-up is a plus; tap Walk.
+A3|sonnet|G2|LEAVE|a marketing walkthrough, not a precise planner: 7.7/8.0 m only, no cm, no door swings, no staircase.
+A4|haiku|G1|TAP|price bubbles confusing; hope the Walk button is the part that helps.
+A4|haiku|G2|STAY|the little plan with 7.7 m and 8.0 m is the measuring my daughter and I do; I'd look around.
+A5|sonnet|G1|LEAVE|map with rent numbers; nothing lets me drop in my furniture; I'll use my tape measure.
+A5|sonnet|G2|LEAVE|pretty render of somebody's builder home; can't put my own room or furniture in it.
+A6|haiku|G1|TAP|tap the paste box for my three Penrith rentals (street checks), not for furniture.
+A6|haiku|G2|LEAVE|I don't trust renders; a generic living room; plan dimensions are the kind of real measurement I want but for a different house.
+V1|sonnet|G1 /walk/#builders from Google|LEAVE|aimed at project builders, not agents; nothing about furniture fitting a floor plan.
+V1|sonnet|G2|TAP|"furniture estimated" is the fake-staging complaint; I'd tap the plan but can't drop in a queen bed.
+V2|haiku|G1|TAP|free, no sign-up box; wary my address is shown publicly.
+V2|haiku|G2|STAY|plan inset 7.7 x 8.0 m is the number I can't get without a tape; stay away from photoreal (money).
+V3|sonnet|G1|LEAVE|builders claiming designs; nothing for a vendor with a strata PDF.
+V3|sonnet|G2|LEAVE|AI-ish not-quite-real render that got me burned; builder's design not my apartment; how does my plan get in here?
+V4|haiku|G1|LEAVE|heading for builders, designers and agents; not for a PM with 180 doors.
+V4|haiku|G2|LEAVE|furniture estimated, so it cannot tell me whether a couch fits a tenant's flat.
+O1|sonnet|G1|TAP|tap Walk to see the 3D before I trust it.
+O1|sonnet|G2|STAY|clean render, 7.7 x 8.0 m plan is what I want; rough layout check only; can't drop in my own furniture or export.
+O2|haiku|G1|TAP|tap the Walk button; closer than rent numbers to "does my couch fit".
+O2|haiku|G2|STAY|looks like a real room; the plan dimensions are useful; how far off can it be before I trust it for a sofa?

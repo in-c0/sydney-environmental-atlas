@@ -129,6 +129,21 @@ ITEMS = {
     'box': lambda it: (it['size'][0], it['size'][1], it.get('solid', True)),
 }
 
+def wall_boxes(p):
+    """Internal walls (multi-room plans) -> solid rectangles [x0, y0, x1, y1] with the door gaps cut out.
+    Each wall: {"from": [x, y], "to": [x, y], "t": 0.09, "doors": [{"a", "b", "head"}]}; a..b is the absolute x (horizontal wall)
+    or y (vertical wall). Mirrors wallBoxes() in dist/showhaus/walk/plan-core.js."""
+    out = []
+    for w in p.get('walls', []):
+        (ax, ay), (bx, by) = w['from'], w['to']; t = w.get('t', 0.09) / 2; horiz = abs(by - ay) < 1e-6
+        lo, hi = (min(ax, bx), max(ax, bx)) if horiz else (min(ay, by), max(ay, by))
+        gaps = sorted((min(g['a'], g['b']), max(g['a'], g['b'])) for g in w.get('doors', []))
+        s = lo
+        for g0, g1 in gaps + [(hi, hi)]:
+            if g0 - s > 1e-6: out.append([round(s, 3), round(ay - t, 3), round(g0, 3), round(ay + t, 3)] if horiz else [round(ax - t, 3), round(s, 3), round(ax + t, 3), round(g0, 3)])
+            s = max(s, g1)
+    return out
+
 def footprint(it):
     ln, dp, solid = ITEMS[it['type']](it)
     return aabb([rot_pt(it['at'], it.get('rot', 0), sx * ln / 2, sy * dp / 2) for sx in (-1, 1) for sy in (-1, 1)]), solid
@@ -151,13 +166,13 @@ def layout(p):
             mid = to_world(fr, (u0 + u1) / 2, -(T + 0.5))
             if any(d[0] <= mid[0] <= d[2] and d[1] <= mid[1] <= d[3] for d in outdoor):
                 walk.append(aabb([to_world(fr, u0 + 0.25, 0.3), to_world(fr, u1 - 0.25, -(T + 0.5))]))
-    solid = []
+    solid = [list(w) for w in wall_boxes(p)]   # internal walls block walking like furniture does
     for it in p.get('items', []):
         box, is_solid = footprint(it)
         if is_solid: solid.append(box)
     pad = 0.18
     return {'walk': walk, 'solid': solid, 'boxes': [[round(a - pad, 3), round(b - pad, 3), round(c + pad, 3), round(d + pad, 3)] for a, b, c, d in solid],
-            'plan': {'room': o, 'alfresco': outdoor[0] if outdoor else None, 'openings': lines}}
+            'plan': {'room': o, 'alfresco': outdoor[0] if outdoor else None, 'openings': lines, 'walls': wall_boxes(p), 'spaces': p.get('spaces', [])}}
 
 def walkable(lay, x, y):
     return any(b[0] <= x <= b[2] and b[1] <= y <= b[3] for b in lay['walk']) and not any(k[0] < x < k[2] and k[1] < y < k[3] for k in lay['boxes'])
@@ -191,6 +206,18 @@ def validate(p):
         zone = offset(o, 0.02)
         if not (inside(zone, cx, cy) or any(d['rect'][0] <= cx <= d['rect'][2] and d['rect'][1] <= cy <= d['rect'][3] for d in p.get('outdoor', []))):
             e.append(f'item {i} ({it["type"]}): centre {cx:.2f}, {cy:.2f} is outside the room and every outdoor area')
+    zone = offset(o, 0.02)
+    for i, w in enumerate(p.get('walls', [])):
+        (ax, ay), (bx, by) = w.get('from', [0, 0]), w.get('to', [0, 0])
+        if abs(ax - bx) > 1e-6 and abs(ay - by) > 1e-6: e.append(f'wall {i}: must be horizontal or vertical'); continue
+        if math.hypot(bx - ax, by - ay) < 0.3: e.append(f'wall {i}: shorter than 0.3 m'); continue
+        if not (inside(zone, ax, ay) and inside(zone, bx, by) and inside(zone, (ax + bx) / 2, (ay + by) / 2)): e.append(f'wall {i}: runs outside the outline'); continue
+        lo, hi = sorted((ax, bx) if abs(ay - by) < 1e-6 else (ay, by))
+        for k, g in enumerate(w.get('doors', [])):
+            g0, g1 = sorted((g.get('a', 0), g.get('b', 0)))
+            if g0 < lo - 1e-6 or g1 > hi + 1e-6 or g1 - g0 < 0.6: e.append(f'wall {i} door {k}: {g0}..{g1} must be at least 0.6 m wide and on the wall ({lo}..{hi})')
+    for i, sp in enumerate(p.get('spaces', [])):
+        if not sp.get('name') or not inside(zone, *sp.get('at', [-1e9, -1e9])): e.append(f'space {i}: needs a name and a point inside the outline')
     if e: return e
     lay = layout(p)
     for i, v in enumerate(p['views']):
@@ -384,6 +411,14 @@ def build(p, mode, out):
             if cur < ub: box('ARCH', 'wall', cur, ub, -T, 0, 0, HW, WALL); solid_runs.append((cur, min(ub, L)))
             for a, b in solid_runs:
                 if b - a > 0.12: box('ARCH', 'skirt', a + (0.07 if a > 0 else 0), b - (0.07 if b < L else 0), 0, 0.014, 0, sk, TRIM, bevel=0.004)
+    for w in wall_boxes(p):   # internal walls: full height, skirting both sides
+        box('ARCH', 'wall', w[0], w[2], w[1], w[3], 0, HW, WALL)
+    for w in p.get('walls', []):
+        t = w.get('t', 0.09) / 2; horiz = abs(w['to'][1] - w['from'][1]) < 1e-6
+        for g in w.get('doors', []):
+            g0, g1 = sorted((g['a'], g['b'])); head = g.get('head', 2.1)
+            if horiz: box('ARCH', 'wall', g0, g1, w['from'][1] - t, w['from'][1] + t, head, HW, WALL)
+            else: box('ARCH', 'wall', w['from'][0] - t, w['from'][0] + t, g0, g1, head, HW, WALL)
     for d in p.get('outdoor', []):
         x0, y0, x1, y1 = d['rect']; rz = d.get('roof', 2.7)
         box('ARCH', 'deck', x0, x1, y0, y1, -0.06, 0, DECK)
