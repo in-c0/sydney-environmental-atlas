@@ -65,3 +65,7 @@ h1 { font: 700 clamp(32px, 6vw, 54px)/1.04 Georgia, serif; margin: 0 0 12px; let
 .h-keep-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .h-keep-row button { border: 0; border-radius: 10px; padding: 11px 14px; font: 600 14px/1 system-ui, sans-serif; background: var(--accent); color: #fff; cursor: pointer; }
 .h-keep-row button.ghost { background: transparent; border: 1px solid #6b7380; color: #fbf7ef; }
+body.has-items #ownHead .lead { display: none; }
+body.has-items #ownHead h1 { font-size: clamp(26px, 5vw, 38px); margin-bottom: 14px; }
+body.has-items .h-add { margin-top: 18px; }
+body.has-items .h-add::before { content: 'Add another home'; display: block; font: 650 15px/1.3 Georgia, serif; margin: 0 0 8px; }
