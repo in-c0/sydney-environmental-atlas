@@ -120,6 +120,15 @@
       <button type="submit">Add mine</button>
     </form>
     <div class="tools"><button type="button" id="clear">Empty the room</button><button type="button" id="reset">Plan’s furniture</button><span id="status" aria-live="polite"></span></div>
+    <details class="remind" id="remindRow">
+      <summary>Remind me before moving day</summary>
+      <div class="rbody">
+        <input type="date" id="moveDate" aria-label="Moving in or inspecting on">
+        <button type="button" id="remind">Add to my calendar</button>
+        <a class="btn" id="selfWa" target="_blank" rel="noopener" hidden>Send to myself</a>
+        <p class="msg" id="remindMsg" aria-live="polite">3 days before and the evening before, with this layout. Date not fixed yet? Pick a rough one. No account, no email.</p>
+      </div>
+    </details>
     <p class="basis" id="basis"></p>
   </div>
   <div id="shareBox" hidden>

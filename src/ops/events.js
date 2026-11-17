@@ -17,7 +17,8 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   'hunt_view', 'hunt_add', 'hunt_remove', // hunt board (dist/showhaus/hunt): props.kind = shared | own
   // arrange (dist/showhaus/arrange): props.kind = start:movers | start:listing | plan:<slug> | room | board:own | board:shared,
   // arrange_add props.cta = palette | mine | copy (props.kind = furniture type), arrange_3d props.cta = open | above | inside
-  'arrange_view', 'arrange_start', 'arrange_add', 'arrange_3d', 'arrange_copy',
+  // arrange_remind props.cta = open | ics (props.kind = days-to-date bucket) | wa-self
+  'arrange_view', 'arrange_start', 'arrange_add', 'arrange_3d', 'arrange_copy', 'arrange_remind',
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
   'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified',

@@ -102,3 +102,19 @@ test('the page is served on showhaus.app/arrange/ and the walk viewer links plan
   assert.match(readFileSync(new URL('dist/showhaus/index.html', ROOT), 'utf8'), /href="\.\/arrange\/\?src=home-start" data-path="arrange"/);
   assert.match(readFileSync(new URL('dist/showhaus/walk/walk.js', ROOT), 'utf8'), /\.\.\/arrange\/plans\/index\.json/);
 });
+
+test('moving-day reminder: a valid all-day calendar file that carries the layout link and two alarms', () => {
+  const src = readFileSync(new URL('dist/showhaus/arrange/arrange.js', ROOT), 'utf8');
+  const icsFor = new Function(src.match(/export function icsFor[\s\S]*?\n}\n/)[0].replace('export ', '') + ';return icsFor')();
+  const url = 'https://showhaus.app/arrange/?b=abc123#e=tok';
+  const ics = icsFor({ date: '2026-12-31', title: 'Flat, 2 bed; Level 3', url, now: new Date('2026-11-17T09:00:00Z') });
+  const lines = ics.split('\r\n');
+  assert.equal(lines[0], 'BEGIN:VCALENDAR'); assert.ok(ics.endsWith('END:VCALENDAR\r\n'));
+  assert.ok(lines.includes('DTSTART;VALUE=DATE:20261231')); assert.ok(lines.includes('DTEND;VALUE=DATE:20270101'), 'year rollover');
+  assert.ok(lines.includes('URL:' + url));
+  assert.ok(lines.some(l => l.startsWith('DESCRIPTION:Your layout for Flat\\, 2 bed\\; Level 3: ')), 'commas and semicolons escaped');
+  assert.deepEqual(lines.filter(l => l.startsWith('TRIGGER:')), ['TRIGGER:-P3D', 'TRIGGER:-PT15H']);
+  const page = readFileSync(new URL('dist/showhaus/arrange/index.html', ROOT), 'utf8');
+  for (const id of ['moveDate', 'remind', 'selfWa', 'remindMsg']) assert.match(page, new RegExp(`id="${id}"`));
+  assert.ok(CLIENT_EVENTS.has ? CLIENT_EVENTS.has('arrange_remind') : CLIENT_EVENTS.includes('arrange_remind'));
+});
