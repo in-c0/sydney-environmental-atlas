@@ -58,3 +58,10 @@ h1 { font: 700 clamp(32px, 6vw, 54px)/1.04 Georgia, serif; margin: 0 0 12px; let
 .h-foot { margin-top: 40px; font-size: 13px; color: var(--ink2); }
 .h-foot a { color: inherit; }
 @media (max-width: 560px) { #hunt { padding: 16px 14px 48px; } .h-top { margin-bottom: 22px; } #price { flex: 1 1 100px; } .h-row button { flex: 1 1 100%; } }
+.h-keep { background: var(--ink); color: #fbf7ef; border-radius: 16px; padding: 14px 16px; margin: 6px 0 14px; }
+.h-keep h2 { font: 650 17px/1.2 Georgia, serif; margin: 0 0 4px; }
+.h-keep p { margin: 0 0 10px; font-size: 14px; opacity: .9; }
+.h-keep .fine { color: #d9cfbd; margin: 8px 0 0; }
+.h-keep-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.h-keep-row button { border: 0; border-radius: 10px; padding: 11px 14px; font: 600 14px/1 system-ui, sans-serif; background: var(--accent); color: #fff; cursor: pointer; }
+.h-keep-row button.ghost { background: transparent; border: 1px solid #6b7380; color: #fbf7ef; }
