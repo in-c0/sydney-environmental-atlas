@@ -89,3 +89,26 @@ Not yet checked.
 - What would have pulled them back, in their words: a message when one of their homes changes (rent drop, relisted, leased/sold, new flag) — 6/12; the checks delivered inside what they already use (REA alerts, their spreadsheet, the group chat) — 3/12; a walk of the actual listing — 2/12; a person to call — 1/12.
 - Decision: retention needs an outbound trigger. Blocked on a delivery channel: production has no mail route (`/api/auth/me` → `available:false`), and no web-push keys. Change data needs the listing crawl (CVF #604, first run 2026-11-18 03:45) or the Domain API.
 - Prediction (22): once alerts exist, day-5 return among people who saved the link > 25%; without them ≤ 5%.
+
+## 2026-11-17 — 10-second gates (new skill protocol): 12 personas × 17 live phone moments, order shuffled per persona
+- Real data first: farm-state events 8–17 Nov, 1–19 visitors/day, almost all direct (largely Ji, agents and tests); about 5 visitors did anything; acted sessions lasted 18–63 s. No exit signal existed for view-only visits (fixed: `leave` beacon, #56).
+- Pass = stay / tap / open within 10 s. Consumers n=9 (R1 R3 E1 E2 N2 X1 X2 O1 S5), property pros n=3 (B1 B2 X3).
+  | Gate | Pass |
+  |---|---|
+  | E7 listing-kit page (/p/, from an agent's text) | **9/12** — best page; "zoning and flood context is the one thing I don't get from REA" |
+  | E2 /hunt/ from a friend's link | 7/12 (consumers 7/9) |
+  | E3 walk gallery from Google → E4 viewer | 7/12 → 7/12 |
+  | E1 landing from Reddit | **6/12** (consumers 6/9) — "a map of numbers with no clear answer"; buyers read it as a renter site |
+  | E5 Studio | 6/12 |
+  | F1 map place card | consumers 5/9 — PRO tags read as a paywall (4 mentions) |
+  | R2a partner's WhatsApp link → R2b | consumers 8/9 → 7/9 |
+  | R3a home-screen icon | consumers 7/9 |
+  | R1a self-sent email in inbox → R1b | consumers 8/9 → 5/9 (fixed below: the owner link opened on the empty form, cards below the fold) |
+  | E6 claim (pros) / F0 outreach email (pros) | 1/3 / 2/3 |
+  | P1 pilot page (pros) | read: B1 stays, X3 leaves (no price shown), B2 leaves |
+  | P2 upgrade card | glance: mostly ignore; read: 2 vote, 2 claim, rest leave |
+  | P3 Stripe checkout | **0/12** — personal name "Ji Young Kim" as merchant (4 mentions), USD shown first (sandbox IP; adaptive currency), no ABN/invoice/scope (B1) |
+- Cross-gate objection: Sydney Airport (Mascot) noise "not checked" — named by 6 personas on R2b/E7/N2 paths; the single most repeated reason a useful screen fails.
+- Caveat: R1a/R3a open rates here (8/9, 7/9) are first-impression only; the day-walk test the same morning had 0/12 returning on their own. Gates measure the 10 s after a trigger, not whether the trigger happens.
+- Shipped with this entry: owner board opens on its homes (cards first, add box below) — fixes R1b.
+- Predictions: (23) real `leave` secs on `/` median < 15 s; on `/p/` pages median > 30 s; (24) once `/p/` pages exist for many addresses, search-landing visitors bounce less than `/` visitors.

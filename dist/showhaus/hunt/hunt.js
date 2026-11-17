@@ -82,6 +82,10 @@
     $('bar').hidden = n === 0 || !!shared;
     $('count').textContent = n === 1 ? '1 home' : `${n} homes`;
     paintKeep();
+    // A returning owner lands on their homes, not on an empty form: once there are homes, the cards come first and the
+    // add box moves below them (panel 2026-11-17: the board link "opened a blank form, my list isn't showing").
+    document.body.classList.toggle('has-items', n > 0 && !shared);
+    if (!shared) (n > 0 ? $('cards') : $('ownHead')).after($('add'));
     $('cards').innerHTML = board.items.map((it, i) => card(it, i, null)).join('');
     if (!n) return;
     const D = await data();
