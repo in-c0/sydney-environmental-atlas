@@ -331,14 +331,18 @@ async function start3d() {
   const scene = new THREE.Scene(); scene.background = new THREE.Color('#bcd3ea');
   const R = buildRoom(THREE, plan, { ceiling: false }); scene.add(R.root);
   const cam = new THREE.PerspectiveCamera(55, 1, 0.05, 300); cam.rotation.order = 'YXZ';
-  let view = 'above', orbit = { th: -0.5, ph: 0.95, r: Math.max(7, R.span * 1.35) }, fp = null, on = false, glide = null;
+  let view = 'above', orbit = { th: -0.5, ph: 0.7, r: Math.max(5.5, R.span * 1.5) }, fp = null, on = false, glide = null;
   const [cx, cy] = R.center;
   const free = (x, y) => (rectInRoom(plan, [x - 0.2, y - 0.2, x + 0.2, y + 0.2])) && !all().some(i => !(CATALOGUE[i.t] || {}).flat && (() => { const r = rectOf(i); return x > r[0] - 0.15 && x < r[2] + 0.15 && y > r[1] - 0.15 && y < r[3] + 0.15; })());
   const startFp = () => { const v = (plan.views || []).find(v => free(...v.pos)); if (v) return { x: v.pos[0], y: v.pos[1], yaw: Math.atan2(-(v.look[0] - v.pos[0]), v.look[1] - v.pos[1]), pitch: -0.1 };
+    // no camera in the plan: stand in a corner and look across the room to the opposite one (a wall at 1.5 m fills a phone screen)
+    const [bx0, by0, bx1, by1] = bounds(plan.outline), look = (x, y, tx, ty) => ({ x, y, yaw: Math.atan2(-(tx - x), ty - y), pitch: -0.18 });
+    for (const [fx, fy] of [[0.15, 0.12], [0.85, 0.12], [0.15, 0.88], [0.85, 0.88]]) { const x = bx0 + (bx1 - bx0) * fx, y = by0 + (by1 - by0) * fy;
+      if (free(x, y)) return look(x, y, bx0 + (bx1 - bx0) * (1 - fx), by0 + (by1 - by0) * (1 - fy)); }
     for (const [dx, dy] of [[0, 0], ...ring(), ...ring().map(([a, b]) => [a * 3, b * 3])]) if (free(cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy, yaw: 0, pitch: -0.1 }; return { x: cx, y: cy, yaw: 0, pitch: -0.1 }; };
-  const size = () => { const w = host.clientWidth || innerWidth, h = host.clientHeight || innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.fov = w < h ? 70 : 55; cam.updateProjectionMatrix(); };
+  const size = () => { const w = host.clientWidth || innerWidth, h = host.clientHeight || innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.fov = w < h ? 80 : 60; cam.updateProjectionMatrix(); };
   addEventListener('resize', size);
-  const setView = v => { view = v; $('above').setAttribute('aria-pressed', v === 'above'); $('walkIn').setAttribute('aria-pressed', v === 'inside'); R.ceiling.visible = v === 'inside';
+  const setView = v => { view = v; R.walls.scale.y = v === 'above' ? 0.4 : 1; /* dollhouse cut-away from above, full height inside */ $('above').setAttribute('aria-pressed', v === 'above'); $('walkIn').setAttribute('aria-pressed', v === 'inside'); R.ceiling.visible = v === 'inside';
     if (v === 'inside') { fp = fp || startFp(); $('threeHint').textContent = matchMedia('(pointer: coarse)').matches ? 'Drag to look · tap the floor to walk there' : 'Drag to look · WASD or tap the floor to walk'; }
     else $('threeHint').textContent = 'Drag to turn · pinch or scroll to zoom'; track('arrange_3d', { cta: v }); };
   $('above').onclick = () => setView('above'); $('walkIn').onclick = () => setView('inside');

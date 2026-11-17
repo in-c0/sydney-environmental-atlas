@@ -29,13 +29,11 @@ export const CATALOGUE = {
 };
 export const BED_W = { single: 0.98, double: 1.44, queen: 1.59, king: 1.89 };
 // The palette a mover picks from (name, type, size). Sizes are common Australian retail sizes.
-export const PALETTE = [
-  ['3-seat sofa', 'sofa', 2.3, 0.95], ['2-seat sofa', 'sofa', 1.7, 0.9], ['Armchair', 'armchair', 0.95, 0.92],
-  ['Coffee table', 'coffee_table', 1.1, 0.6], ['TV unit', 'tv_unit', 1.8, 0.44],
-  ['Dining 4', 'dining', 1.4, 0.9], ['Dining 6', 'dining', 1.8, 1.0],
-  ['Queen bed', 'bed', 1.59, 2.12], ['Double bed', 'bed', 1.44, 2.0], ['King bed', 'bed', 1.89, 2.12], ['Single bed', 'bed', 0.98, 1.97],
-  ['Bedside', 'bedside', 0.45, 0.4], ['Wardrobe', 'wardrobe', 1.8, 0.6], ['Drawers', 'drawers', 1.2, 0.5],
-  ['Desk', 'desk', 1.4, 0.7], ['Bookshelf', 'bookshelf', 0.9, 0.35], ['Rug', 'rug', 2.4, 1.7], ['Plant', 'plant', 0.42, 0.42], ['Floor lamp', 'floor_lamp', 0.3, 0.3],
+export const PALETTE = [ // beds and sofas first: the pieces movers check most (panel 2026-11-17: a landlord never scrolled to the beds)
+  ['Queen bed', 'bed', 1.59, 2.12], ['Double bed', 'bed', 1.44, 2.0], ['3-seat sofa', 'sofa', 2.3, 0.95], ['King bed', 'bed', 1.89, 2.12], ['Single bed', 'bed', 0.98, 1.97],
+  ['2-seat sofa', 'sofa', 1.7, 0.9], ['Dining 4', 'dining', 1.4, 0.9], ['Dining 6', 'dining', 1.8, 1.0], ['Desk', 'desk', 1.4, 0.7], ['Wardrobe', 'wardrobe', 1.8, 0.6],
+  ['Armchair', 'armchair', 0.95, 0.92], ['Coffee table', 'coffee_table', 1.1, 0.6], ['TV unit', 'tv_unit', 1.8, 0.44], ['Bedside', 'bedside', 0.45, 0.4],
+  ['Drawers', 'drawers', 1.2, 0.5], ['Bookshelf', 'bookshelf', 0.9, 0.35], ['Rug', 'rug', 2.4, 1.7], ['Plant', 'plant', 0.42, 0.42], ['Floor lamp', 'floor_lamp', 0.3, 0.3],
 ];
 
 const r3 = v => Math.round(v * 1000) / 1000;

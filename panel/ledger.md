@@ -112,3 +112,19 @@ Not yet checked.
 - Caveat: R1a/R3a open rates here (8/9, 7/9) are first-impression only; the day-walk test the same morning had 0/12 returning on their own. Gates measure the 10 s after a trigger, not whether the trigger happens.
 - Shipped with this entry: owner board opens on its homes (cards first, add box below) — fixes R1b.
 - Predictions: (23) real `leave` secs on `/` median < 15 s; on `/p/` pages median > 30 s; (24) once `/p/` pages exist for many addresses, search-landing visitors bounce less than `/` visitors.
+
+## 2026-11-17 — arrange mode (furniture in real metres, no bake): before vs after, 12 personas × 10-second gates
+- Real data first: the `leave` beacon has been live under a day and nobody has reached `/arrange/` yet; real traffic is still mostly Ji, agents and tests (same as the entry above). The panel starts at the landing gate for that reason.
+- Panel: `personas-showhaus-arrange.json` — movers who just secured or are about to secure a home (A1–A6), vendors / landlord / agent / property manager (V1–V4), outside the segment (O1 design student, O2 removalist); 3 sceptics, 2 low tech comfort. One context each, 6 sonnet + 6 haiku, phone screenshots of the live site. Stated actions counted, no SSR (same reason as earlier rounds). Raw: `r7-arrange-before.txt`, `r8-arrange-after.txt`.
+- Job tested: "will my furniture fit before I move in / will a buyer's bed fit my listing".
+  | Gate | Before (live site: `/` or `/walk/#builders`, then the baked Erina walk) | After (`/arrange/`, `?for=listing`) |
+  |---|---|---|
+  | Landing, 10 s | 8/12 (movers 5/6 tapped while looking for something absent; sellers 1/4) | **12/12** (movers 6/6, sellers 4/4) |
+  | First encounter with the feature | baked walk 6/12 — "can't drop in my sofa", "furniture estimated" (A1 A3 A5 A6 V1 O1) | **12/12** — the "only 30 cm clear in front" line was named by 7 |
+  | 3D | (the walk itself) | 9/12 stay or tap; 3 of those 9 tapped back to "From above"; A5, V2, V4 leave ("gimmick", "can't read clearances in 3D") |
+  | Return: WhatsApp link preview → shared layout | n/a (no layout links before) | open 12/12 → stay/tap 12/12 |
+  | Arrange vs baked render, same persona | — | arrange 12/12 |
+- Reading: for this job the measured plan is the product; the 3D is a check, not the draw (matches the 2026-11-17 gate panel: people valued real measurements, left because "a render, not a real place"). Sellers passed only after the page named their problem ("the bed won't fit at the door").
+- Top objections → action: (1) "Stand inside" opens on a close-up with no numbers (A1 A2 A4 A5 A6 O2 V4) → #62 dollhouse cut-away from above (the default), corner start inside; next: gap labels in 3D. (2) The measured room's door/window are placeholders, and the door is what blocks sofas (A1 A3 V4) → next card: drag doors/windows on the wall, door width. (3) Link preview shows a generic room, not the layout (A1 A3 A5) → next: per-layout preview image. (4) Palette cramped on phone; a landlord never found the beds (A1 O1 O2 V2) → #62 beds first, two rows. (5) Sellers: "how does my plan get in, what does it cost" (V1 V3) → plan reader card (`showhaus/walk-pipeline/plan-reader/README.md`); no price until there is one.
+- Predictions: (25) real visitors who land on `/arrange/` add at least one piece (`arrange_add`) at a rate several times the walk's `walk_room` rate from `/walk/`; (26) `?room=` starts outnumber sample-plan starts (`arrange_start` cta=room vs plan:*); (27) of shared layouts (`arrange_share`), most are opened by a second browser (`arrange_view` kind=board:shared); (28) `arrange_3d` cta=inside is opened by under half of those who open 3D; (29) `?for=listing` plan links (cta `arrange-plan-link:listing`) stay at zero until outreach — the page alone does not reach agents.
+- Check against: `arrange_*` events and `cta` events above; real `leave` secs on `/arrange/`. Result: open.

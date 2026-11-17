@@ -1,0 +1,18 @@
+# 2026-11-17 arrange mode — AFTER (live showhaus.app/arrange/, phone/laptop screenshots; 3D shots from the #62 preview). persona|model|gate|action|text (condensed)
+A1|sonnet|G1 /arrange/ from Reddit|TAP|"Will your furniture fit?" is exactly my Reddit question; no sign-up; I only have the agent's plan JPG though.
+A1|sonnet|G2 own room + bed + desk|STAY|gap numbers in cm, "only 30 cm clear in front" useful; palette cramped; door is a placeholder and the door is what blocked my sofa last time.
+A1|sonnet|G3 3D inside|STAY|feel the space, but the bed fills the screen; the flat plan is what I'd trust.
+A1|sonnet|R1 WhatsApp preview|OPEN|know who sent it; preview image is a generic room, not our layout.
+A1|sonnet|R2 shared link|STAY|their layout straight away, "Save as my own" clear.
+A1|sonnet|CMP|ARRANGE|my 2.3 m sofa in my room size with gaps in cm; the render doesn't answer my worry.
+A2|haiku|G1|TAP|tape measure = our graph paper. G2 TAP: 30 cm warning is what we'd argue about; door/ceiling placeholders. G3 TAP From above: close-up of one corner, can't judge a table. R1 OPEN, R2 TAP Save as my own. CMP ARRANGE.
+A3|sonnet|G1|STAY|"no sign-up, nothing to install" — what Planner 5D failed at; needs multiple rooms and stairs. G2 STAY: clearance check wanted; can't enter real door position/width. G3 STAY: good enough to judge scale. R1 OPEN (preview generic). R2 STAY. CMP ARRANGE.
+A4|haiku|G1|TAP|simple enough. G2 TAP: would type my antique piece in "My sofa". G3 STAY: can't tell where I'm standing; "Stand inside" sounds like a game. R1 OPEN (from someone I know). R2 TAP Save as my own ("changes stay on this phone" feels safer). CMP ARRANGE.
+A5|sonnet|G1|TAP|zero effort, I have 3.0 x 3.2. G2 STAY: "exact desk-doesn't-fit problem I had". G3 LEAVE: giant orange bed from a weird low angle, gimmick. R1 OPEN (housemate). R2 STAY, screenshot to group chat. CMP ARRANGE.
+A6|haiku|G1|TAP|tape measure, before Saturday. G2 TAP Add mine: real measurement after photos fooled me. G3 TAP From above: rough, no numbers. R1 OPEN. R2 TAP Save as my own. CMP ARRANGE.
+V1|sonnet|G1 /arrange/?for=listing from Google|TAP|"bed won't fit" line is what lost me a sale; not virtual staging. G2 TAP 3D: builder's plan, how does my plan get in? fiddly on phone. G3 STAY: honest, not fake staging; what does it cost, how do I upload. R1 OPEN. R2 STAY. CMP ARRANGE.
+V2|haiku|G1|STAY|eleven groups, half said the bed was too small — this is for me; "free while in beta" suspicious, "you decide" helps. G2 TAP Add mine: didn't see a bed in the palette. G3 LEAVE: not my unit, no plan, only a tape. R1 OPEN. R2 STAY. CMP ARRANGE.
+V3|sonnet|G1|TAP|"not virtual staging" speaks to my touch-up fiasco. G2 TAP 3D: estimates note reassures; how much work to upload my plan? G3 STAY: doesn't make rooms look bigger. R1 OPEN. R2 STAY. CMP ARRANGE.
+V4|haiku|G1|TAP|my last tenant walked over furniture. G2 TAP Add mine. G3 LEAVE: can't read clearances from 3D; tenants won't inspect a model. R1 OPEN. R2 STAY; placeholder door/ceiling would matter in a lease dispute. CMP ARRANGE.
+O1|sonnet|G1|TAP|real metres, no sign-up. G2 STAY: the checks I do by hand in SketchUp; palette small on phone. G3 STAY: blocky, never for a client, but does the job. R1 OPEN. R2 STAY. CMP ARRANGE.
+O2|haiku|G1|TAP|customers won't install an app. G2 STAY: 30 cm warning is the first useful thing on any site like this. G3 TAP From above: customers ask distance to the wall, not sheet colour. R1 OPEN. R2 STAY; strip crowded. CMP ARRANGE.
