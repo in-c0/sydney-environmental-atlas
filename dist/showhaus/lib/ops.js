@@ -26,6 +26,12 @@
   }
   const utm = Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => /^utm_(source|medium|campaign)$/.test(k)));
   track('view', utm, { once: true });
+  // How long people actually stay: one 'leave' beacon when the page is hidden or closed (seconds visible, deepest scroll %).
+  const t0 = performance.now(); let maxScroll = 0, left = false;
+  addEventListener('scroll', () => { const h = document.documentElement; const d = h.scrollHeight - innerHeight; if (d > 0) maxScroll = Math.max(maxScroll, Math.round(scrollY / d * 100)); }, { passive: true });
+  const leave = () => { if (left) return; left = true; track('leave', { secs: Math.round((performance.now() - t0) / 1000), scroll: maxScroll }); };
+  addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leave(); });
+  addEventListener('pagehide', leave);
 
   // ---------- account ----------
   const api = (p, data) => fetch('/api/auth/' + p, data ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data), credentials: 'same-origin' } : { credentials: 'same-origin' })
