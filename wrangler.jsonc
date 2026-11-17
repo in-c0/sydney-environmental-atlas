@@ -19,6 +19,10 @@
   // add `"send_email": [{ "name": "MAIL" }]` and set MAIL_SENDING to "on". With no mail route the Sign in button stays hidden.
   // showhaus.app (zone in this account) is attached as a Workers Custom Domain on deploy; worker.js redirects www → apex.
   // Declaring routes turns workers.dev and preview URLs off by default; keep both (atlas links and PR previews use them).
+  // AuRelay: a Durable Object placed in Oceania that reads Randwick Council's Sydney Airport ANEF 2039 GIS (it resets
+  // connections from outside Australia). src/au-relay.js; SQLite-backed so it runs on the free plan.
+  "durable_objects": { "bindings": [{ "name": "AU_RELAY", "class_name": "AuRelay" }] },
+  "migrations": [{ "tag": "v1-au-relay", "new_sqlite_classes": ["AuRelay"] }],
   "workers_dev": true,
   "preview_urls": true,
   "routes": [

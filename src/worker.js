@@ -8,6 +8,7 @@ import { handleSuggest } from './suggest.js';
 import { handleHunt } from './hunt.js';
 import { handleArrange } from './arrange.js';
 import { handlePlace } from './place.js';
+export { AuRelay } from './au-relay.js';
 
 const SHOWHAUS_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);
 

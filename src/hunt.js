@@ -104,8 +104,21 @@ export function anefFromFile(fc, [lng, lat]) {
   const best = order.find(b => hits.has(b));
   return { ok: true, file: true, fetched: fc.source && fc.source.fetched || null, rows: best ? [{ band: best, anef: null }] : [] };
 }
+// Second choice: the contour set read through the AuRelay Durable Object in Oceania (src/au-relay.js), kept in memory.
+let RELAY_FC = null, RELAY_AT = 0;
+async function relayFile(env) {
+  if (RELAY_FC && Date.now() - RELAY_AT < 6 * 3600e3) return RELAY_FC;
+  if (!env || !env.AU_RELAY) return null;
+  try {
+    const stub = env.AU_RELAY.get(env.AU_RELAY.idFromName('anef2039-oc'), { locationHint: 'oc' });
+    const r = await stub.fetch('https://relay/anef2039', { signal: AbortSignal.timeout(25000) });
+    const fc = r.ok ? await r.json() : null;
+    if (fc && Array.isArray(fc.features) && fc.features.length) { RELAY_FC = fc; RELAY_AT = Date.now(); return fc; }
+  } catch (e) { console.error('au relay', e && e.message); }
+  return null;
+}
 export async function sydneyAnef(fetchImpl, lngLat, env) {
-  const fc = await anefFile(env);
+  const fc = (await anefFile(env)) || (await relayFile(env));
   if (fc && Array.isArray(fc.features) && fc.features.length) return anefFromFile(fc, lngLat);
   return sydneyAnefLive(fetchImpl, lngLat);
 }
