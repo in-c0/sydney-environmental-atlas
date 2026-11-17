@@ -59,7 +59,7 @@
   // ---------- cards ----------
   function chip(c, label) {
     if (!c) return `<li class="unk"><b>${label}</b> couldn’t be checked right now</li>`;
-    return `<li class="${c.hit ? 'flag' : 'ok'}"><b>${label}</b> ${esc(c.text)}</li>`;
+    return `<li class="${c.hit ? 'flag' : c.partial ? 'unk' : 'ok'}"><b>${label}</b> ${esc(c.text)}</li>`;
   }
   function card(it, i, D) {
     const ch = it.checks || {}, r = D ? rentLine(it, D) : { text: 'Rent: loading…', cls: 'unk' };
@@ -73,7 +73,7 @@
       <ul class="checks">${chip(ch.flood, 'Flood')}${chip(ch.bushfire, 'Bush fire')}${chip(ch.aircraft, 'Aircraft')}${z}${ch.canopy ? `<li class="ok"><b>Trees</b> ${ch.canopy.pct}% canopy around it</li>` : ''}</ul>
       ${shared ? (it.note ? `<p class="note-ro">“${esc(it.note)}”</p>` : '') : `<textarea class="note" data-act="note" rows="2" maxlength="300" placeholder="Your notes — inspection time, what you liked, what to ask">${esc(it.note || '')}</textarea>`}
       ${cm.length || shared ? `<div class="cm">${cm.map(c => `<p><b>${esc(c.name || 'Someone')}</b> ${esc(c.text)}</p>`).join('')}${shared ? `<form class="cm-add" data-key="${esc(it.key)}"><input name="name" maxlength="30" placeholder="Your name (optional)" aria-label="Your name"><input name="text" maxlength="400" required placeholder="Comment on this home" aria-label="Comment"><button>Post</button></form>` : ''}</div>` : ''}
-      <p class="src">Checked ${esc(it.checked || '')} · NSW Planning Portal, NSW Spatial Services, NSW Fair Trading rental bonds</p>
+      <p class="src">Checked ${esc(it.checked || '')} · NSW Planning Portal, NSW Spatial Services, Sydney Airport ANEF 2039 (Airservices), NSW Fair Trading rental bonds</p>
     </article>`;
   }
   async function render() {

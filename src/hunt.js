@@ -1,9 +1,10 @@
 // SHOWHAUS Hunt board (dist/showhaus/hunt): the homes someone is looking at, from any site, checked and shared. No login.
 //   GET  /api/hunt/check?q=<address or listing link>   one NSW address → map point + street checks from public NSW services
-//                                                     (zoning, bush fire, flood, airport noise, canopy). A Domain listing link is
+//                                                     (zoning, bush fire, flood, Sydney Airport ANEF 2039 + NSW airport noise maps, canopy). A Domain listing link is
 //                                                     read for its address (the slug); a link with no street (realestate.com.au)
 //                                                     answers { need: 'address', suburb } so the page asks for the street.
 //                                                     Nothing is fetched from the listing site itself. Cached a day.
+//   GET  /api/hunt/noise?ll=<lng>,<lat>              aircraft noise only (Sydney Airport ANEF 2039 + NSW maps) for one point.
 //   POST /api/hunt/board { items, title }            share a board: → { id, edit }. Re-post with { id, edit, items } to update.
 //   GET  /api/hunt/board?id=                         { title, items, comments } for anyone with the link.
 //   POST /api/hunt/comment { id, key, name, text }   a comment on one home of a shared board (partner, family, friend).
@@ -11,7 +12,7 @@
 import { db, pseudo } from './ops/store.js';
 import { track, environmentOf } from './ops/events.js';
 import { hit } from './claim.js';
-import { normalizeAddress, verifyAddress, lookupAddresses, prettyAddress } from './suggest.js';
+import { normalizeAddress, verifyAddress, lookupAddresses, prettyAddress, inNSW } from './suggest.js';
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS sh_claim_rate (k TEXT PRIMARY KEY, n INTEGER NOT NULL, window_start INTEGER NOT NULL)`,
@@ -52,12 +53,20 @@ export function parsePasted(raw) {
   return { need: 'address', link: host };
 }
 
+export const SYD_ANEF = 'https://mapservices.randwick.nsw.gov.au/arcgis/rest/services/intPlanning/ANEF2039/MapServer';
+export const SYD_ANEF_LAYERS = [[0, '35+'], [1, '30–35'], [2, '25–30'], [3, '20–25']];
+export const SYD_ANEF_PDF = 'https://www.airservicesaustralia.com/wp-content/uploads/Sydney-Airport-ANEF-2039.pdf';
+
 // ---------- NSW point services (same layers as the listing kit, scripts/showhaus-listing-kit.mjs) ----------
 export const SVC = {
   zoning: ['NSW Planning Portal — Land Zoning', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/EPI_Primary_Planning_Layers/MapServer/2/query', 'SYM_CODE,LAY_CLASS'],
   bushfire: ['NSW Planning Portal — Bush Fire Prone Land (RFS certified)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Hazard/MapServer/229/query', 'd_Category,Category'],
   flood: ['NSW Planning Portal — Flood Planning (state layer; many councils not yet in it)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Hazard/MapServer/230/query', 'LAY_CLASS,LGA_NAME'],
-  anec: ['NSW Planning — Western Sydney Airport noise (ANEC)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query', 'ANEF_CODE'],
+  anec: ['NSW Planning Portal — Airport Noise (LEP and SEPP maps: Western Sydney Airport ANEC, Bankstown, Cessnock and others)', 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query', 'ANEF_CODE,EPI_NAME'],
+  // Sydney Airport (Mascot) is not in the state layer above: Bayside, Inner West and Randwick LEPs refer to the ANEF map itself.
+  // The Airservices-endorsed ANEF 2039 (Sydney Airport Master Plan 2039) is published as GIS by Randwick City Council,
+  // one MapServer sub-layer per contour band: 0 = 35+, 1 = 30–35, 2 = 25–30, 3 = 20–25, field `anef`.
+  sydney_anef: ['Sydney Airport ANEF 2039 (Airservices-endorsed, Master Plan 2039) — GIS layer published by Randwick City Council', SYD_ANEF + '/{layer}/query', 'anef'],
   canopy: ['NSW Government 2024–25 urban tree canopy', 'https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/UHGC/GSR_2024_VegStrata_H3Z11/MapServer/0/query', 'Canopy_pc'],
 };
 async function point(fetchImpl, url, fields, [lng, lat]) {
@@ -70,16 +79,46 @@ async function point(fetchImpl, url, fields, [lng, lat]) {
     return { ok: true, rows: (d.features || []).map(f => f.attributes || {}) };
   } catch { return { ok: false }; }
 }
+// Sydney Airport ANEF 2039: one query per band; the highest band the point falls in. Any band failing = unknown.
+export async function sydneyAnef(fetchImpl, lngLat) {
+  const rs = await Promise.all(SYD_ANEF_LAYERS.map(([id]) => point(fetchImpl, `${SYD_ANEF}/${id}/query`, 'anef', lngLat)));
+  if (rs.some(r => !r.ok)) return { ok: false };
+  const i = rs.findIndex(r => r.rows.length);
+  return { ok: true, rows: i < 0 ? [] : [{ band: SYD_ANEF_LAYERS[i][1], anef: rs[i].rows[0].anef ?? null }] };
+}
+// AS 2021 building-site acceptability for houses, by ANEF band.
+export function anefMeaning(band) {
+  if (band === '20–25') return 'AS 2021 calls a new house here "conditionally acceptable" (noise insulation expected)';
+  return 'AS 2021 calls a new house here "unacceptable"';
+}
+export async function checkPoint(fetchImpl, lngLat) {
+  const entries = await Promise.all(Object.entries(SVC).map(async ([k, [, u, f]]) => [k, k === 'sydney_anef' ? await sydneyAnef(fetchImpl, lngLat) : await point(fetchImpl, u, f, lngLat)]));
+  return Object.fromEntries(entries);
+}
+
 // Raw service rows → the plain-language lines a card shows. Unknown is said as unknown, never as "none".
 export function summarise(raw) {
   const out = {};
   const z = raw.zoning; out.zoning = !z.ok ? null : z.rows[0] ? { code: z.rows[0].SYM_CODE || null, name: z.rows[0].LAY_CLASS || null } : { code: null, name: 'Not zoned in the state layer' };
   const b = raw.bushfire; out.bushfire = !b.ok ? null : b.rows.length ? { hit: true, text: `Bush fire prone land${b.rows[0].d_Category ? ' — ' + b.rows[0].d_Category : ''}` } : { hit: false, text: 'Not on bush fire prone land' };
   const f = raw.flood; out.flood = !f.ok ? null : f.rows.length ? { hit: true, text: 'Inside a flood planning area' } : { hit: false, text: 'Not in the state flood layer (some councils are not in it yet)' };
-  const a = raw.anec; out.aircraft = !a.ok ? null : a.rows.length ? { hit: true, text: `Western Sydney Airport noise contour ANEC ${a.rows[0].ANEF_CODE ?? ''}`.trim() } : { hit: false, text: 'Outside the Western Sydney Airport noise contours. Sydney Airport (Mascot) noise is not checked here yet' };
+  out.aircraft = aircraft(raw.anec, raw.sydney_anef);
   // Canopy_pc is a share (0–1) of the ~2,600 m² cell the home sits in.
   const c = raw.canopy, cv = c.ok && c.rows.length ? Number(c.rows[0].Canopy_pc) : NaN; out.canopy = Number.isFinite(cv) ? { pct: Math.round(cv <= 1 ? cv * 100 : cv) } : null;
   return out;
+}
+
+// Two sources: Sydney Airport ANEF 2039 and the NSW plan maps (Western Sydney ANEC and regional airports).
+// A hit in either is a hit. "Outside" is said only when both answered; if one did not, the line says which is unchecked.
+export function aircraft(a = { ok: false }, s = { ok: false }) {
+  const lep = a.ok && a.rows.length ? a.rows[0] : null, syd = s.ok && s.rows.length ? s.rows[0] : null;
+  const lepName = r => /Western Parkland|Aerotropolis/.test(r.EPI_NAME || '') ? 'Western Sydney Airport' : (r.EPI_NAME || 'NSW plan');
+  if (syd) return { hit: true, source: 'sydney_anef', band: syd.band, text: `Sydney Airport ANEF 2039 noise contour ${syd.band} — ${anefMeaning(syd.band)}` };
+  if (lep) return { hit: true, source: 'anec', band: lep.ANEF_CODE ?? null, text: `${lepName(lep)} aircraft noise contour ${lep.ANEF_CODE ?? ''}`.trim() };
+  if (a.ok && s.ok) return { hit: false, text: 'Outside the Sydney Airport ANEF 2039 and Western Sydney Airport noise contours (planes can still be heard outside them)' };
+  if (s.ok) return { hit: false, partial: true, text: 'Outside the Sydney Airport ANEF 2039 contours; the Western Sydney Airport map could not be checked just now' };
+  if (a.ok) return { hit: false, partial: true, text: 'Outside the Western Sydney Airport noise contours; Sydney Airport (Mascot) ANEF could not be checked just now' };
+  return null;
 }
 
 async function resolve(parsed, fetchImpl) {
@@ -108,8 +147,7 @@ export async function handleHunt(request, env, ctx) {
       if (!(await hit(d, 'hc:' + ip, CHECKS_PER_HOUR, 3600e3))) return j({ error: 'Too many checks this hour. Try again later.' }, 429);
       const where = await resolve(parsed, fetchImpl);
       if (!where) return j({ need: 'address', error: 'That address is not in the NSW address register. Check the spelling, or try the street without the unit.' });
-      const entries = await Promise.all(Object.entries(SVC).map(async ([k, [, u, f]]) => [k, await point(fetchImpl, u, f, where.lngLat)]));
-      const raw = Object.fromEntries(entries);
+      const raw = await checkPoint(fetchImpl, where.lngLat);
       const body = {
         address: where.address, label: where.label || prettyAddress(where.address), lngLat: where.lngLat, exact: where.exact,
         postcode: parsed.postcode || null, from: parsed.link || null,
@@ -119,6 +157,16 @@ export async function handleHunt(request, env, ctx) {
       };
       ctx && ctx.waitUntil && ctx.waitUntil(track(env, { name: 'hunt_check', env: environment, source: 'server', path, props: { kind: parsed.link ? 'link:' + parsed.link : 'address' } }).catch(() => {}));
       return j(body, 200, 'public, max-age=86400');
+    }
+
+    // Aircraft noise at one map point (the /p/ property pages ask this for their own lot point).
+    if (path === '/api/hunt/noise' && request.method === 'GET') {
+      const ll = String(url.searchParams.get('ll') || '').split(',').map(Number);
+      if (ll.length !== 2 || !inNSW(ll[0], ll[1])) return j({ error: 'll=lng,lat inside NSW' }, 400);
+      if (!(await hit(d, 'hc:' + ip, CHECKS_PER_HOUR, 3600e3))) return j({ error: 'Too many checks this hour. Try again later.' }, 429);
+      const lngLat = ll.map(n => Math.round(n * 1e5) / 1e5);
+      const [anec, sydney_anef] = await Promise.all([point(fetchImpl, SVC.anec[1], SVC.anec[2], lngLat), sydneyAnef(fetchImpl, lngLat)]);
+      return j({ lngLat, aircraft: aircraft(anec, sydney_anef), raw: { anec, sydney_anef }, sources: { anec: SVC.anec[0], sydney_anef: SVC.sydney_anef[0] }, urls: { sydney_anef: SYD_ANEF, sydney_anef_pdf: SYD_ANEF_PDF, anec: SVC.anec[1].replace(/\/query$/, '') }, checked: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) }, 200, 'public, max-age=86400');
     }
 
     if (path === '/api/hunt/board' && request.method === 'GET') {

@@ -64,11 +64,12 @@ function gifInfo(buf) {
   return { width, height, frames, seconds: cs / 100 };
 }
 
-// ---------- server (static dist + a stand-in for the Worker's /api/e) ----------
+// ---------- server (static dist + stand-ins for the Worker's /api/e and /api/hunt/noise) ----------
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.gif': 'image/gif', '.mp4': 'video/mp4' };
 const events = [];
 const server = createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
+  if (u.pathname === '/api/hunt/noise') { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}'); return; } // no live answer → the page shows the stored kit
   if (u.pathname === '/api/e') { let b = ''; req.on('data', c => { b += c; }); req.on('end', () => { try { events.push(JSON.parse(b)); } catch { /* bad body */ } res.writeHead(204); res.end(); }); return; }
   try {
     let p = normalize(decodeURIComponent(u.pathname)).replace(/^(\.\.[/\\])+/, '');
@@ -159,7 +160,10 @@ for (const slug of slugs) {
       }
       const z = kit.planning.zoning.rows[0];
       check(`${slug}: zoning equals the NSW answer`, z ? r.v.zoning?.v?.startsWith(z.SYM_CODE + ' ') : r.v.zoning?.v === 'no LEP zone mapped', r.v.zoning?.v);
-      check(`${slug}: Sydney Airport ANEF shown as unknown (not connected)`, r.v.aircraft?.v === 'unknown');
+      // Kits stored before the Sydney Airport layer: the judge has no Worker, so the page falls back to the stored kit.
+      const syd = kit.aircraft.sydney_anef, wsa = kit.aircraft.wsa_anec;
+      const wantAir = syd?.ok ? (syd.rows[0]?.band || (wsa.ok && wsa.rows[0]?.ANEF_CODE) || (wsa.ok ? 'outside' : 'unknown')) : (wsa.ok && wsa.rows[0] ? wsa.rows[0].ANEF_CODE : wsa.ok ? 'partial' : 'unknown');
+      check(`${slug}: aircraft noise equals the stored answer, unknown never shown as quiet`, r.v.aircraft?.v === wantAir, `page ${r.v.aircraft?.v}, want ${wantAir}`);
       await page.waitForTimeout(300);
       const got = events.slice(before).find(e => e.name === 'view' && e.props?.kit === slug);
       check(`${slug}: view beacon carries kit + src only (no id)`, !!got && got.props.utm_source === `agent-${slug}` && !got.anon && Object.keys(got.props).sort().join() === 'kit,utm_source', JSON.stringify(got));
