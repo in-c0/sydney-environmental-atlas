@@ -196,7 +196,7 @@ async function buildData() {
     listing_url: opt('--listing'),
     geocode: g, lot, buildings: b, roads: road, ground,
     canopy: s.canopy, planning: { zoning: s.zoning, bushfire: s.bushfire, flood: s.flood },
-    aircraft: { wsa_anec: s.anec, sydney_anef: { name: HUNT.SVC.sydney_anef[0], url: HUNT.SYD_ANEF, fetched: nowIso(), ...(await HUNT.sydneyAnef(fetch, [pt.lng, pt.lat])) } },
+    aircraft: { wsa_anec: s.anec, sydney_anef: { name: HUNT.SVC.sydney_anef[0], url: HUNT.SYD_ANEF, fetched: nowIso(), ...(await HUNT.sydneyAnef(fetch, [pt.lng, pt.lat], { ASSETS: { fetch: async () => { try { return new Response(await readFile(join(DIST, 'showhaus/data/anef2039-sydney.json'))); } catch { return new Response('', { status: 404 }); } } } })) } },
     rent: rent && { ...rent, suburbs: suburbsInPc, source: R.sources.map(x => `${x.name} (${x.licence})`).join(' · '), built: R.generatedAt },
   };
   const sunKit = K.groundSun(kit, today), sunWinter = K.groundSun(kit, today.slice(0, 4) + '-06-21');

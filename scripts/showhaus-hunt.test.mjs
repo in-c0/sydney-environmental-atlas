@@ -6,7 +6,7 @@ import worker from '../src/worker.js';
 import { resetForTests } from '../src/ops/store.js';
 import { resetClaimsForTests } from '../src/claim.js';
 import { resetSuggestForTests } from '../src/suggest.js';
-import { parsePasted, summarise, resetHuntForTests, COMMENTS_PER_HOUR } from '../src/hunt.js';
+import { parsePasted, summarise, resetHuntForTests, COMMENTS_PER_HOUR, anefFromFile } from '../src/hunt.js';
 import { CLIENT_EVENTS } from '../src/ops/events.js';
 import { env as localEnv } from './showhaus-local-worker.mjs';
 
@@ -84,6 +84,18 @@ test('noise: a map point gets the Sydney Airport ANEF band and its sources; outs
   const d = await (await get(env, '/api/hunt/noise?ll=151.1655,-33.9165')).json();
   assert.equal(d.aircraft.band, '25–30'); assert.match(d.sources.sydney_anef, /Airservices/); assert.match(d.urls.sydney_anef, /ANEF2039\/MapServer$/);
   assert.equal((await get(env, '/api/hunt/noise?ll=0,0')).status, 400);
+});
+
+test('ANEF file: the highest band whose polygon holds the point; a hole is outside; outside every band is a clean miss', () => {
+  const sq = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+  const fc = { source: { fetched: '2026-11-18T00:00:00+00:00' }, features: [
+    { properties: { band: '20-25' }, geometry: { type: 'Polygon', coordinates: [sq(0, 0, 10, 10), sq(8, 8, 9, 9)] } },
+    { properties: { band: '30-35' }, geometry: { type: 'MultiPolygon', coordinates: [[sq(2, 2, 4, 4)]] } },
+  ] };
+  assert.deepEqual(anefFromFile(fc, [3, 3]).rows, [{ band: '30–35', anef: null }]);
+  assert.deepEqual(anefFromFile(fc, [6, 6]).rows, [{ band: '20–25', anef: null }]);
+  assert.deepEqual(anefFromFile(fc, [8.5, 8.5]).rows, [], 'inside a hole');
+  assert.equal(anefFromFile(fc, [20, 20]).ok, true);
 });
 
 test('board: share, read, only the sharer can change it, comments land on a real home', async () => {

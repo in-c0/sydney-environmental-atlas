@@ -102,7 +102,7 @@ async function placePage(slug, env, fetchImpl) {
   }
   const canonical = slugOf(where.address);
   if (canonical !== slug) return Response.redirect(`${ORIGIN}/p/${canonical}`, 301);
-  const [raw, L, W] = await Promise.all([checkPoint(fetchImpl, where.lngLat), lookup(env).catch(() => null), walks(env)]);
+  const [raw, L, W] = await Promise.all([checkPoint(fetchImpl, where.lngLat, env), lookup(env).catch(() => null), walks(env)]);
   const checks = summarise(raw);
   const pc = L ? postcodeOf(L, where.label, where.lngLat) : { postcode: null, suburb: null };
   const rent = L && pc.postcode ? L.rent[pc.postcode] || null : null;
