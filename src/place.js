@@ -5,13 +5,13 @@
 //                                 Not in the register → 404 page with the nearest register addresses, never a made-up one.
 //   GET /p/go?q=<pasted>          an address or a listing link (src/hunt.js parsePasted) → 302 to that address's page.
 //   GET /sitemap.xml              sitemap index of map tiles over Greater Sydney; GET /sitemaps/<x>_<y>.xml = every register
-//                                 address inside that 0.01° tile, read from GURAS when asked (cached a week).
+//                                 address inside that 0.01° tile, read from the register (SIX Maps) when asked (cached a week).
 //   GET /robots.txt               points crawlers at the sitemap.
 // Facts on the page are the same public checks as the hunt board (src/hunt.js: NSW Planning Portal zoning, bush fire, flood,
 // airport noise; Sydney Airport ANEF 2039; NSW canopy) and the rent medians of the postcode (data/place-lookup.json, built
 // from the map's NSW Fair Trading bond file by scripts/showhaus_place_data.py). Unknown stays unknown.
 import { checkPoint, summarise, parsePasted, SVC, SYD_ANEF_PDF } from './hunt.js';
-import { normalizeAddress, verifyAddress, lookupAddresses, prettyAddress, GURAS, inNSW } from './suggest.js';
+import { normalizeAddress, verifyAddress, lookupAddresses, prettyAddress, inNSW, sixInBox } from './suggest.js';
 
 const ORIGIN = 'https://showhaus.app';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -164,7 +164,7 @@ function renderPlace({ slug, where, checks, raw, pc, rent, L, walk, checked }) {
     <h2>Not on this page</h2>
     <p>Sold prices, road and rail noise, what the inside is like, strata, and council flood maps that are not in the state layer yet. Before you sign, a planning certificate (section 10.7) from the council is the legal answer.</p>
   </section>
-  <p class="src">Address point: NSW Spatial Services address register (GURAS), ${where.lngLat[1].toFixed(5)}, ${where.lngLat[0].toFixed(5)}. Page made from public data when it was asked for; nothing here is from the listing or the owner.</p>
+  <p class="src">Address point: NSW Spatial Services address register (GURAS, via SIX Maps), ${where.lngLat[1].toFixed(5)}, ${where.lngLat[0].toFixed(5)}. Page made from public data when it was asked for; nothing here is from the listing or the owner.</p>
 </main>` });
 }
 
@@ -231,23 +231,13 @@ function pagesSitemap() {
   const urls = ['/', '/hunt/', '/walk/']; // listing kits (KITS) stay noindex: they were made for one agent each
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `<url><loc>${ORIGIN}${u.replace(/&/g, '&amp;')}</loc></url>`).join('\n')}\n</urlset>\n`;
 }
-export const TILE_PAGES = 3, TILE_PAGE_SIZE = 2000;
+export const TILE_PAGES = 12; // × 1000 addresses: the densest inner-city tiles hold about 6,000
 async function tileSitemap(x, y, fetchImpl) {
   if (!tiles().some(([a, b]) => a === x && b === y)) return text('not a tile', 'text/plain', 'no-store', 404);
-  const env = { xmin: x / 100, xmax: (x + 1) / 100, ymin: -(y + 1) / 100, ymax: -y / 100 };
-  const seen = new Set();
-  for (let p = 0; p < TILE_PAGES; p++) {
-    const q = new URLSearchParams({ where: '1=1', geometry: `${env.xmin},${env.ymin},${env.xmax},${env.ymax}`, geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: 'address', returnGeometry: 'false', orderByFields: 'address', resultOffset: String(p * TILE_PAGE_SIZE), resultRecordCount: String(TILE_PAGE_SIZE), f: 'json' });
-    let d;
-    try {
-      const r = await fetchImpl(GURAS + '?' + q, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000), cf: { cacheTtl: 604800, cacheEverything: true } });
-      if (!r.ok) throw new Error('guras ' + r.status);
-      d = await r.json();
-      if (d.error) throw new Error('guras error');
-    } catch { if (!p) return text('register did not answer', 'text/plain', 'no-store', 503); break; }
-    for (const f of d.features || []) { const a = f.attributes && f.attributes.address; if (a && /^\d/.test(a)) seen.add(slugOf(a)); }
-    if (!d.exceededTransferLimit && (d.features || []).length < TILE_PAGE_SIZE) break;
-  }
+  let addrs;
+  try { addrs = await sixInBox([x / 100, -(y + 1) / 100, (x + 1) / 100, -y / 100], TILE_PAGES, fetchImpl); }
+  catch { return text('register did not answer', 'text/plain', 'no-store', 503); }
+  const seen = new Set(addrs.map(slugOf));
   return text(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...seen].sort().map(s => `<url><loc>${ORIGIN}/p/${s}</loc></url>`).join('\n')}\n</urlset>\n`, 'application/xml', 'public, max-age=604800');
 }
 

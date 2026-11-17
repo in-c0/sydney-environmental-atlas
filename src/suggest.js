@@ -105,8 +105,53 @@ async function guras(where, n, fetchImpl) {
 const sqlq = s => "'" + s.replace(/'/g, "''") + "'";
 // Sydney first: take a wider page from the register, then the six closest to the CBD (SHOWHAUS is Sydney-first, NSW-wide).
 const SYD = [151.207, -33.868], d2 = p => (p[0] - SYD[0]) ** 2 + (p[1] - SYD[1]) ** 2;
-export const lookupAddresses = async (norm, fetchImpl = fetch) => (await guras(`address LIKE ${sqlq(norm + '%')}`, 40, fetchImpl)).sort((a, b) => d2(a.lngLat) - d2(b.lngLat)).slice(0, 6);
-export const verifyAddress = async (norm, fetchImpl = fetch) => (await guras(`address = ${sqlq(norm)}`, 1, fetchImpl))[0] || null;
+// The same register through SIX Maps (NSW Spatial Services): answers from anywhere in about a second, where the GURAS
+// FeatureServer above times out outside Australia (the Worker in IAD, 2026-11-17). SIX returns addresses without geometry,
+// so the point comes from a returnExtentOnly query on the one address. SIX first, GURAS if SIX fails.
+export const SIX = 'https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Query/MapServer/0/query';
+const SIX_UA = { accept: 'application/json', 'user-agent': 'showhaus.app address lookup (+https://showhaus.app)' };
+async function six(params, fetchImpl, ms = 5000) {
+  const r = await fetchImpl(SIX + '?' + new URLSearchParams({ f: 'json', ...params }), { headers: SIX_UA, signal: AbortSignal.timeout(ms), cf: { cacheTtl: 86400, cacheEverything: true } });
+  if (!r.ok) throw new Error('six ' + r.status);
+  const d = await r.json();
+  if (d.error) throw new Error('six ' + (d.error.message || 'error'));
+  return d;
+}
+async function sixPoint(address, fetchImpl) {
+  const e = (await six({ where: `address = ${sqlq(address)}`, returnExtentOnly: 'true', outSR: '4326' }, fetchImpl)).extent;
+  if (!e || !Number.isFinite(e.xmin) || !inNSW((e.xmin + e.xmax) / 2, (e.ymin + e.ymax) / 2)) return null;
+  return [Math.round((e.xmin + e.xmax) / 2 * 1e6) / 1e6, Math.round((e.ymin + e.ymax) / 2 * 1e6) / 1e6];
+}
+export async function sixVerify(norm, fetchImpl = fetch) {
+  const d = await six({ where: `address = ${sqlq(norm)}`, outFields: 'address', returnGeometry: 'false' }, fetchImpl);
+  if (!(d.features || []).length) return null;
+  const ll = await sixPoint(norm, fetchImpl);
+  return ll ? { address: norm, label: prettyAddress(norm), lngLat: ll } : null;
+}
+export async function sixLookup(norm, fetchImpl = fetch) {
+  const d = await six({ where: `address LIKE ${sqlq(norm + '%')}`, outFields: 'address', returnGeometry: 'false', orderByFields: 'address', resultRecordCount: '20', resultOffset: '0' }, fetchImpl);
+  const names = [...new Set((d.features || []).map(f => f.attributes && f.attributes.address).filter(Boolean))].slice(0, 20);
+  const pts = await Promise.all(names.map(a => sixPoint(a, fetchImpl).catch(() => null)));
+  return names.map((a, i) => pts[i] && { address: a, label: prettyAddress(a), lngLat: pts[i] }).filter(Boolean).sort((a, b) => d2(a.lngLat) - d2(b.lngLat)).slice(0, 6);
+}
+// Every numbered address inside a lng/lat box (sitemaps): the ids in the box (one fast query), then the addresses by id in
+// chunks of 1000 (SIX refuses resultOffset paging on a box and is slow to sort one), at most `pages` chunks.
+export async function sixInBox([xmin, ymin, xmax, ymax], pages, fetchImpl = fetch) {
+  const ids = ((await six({ where: '1=1', geometry: `${xmin},${ymin},${xmax},${ymax}`, geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', returnIdsOnly: 'true' }, fetchImpl, 20000)).objectIds || []).sort((a, b) => a - b);
+  const out = new Set();
+  for (let i = 0; i < ids.length && i < pages * 1000; i += 1000) {
+    const r = await fetchImpl(SIX, { method: 'POST', headers: { ...SIX_UA, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ objectIds: ids.slice(i, i + 1000).join(','), outFields: 'address', returnGeometry: 'false', f: 'json' }), signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error('six ' + r.status);
+    const d = await r.json();
+    if (d.error) throw new Error('six ' + (d.error.message || 'error'));
+    for (const f of d.features || []) { const a = f.attributes && f.attributes.address; if (a && /^\d/.test(a)) out.add(a); }
+  }
+  return [...out];
+}
+const gurasLookup = async (norm, fetchImpl) => (await guras(`address LIKE ${sqlq(norm + '%')}`, 40, fetchImpl)).sort((a, b) => d2(a.lngLat) - d2(b.lngLat)).slice(0, 6);
+const gurasVerify = async (norm, fetchImpl) => (await guras(`address = ${sqlq(norm)}`, 1, fetchImpl))[0] || null;
+export const lookupAddresses = async (norm, fetchImpl = fetch) => { try { return await sixLookup(norm, fetchImpl); } catch { return gurasLookup(norm, fetchImpl); } };
+export const verifyAddress = async (norm, fetchImpl = fetch) => { try { return await sixVerify(norm, fetchImpl); } catch { return gurasVerify(norm, fetchImpl); } };
 // No house number yet ("forest rd arncliffe", "martin pl"): street names, so the box still answers while people type.
 // The NSW register only answers prefix queries on the whole address (contains-queries time out), so streets come from
 // Photon (OpenStreetMap geocoder, komoot) — asked by this Worker, never by the visitor's browser; NSW only.
