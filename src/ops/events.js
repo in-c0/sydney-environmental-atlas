@@ -15,10 +15,13 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   'leave', // one per page view: props.secs visible, props.scroll deepest %
   'start_path', // homepage start screen: props.cta = walk | rent | builder | hunt
   'hunt_view', 'hunt_add', 'hunt_remove', // hunt board (dist/showhaus/hunt): props.kind = shared | own
+  // arrange (dist/showhaus/arrange): props.kind = start:movers | start:listing | plan:<slug> | room | board:own | board:shared,
+  // arrange_add props.cta = palette | mine | copy (props.kind = furniture type), arrange_3d props.cta = open | above | inside
+  'arrange_view', 'arrange_start', 'arrange_add', 'arrange_3d', 'arrange_copy',
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
   'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified',
-  'listing_private', 'finishes_requested', 'home_suggested', 'fix_reported', 'upgrade_notify', 'hunt_check', 'hunt_share', 'hunt_comment']); // a claimant made a listing private / asked for their real finishes (paid)
+  'listing_private', 'finishes_requested', 'home_suggested', 'fix_reported', 'upgrade_notify', 'hunt_check', 'hunt_share', 'hunt_comment', 'arrange_share']); // a claimant made a listing private / asked for their real finishes (paid)
 // Events that page the owner during a sprint (CVF polls them; see /api/ops/summary).
 export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted', 'listing_private', 'finishes_requested']);
 

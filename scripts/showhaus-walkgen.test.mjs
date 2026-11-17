@@ -79,3 +79,15 @@ test('estimate: address rules are the same as the Worker (src/suggest.js normali
   assert.equal(py.status, 0, py.stderr);
   assert.deepEqual(JSON.parse(py.stdout), cases.map(c => normalizeAddress(c.replace(/^addr:/i, ''))));
 });
+
+test('walkgen: internal walls (multi-room plans) block walking except at doorways, and reach the mini plan', () => {
+  const r = check(DIR + 'plans/fixture-apartment.plan.json'); assert.equal(r.status, 0, r.stderr + r.stdout);
+  const lay = layout(DIR + 'plans/fixture-apartment.plan.json');
+  const inWalk = (x, y) => lay.walk.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) && !lay.boxes.some(k => x > k[0] && x < k[2] && y > k[1] && y < k[3]);
+  assert.ok(!inWalk(1.0, 4.8), 'the wall between living and bed 1 blocks'); assert.ok(inWalk(2.91, 4.8), 'its doorway does not');
+  assert.ok(!inWalk(3.6, 6.5) && !inWalk(5.6, 6.5), 'bedroom side walls block');
+  assert.equal(lay.plan.walls.length, 6, 'wall with 3 doors = 4 segments, + 2 plain walls'); assert.equal(lay.plan.spaces.length, 5);
+  assert.match(check(variant('fixture-apartment.plan.json', p => { p.walls[0].doors[0] = { a: 2.5, b: 2.8 }; })).stdout + check(variant('fixture-apartment.plan.json', p => { p.walls[0].doors[0] = { a: 2.5, b: 2.8 }; })).stderr, /at least 0.6 m/);
+  assert.match(check(variant('fixture-apartment.plan.json', p => { p.walls.push({ from: [1, 1], to: [3, 2] }); })).stderr, /horizontal or vertical/);
+  assert.match(check(variant('fixture-apartment.plan.json', p => { p.walls.push({ from: [8, 1], to: [12, 1] }); })).stderr, /outside the outline/);
+});

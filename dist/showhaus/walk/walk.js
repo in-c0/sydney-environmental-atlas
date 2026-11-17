@@ -136,6 +136,8 @@ async function openWalk() {
   $('basis').textContent = T.basis; $('cardbasis').textContent = T.card;
   $('needPlan').textContent = T.plan; if (T.planOk) { $('needPlanIc').textContent = '✓'; $('needPlanIc').classList.add('ok'); }
   $('claimLink').href = `../claim/?p=${slug}&src=walk`;
+  // The same plan, no bake: drag your own furniture in (dist/showhaus/arrange). Only homes whose plan is published there.
+  getJSON('../arrange/plans/index.json').then(ix => { if (ix && ix.items.some(i => i.slug === slug)) { const a = $('arrangeLink'); a.href = `../arrange/?p=${slug}&src=walk`; a.hidden = false; a.onclick = () => track('cta', { cta: 'arrange' }); } });
   $('ownClaim').href = `../claim/?p=${slug}&src=walk-upgrade`; $('ownLine').hidden = !!(claim && claim.claimed);
   $('ownClaim').addEventListener('click', () => track('cta', { cta: 'claim-from-upgrade' }));
   $('claimLink').addEventListener('click', () => track('cta', { cta: 'claim' }));
@@ -211,6 +213,7 @@ async function openWalk() {
     let svg = `<svg width="${mw}" height="${mh}" viewBox="0 0 ${mw} ${mh}" role="img" aria-label="Floor plan: tap to walk there">`;
     if (P.alfresco) svg += `<rect x="${mx(P.alfresco[0])}" y="${my(P.alfresco[3])}" width="${(P.alfresco[2] - P.alfresco[0]) * S}" height="${(P.alfresco[3] - P.alfresco[1]) * S}" fill="#e9e4da" stroke="#14181c" stroke-width="1" stroke-dasharray="3 3"/>`;
     svg += `<polygon points="${P.room.map(p => mx(p[0]) + ',' + my(p[1])).join(' ')}" fill="#fff" stroke="#14181c" stroke-width="2"/>`;
+    for (const w of P.walls || []) svg += `<rect x="${mx(w[0])}" y="${my(w[3])}" width="${((w[2] - w[0]) * S).toFixed(1)}" height="${((w[3] - w[1]) * S).toFixed(1)}" fill="#14181c"/>`; // internal walls (multi-room plans)
     for (const o of P.openings || []) { const [ax, ay, bx, by] = o.length === 4 ? o : [o[0], north, o[1], north]; // [x0, y0, x1, y1] on any wall; [a, b] = on the north wall
       svg += `<line x1="${mx(ax)}" y1="${my(ay)}" x2="${mx(bx)}" y2="${my(by)}" stroke="#7fb6e6" stroke-width="3"/>`; }
     for (const k of R.solid) svg += `<rect x="${mx(k[0])}" y="${my(k[3])}" width="${(k[2] - k[0]) * S}" height="${(k[3] - k[1]) * S}" rx="2" fill="#d9d4ca"/>`;

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Will your furniture fit? · SHOWHAUS</title>
+<meta name="description" content="Drop your own sofa, bed and table into your new home's floor plan in real metres, then walk it in 3D. No sign-up, nothing to install.">
+<meta property="og:title" content="Will your furniture fit? · SHOWHAUS">
+<meta property="og:description" content="Your new home in real metres. Drag your own furniture in, then walk it in 3D. No sign-up.">
+<meta property="og:image" content="https://showhaus.app/arrange/og.png">
+<meta name="theme-color" content="#c8562a">
+<link rel="stylesheet" href="./arrange.css">
+<script type="importmap">{"imports":{"three":"../walk/three.module.js"}}</script>
+</head>
+<body data-mode="start">
+
+<!-- start: /arrange/ (movers) and /arrange/?for=listing (vendors, landlords, agents) -->
+<main id="start">
+  <header class="a-top">
+    <a class="brand" href="../?src=arrange-nav" aria-label="SHOWHAUS home">SHOWHAUS<span>NSW homes, before you sign</span></a>
+    <nav class="a-nav" aria-label="SHOWHAUS"><a href="../hunt/?src=arrange-nav">Shortlist</a><a href="../walk/?src=arrange-nav">Walk homes</a></nav>
+  </header>
+
+  <section id="forMovers" class="hero">
+    <p class="eyebrow">Just got the keys — or about to?</p>
+    <h1>Will your furniture fit?</h1>
+    <p class="lead">Put your own sofa, bed and table into the new place in real metres before moving day. Drag them around, see the gaps to the walls, then walk it in 3D. No sign-up, nothing to install.</p>
+    <form id="roomForm" class="card start-card" novalidate>
+      <h2>Start with a tape measure</h2>
+      <p class="fine">Measure the room wall to wall. One room is enough to start.</p>
+      <div class="row">
+        <label>Width <span class="unit"><input id="rw" type="number" inputmode="decimal" min="1.5" max="30" step="0.01" placeholder="3.6" required> m</span></label>
+        <span class="times">×</span>
+        <label>Length <span class="unit"><input id="rd" type="number" inputmode="decimal" min="1.5" max="30" step="0.01" placeholder="4.2" required> m</span></label>
+        <button type="submit">Start arranging</button>
+      </div>
+      <p class="msg" id="roomMsg" aria-live="polite"></p>
+    </form>
+    <div class="card start-card">
+      <h2>Or try it on a real floor plan</h2>
+      <p class="fine">Measured from published plans. Pick one to see how it works.</p>
+      <div id="plans" class="plans"></div>
+    </div>
+    <div class="card start-card" id="mine" hidden>
+      <h2>Your layouts on this phone</h2>
+      <div id="mineList" class="plans"></div>
+    </div>
+    <form id="planForm" class="card start-card" novalidate>
+      <h2>Have the floor plan from the listing?</h2>
+      <p class="fine">Paste the link to the plan image or PDF. We turn it into a measured plan you can arrange — by hand for now, so it is not instant. Leave an email and we send you the link once, then delete your address.</p>
+      <div class="row">
+        <input id="planUrl" type="url" inputmode="url" maxlength="400" placeholder="https://…/floorplan.jpg" aria-label="Floor plan link">
+        <input id="planEmail" type="email" inputmode="email" maxlength="120" placeholder="you@email.com (optional)" aria-label="Email for the link">
+        <button type="submit">Send plan</button>
+      </div>
+      <p class="msg" id="planMsg" aria-live="polite"></p>
+    </form>
+    <p class="switch">Selling or leasing a home? <a href="./?for=listing&src=arrange-movers">Let buyers furnish your listing →</a></p>
+  </section>
+
+  <section id="forListing" class="hero" hidden>
+    <p class="eyebrow">For vendors, landlords and agents</p>
+    <h1>Let buyers furnish your listing before the inspection.</h1>
+    <p class="lead">Your floor plan becomes a plan in real metres that anyone can drag their own sofa and bed into, then walk in 3D. Fewer “the bed won’t fit” surprises at the door.</p>
+    <ul class="ticks">
+      <li><b>From your floor plan, in metres.</b> Not a guess and not virtual staging: every wall is where your plan puts it.</li>
+      <li><b>One link</b> for the listing, your ad and the SMS to enquiries. Buyers need no app and no sign-up.</li>
+      <li><b>You decide.</b> Free while in beta. We email you the link before anyone else sees it, and you can take it down any time.</li>
+    </ul>
+    <div class="row cta-row"><a class="btn" id="demoListing" href="./?p=buildtec-erina&amp;view=listing&amp;src=arrange-listing-demo">See what a buyer gets</a></div>
+    <form id="listForm" class="card start-card" novalidate>
+      <h2>Send your floor plan</h2>
+      <div class="row">
+        <input id="listUrl" type="url" inputmode="url" maxlength="400" placeholder="Link to the floor plan image or PDF" aria-label="Floor plan link">
+        <input id="listEmail" type="email" inputmode="email" maxlength="120" placeholder="you@agency.com.au" aria-label="Your email">
+        <button type="submit">Send</button>
+      </div>
+      <p class="msg" id="listMsg" aria-live="polite">We read the plan into metres by hand for now, so it is not instant. Your email is used once to send you the link, then deleted.</p>
+    </form>
+    <p class="switch">Moving in yourself? <a href="./?src=arrange-listing">Arrange your own furniture →</a></p>
+  </section>
+</main>
+
+<!-- editor: /arrange/?p=<plan> | ?room=WxD | ?b=<board>#e=<edit> -->
+<div id="editor" hidden>
+  <header class="e-top">
+    <a class="back" href="./" aria-label="All plans">←</a>
+    <div class="e-title"><b id="eName"></b><span id="eSub"></span></div>
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" id="v2d" aria-pressed="true">Plan</button>
+      <button type="button" id="v3d" aria-pressed="false">3D</button>
+    </div>
+    <button type="button" id="share" class="share">Share</button>
+  </header>
+  <p class="banner" id="banner" hidden></p>
+  <div id="stage">
+    <svg id="plan" role="application" aria-label="Floor plan. Drag furniture to move it."></svg>
+    <div id="three" hidden></div>
+    <div id="threeBar" hidden>
+      <button type="button" id="above" aria-pressed="true">From above</button>
+      <button type="button" id="walkIn" aria-pressed="false">Stand inside</button>
+      <span id="threeHint">Drag to turn · pinch or scroll to zoom</span>
+    </div>
+  </div>
+  <div id="sel" hidden>
+    <b id="selName"></b>
+    <label class="dim"><input id="selW" type="number" inputmode="decimal" min="10" max="600" step="1" aria-label="Width in cm"> ×</label>
+    <label class="dim"><input id="selD" type="number" inputmode="decimal" min="10" max="600" step="1" aria-label="Depth in cm"> cm</label>
+    <button type="button" id="rot" title="Rotate (R)">⟳ Rotate</button>
+    <button type="button" id="dup">Copy</button>
+    <button type="button" id="del">Remove</button>
+    <span id="selGap" class="gap"></span>
+  </div>
+  <div id="tray">
+    <div id="palette" class="palette" aria-label="Add furniture"></div>
+    <form id="mineForm" class="mine" novalidate>
+      <input id="myName" maxlength="30" placeholder="My sofa" aria-label="Name of your item">
+      <input id="myW" type="number" inputmode="decimal" min="10" max="600" placeholder="W cm" aria-label="Width in cm">
+      <input id="myD" type="number" inputmode="decimal" min="10" max="600" placeholder="D cm" aria-label="Depth in cm">
+      <button type="submit">Add mine</button>
+    </form>
+    <div class="tools"><button type="button" id="clear">Empty the room</button><button type="button" id="reset">Plan’s furniture</button><span id="status" aria-live="polite"></span></div>
+    <p class="basis" id="basis"></p>
+  </div>
+  <div id="shareBox" hidden>
+    <div class="sheet" role="dialog" aria-labelledby="shareH">
+      <button type="button" class="x" id="shareX" aria-label="Close">×</button>
+      <h2 id="shareH">Share this layout</h2>
+      <p class="fine" id="shareFine">Anyone with the link sees your layout and can try their own changes. Only you can change the original.</p>
+      <input id="shareUrl" readonly aria-label="Link">
+      <div class="row"><button type="button" id="copy">Copy link</button><a class="btn ghost" id="wa" target="_blank" rel="noopener">WhatsApp</a><a class="btn ghost" id="mail">Email</a></div>
+      <p class="msg" id="shareMsg" aria-live="polite"></p>
+    </div>
+  </div>
+</div>
+
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script type="module" src="./arrange.js"></script>
+</body>
+</html>
