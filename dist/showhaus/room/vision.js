@@ -36,7 +36,7 @@ const iou = (a, b) => { const x0 = Math.max(a.xmin, b.xmin), y0 = Math.max(a.ymi
 function dedupe(boxes) { const out = []; for (const b of boxes.sort((p, q) => q.score - p.score)) if (!out.some(o => iou(o.box, b.box) > 0.7)) out.push(b); return out.slice(0, 12); }
 
 // Prompt SAM with a box [x0,y0,x1,y1] or a point [x,y] (original pixels) → best mask as Uint8 W×H (1 = object).
-export async function segment(a, prompt) {
+export async function segment(a, prompt, opts = {}) {
   // This SAM export takes points only. A box becomes points: positives where the photo is nearest inside the box
   // (the object usually stands in front of what is behind it), negatives just outside its four sides.
   const [pts, labels] = prompt.length === 4 ? boxPoints(a, prompt) : [[prompt], [1]];
@@ -44,9 +44,19 @@ export async function segment(a, prompt) {
   const inp = await samProc(a.img, p);
   const out = await sam({ ...a.embed, input_points: inp.input_points, input_labels: inp.input_labels });
   const masks = await samProc.post_process_masks(out.pred_masks, inp.original_sizes, inp.reshaped_input_sizes);
-  const sc = out.iou_scores.data, k = sc.indexOf(Math.max(...sc)), m = masks[0], W = a.img.width, H = a.img.height, n = W * H;
-  const mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = m.data[k * n + i] ? 1 : 0;
-  return { mask, score: sc[k] };
+  const sc = out.iou_scores.data, m = masks[0], W = a.img.width, H = a.img.height, n = W * H;
+  // SAM gives three masks from fine to coarse. For a thing (opts.object) a mask that fills a big part of the photo or
+  // runs along three edges is the wall, floor or ceiling, not the thing: take the best-scoring one that is neither.
+  const stats = [0, 1, 2].map(k => { let area = 0, x0 = W, x1 = 0, y0 = H, y1 = 0;
+    for (let i = 0; i < n; i++) if (m.data[k * n + i]) { area++; const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    const edges = (y0 === 0) + (y1 === H - 1) + (x0 === 0) + (x1 === W - 1), span = Math.max((x1 - x0) / W, (y1 - y0) / H);
+    return { k, score: sc[k], frac: area / n, edges, span }; });
+  const box = prompt.length === 4; // a detected box already says where the thing is; a bare tap gets the strict test
+  const things = stats.filter(t => t.frac > 0.002 && (box ? t.frac < 0.85 : t.frac < 0.3 && t.edges < 3 && t.span < 0.75)).sort((p, q) => q.score - p.score);
+  const pickK = opts.object ? (things[0] ? things[0].k : -1) : stats.sort((p, q) => q.score - p.score)[0].k;
+  if (pickK < 0) return { mask: null, background: true };
+  const mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = m.data[pickK * n + i] ? 1 : 0;
+  return { mask, score: sc[pickK] };
 }
 
 function boxPoints(a, [x0, y0, x1, y1]) {

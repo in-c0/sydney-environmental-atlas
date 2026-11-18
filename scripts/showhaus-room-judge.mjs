@@ -20,13 +20,21 @@ await page.waitForTimeout(1500); await page.screenshot({ path: `${shots}/${tag}-
 const boxes = await page.evaluate(() => window.__room.boxes()), size = await page.evaluate(() => window.__room.size());
 console.log('boxes', boxes.map(b => b.label + ' ' + b.score.toFixed(2)).join(', '));
 const sofa = boxes.find(b => b.label === 'couch'); ok(sofa, 'the sofa is found');
-const hb = await page.locator('#hud').boundingBox(), cx = (sofa.box.xmin + sofa.box.xmax) / 2, cy = (sofa.box.ymin + sofa.box.ymax) / 2;
+const hb = await page.locator('#hud').boundingBox(), cx = 300, cy = 560; // on the sofa's seat (the box centre is the rug between its arms)
 await page.mouse.click(hb.x + cx / size[0] * hb.width, hb.y + cy / size[1] * hb.height);
 await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
 ok(await page.inputValue('#objName') === 'Sofa', 'named Sofa'); ok(+await page.inputValue('#dw') === 2 && +await page.inputValue('#dh') < 1.2, 'size from the sofa prior: 2.0 m wide, sofa height');
 await page.fill('#dw', '2.2'); await page.dispatchEvent('#dw', 'input');
 await page.waitForTimeout(800); await page.screenshot({ path: `${shots}/${tag}-2-cut.png` });
 await page.click('#keep'); await page.waitForFunction(() => window.__room.state().objects === 1);
+// a tap on the wall is not a thing; a tap on the coffee table (no detector label, inside the sofa's box) is the table
+const tapAt = async (x, y) => { const b = await page.locator('#hud').boundingBox(); await page.mouse.click(b.x + x / size[0] * b.width, b.y + y / size[1] * b.height);
+  await page.waitForFunction(() => !/Cutting/.test(document.getElementById('status').textContent), null, { timeout: 120000 }); };
+await tapAt(746, 159); ok(/wall, floor or ceiling/.test(await page.textContent('#status')), 'a tap on the wall is refused, not kept as a thing');
+await tapAt(576, 499); await page.waitForSelector('#sheet:not([hidden])');
+const t = await page.evaluate(() => window.__room.sel()); ok(t.label === null && t.px[0] < 300, 'the coffee table is cut out on its own: ' + JSON.stringify(t));
+await page.fill('#objName', 'coffee table'); ok(+await page.inputValue('#dh') === 0.42, 'typing "coffee table" sizes it like one');
+await page.click('#again');
 await page.click('#tabRoom'); await page.click('#tapeForm button');
 await page.waitForSelector('#tray button[data-id]'); await page.click('#tray button[data-id]');
 let s = await st(); ok(s.items.length === 1 && s.space === 'tape', 'sofa placed in the tape room');
