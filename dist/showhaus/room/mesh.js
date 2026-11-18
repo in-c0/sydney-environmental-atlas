@@ -69,15 +69,22 @@ export function capture(a, mask) {
 const texCache = new Map();
 export function buildMesh(THREE, asset, dims, { glow = false } = {}) {
   const { gw, gh, depth } = asset, { w, h, d } = dims, cell = (i, j) => i >= 0 && j >= 0 && i < gw && j < gh && depth[j * gw + i] >= 0;
-  // vertex depth = mean of the masked cells around it, then one smoothing pass
+  // vertex depth = mean of the masked cells around it
   const vw = gw + 1, vh = gh + 1, vd = new Float32Array(vw * vh), used = new Uint8Array(vw * vh);
   for (let j = 0; j < vh; j++) for (let i = 0; i < vw; i++) { let s = 0, c = 0;
     for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (cell(a, b)) { s += depth[b * gw + a]; c++; }
     if (c) { vd[j * vw + i] = s / c; used[j * vw + i] = 1; } }
-  const sm = vd.slice(); for (let j = 1; j < vh - 1; j++) for (let i = 1; i < vw - 1; i++) if (used[j * vw + i]) { let s = 0, c = 0;
-    for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (used[(j + b) * vw + i + a]) { s += vd[(j + b) * vw + i + a]; c++; } sm[j * vw + i] = s / c; }
+  // the photo's depth is noisy inside one object (folds, cushions read as dents): smooth it hard so the surface is
+  // a calm bulge, then round the silhouette by thinning it toward the edge
+  let sm = vd.slice();
+  for (let pass = 0; pass < 6; pass++) { const nx = sm.slice(); for (let j = 1; j < vh - 1; j++) for (let i = 1; i < vw - 1; i++) if (used[j * vw + i]) { let s = 0, c = 0;
+    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if (used[(j + b) * vw + i + a]) { s += sm[(j + b) * vw + i + a]; c++; } nx[j * vw + i] = s / c; } sm = nx; }
+  const edge = new Float32Array(vw * vh).fill(0); // 0 at the silhouette, 1 a few cells in
+  for (let j = 0; j < vh; j++) for (let i = 0; i < vw; i++) if (used[j * vw + i]) { let r = 1;
+    for (let k = 1; k <= 4 && r === 1; k++) for (const [a, b] of [[k, 0], [-k, 0], [0, k], [0, -k]]) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= vw || y >= vh || !used[y * vw + x]) { r = (k - 1) / 4; break; } }
+    edge[j * vw + i] = r; }
   const P = [], UV = [], C = [];
-  const zf = k => d / 2 * (0.3 + 0.7 * sm[k]), vx = i => (i / gw - 0.5) * w, vy = j => (1 - j / gh) * h;
+  const zf = k => d / 2 * (0.35 + 0.65 * Math.sqrt(edge[k])) * (0.8 + 0.2 * sm[k]), vx = i => (i / gw - 0.5) * w, vy = j => (1 - j / gh) * h;
   const V = (i, j, back, uv) => { const k = j * vw + i; P.push(vx(i), vy(j), back ? -zf(k) * 0.85 : zf(k)); UV.push(...(uv || [i / gw, 1 - j / gh])); const s = back ? 0.62 : uv ? 0.92 : 1; C.push(s, s, s); };
   const tri = (a, b, c) => { V(...a); V(...b); V(...c); };
   for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
