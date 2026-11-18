@@ -24,6 +24,12 @@ const hb = await page.locator('#hud').boundingBox(), cx = 300, cy = 560; // on t
 await page.mouse.click(hb.x + cx / size[0] * hb.width, hb.y + cy / size[1] * hb.height);
 await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
 ok(await page.inputValue('#objName') === 'Sofa', 'named Sofa'); ok(+await page.inputValue('#dw') === 2 && +await page.inputValue('#dh') < 1.2, 'size from the sofa prior: 2.0 m wide, sofa height');
+// steer the cut-out: tap the coffee table (outside → added), then tap it again (inside → taken out)
+const px0 = (await page.evaluate(() => window.__room.sel())).px;
+const steer = async (x, y) => { const b = await page.locator('#hud').boundingBox(); await page.mouse.click(b.x + x / size[0] * b.width, b.y + y / size[1] * b.height);
+  await page.waitForFunction(() => /keep steering|nothing|Could not/.test(document.getElementById('status').textContent), null, { timeout: 120000 }); return (await page.evaluate(() => window.__room.sel())).px; };
+const px1 = await steer(576, 499); ok(px1[0] * px1[1] > px0[0] * px0[1], `a tap outside adds that part: ${px0} → ${px1}`);
+const px2 = await steer(576, 499); ok(px2[0] * px2[1] < px1[0] * px1[1], `a tap inside takes it out again: ${px1} → ${px2}`);
 await page.fill('#dw', '2.2'); await page.dispatchEvent('#dw', 'input');
 await page.waitForTimeout(800); await page.screenshot({ path: `${shots}/${tag}-2-cut.png` });
 await page.click('#keep'); await page.waitForFunction(() => window.__room.state().objects === 1);
