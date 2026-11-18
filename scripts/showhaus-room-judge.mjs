@@ -1,0 +1,47 @@
+// SHOWHAUS Room click-through in real Chromium with the real in-browser models:
+// scan the sample photo → pick the sofa → keep it → tape room → place → say three changes → reopen step 2 → photo room.
+// node scripts/showhaus-room-judge.mjs --base http://localhost:8811 [--shots dir] [--phone]
+import { mkdirSync } from 'node:fs';
+const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
+const base = arg('--base') || 'http://localhost:8811', shots = arg('--shots') || '/tmp/room-shots', phone = process.argv.includes('--phone');
+const { chromium } = await import(process.env.PW || 'playwright').catch(() => import('playwright-core'));
+mkdirSync(shots, { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage(phone ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true } : { viewport: { width: 1360, height: 860 } });
+const errs = []; page.on('pageerror', e => errs.push(String(e))); page.on('console', m => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errs.push(m.text()); });
+const ok = (c, msg) => { if (!c) { console.error('FAIL', msg, errs.slice(-5)); process.exitCode = 1; } else console.log('ok', msg); };
+const st = () => page.evaluate(() => window.__room.state());
+const tag = phone ? 'phone' : 'desk';
+await page.goto(base + '/room/?synthetic=1');
+await page.click('#sample');
+await page.waitForFunction(() => ['ready', 'reveal', 'error'].includes(window.__room.phase()), null, { timeout: 600000 });
+ok(await page.evaluate(() => window.__room.phase()) !== 'error', 'models load and the photo is scanned: ' + await page.textContent('#status'));
+await page.waitForTimeout(1500); await page.screenshot({ path: `${shots}/${tag}-1-scan.png` });
+const boxes = await page.evaluate(() => window.__room.boxes()), size = await page.evaluate(() => window.__room.size());
+console.log('boxes', boxes.map(b => b.label + ' ' + b.score.toFixed(2)).join(', '));
+const sofa = boxes.find(b => b.label === 'couch'); ok(sofa, 'the sofa is found');
+const hb = await page.locator('#hud').boundingBox(), cx = (sofa.box.xmin + sofa.box.xmax) / 2, cy = (sofa.box.ymin + sofa.box.ymax) / 2;
+await page.mouse.click(hb.x + cx / size[0] * hb.width, hb.y + cy / size[1] * hb.height);
+await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
+ok(await page.inputValue('#objName') === 'Sofa', 'named Sofa'); ok(+await page.inputValue('#dw') === 2 && +await page.inputValue('#dh') < 1.2, 'size from the sofa prior: 2.0 m wide, sofa height');
+await page.fill('#dw', '2.2'); await page.dispatchEvent('#dw', 'input');
+await page.waitForTimeout(800); await page.screenshot({ path: `${shots}/${tag}-2-cut.png` });
+await page.click('#keep'); await page.waitForFunction(() => window.__room.state().objects === 1);
+await page.click('#tabRoom'); await page.click('#tapeForm button');
+await page.waitForSelector('#tray button[data-id]'); await page.click('#tray button[data-id]');
+let s = await st(); ok(s.items.length === 1 && s.space === 'tape', 'sofa placed in the tape room');
+const x0 = s.items[0].x, s0 = s.items[0];
+for (const t of ['sofa 50cm left', '벽지 세이지 줄무늬', 'night']) { await page.fill('#sayIn', t); await page.press('#sayIn', 'Enter'); await page.waitForTimeout(300); }
+s = await st(); ok(Math.abs(Math.hypot(s.items[0].x - x0, s.items[0].y - s0.y) - 0.5) < 0.05, 'sofa moved 50 cm'); ok(s.wall.colour === 'sage' && s.wall.pattern === 'stripes', 'walls sage stripes'); ok(s.sun === false, 'night');
+ok(s.steps === 5, 'five steps on the timeline: ' + s.steps);
+await page.waitForTimeout(800); await page.screenshot({ path: `${shots}/${tag}-3-room-night.png` });
+await page.click('#viewBtn'); await page.fill('#sayIn', 'day'); await page.press('#sayIn', 'Enter'); await page.waitForTimeout(600); await page.screenshot({ path: `${shots}/${tag}-3b-eye.png` }); await page.click('#viewBtn');
+await page.click('#timeline button[data-k="1"]'); await page.waitForTimeout(500); s = await st();
+ok(s.cur === 1 && s.sun === true && s.wall.colour === null, 'tapping step 2 reopens the room as it was');
+await page.screenshot({ path: `${shots}/${tag}-4-rewind.png` });
+await page.fill('#sayIn', 'lights off'); await page.press('#sayIn', 'Enter'); s = await st(); ok(s.steps === 2 || s.steps === 3, 'a new change from step 2 branches: ' + s.steps);
+await page.click('#newSpace'); await page.click('#planList button[data-sample]'); await page.waitForTimeout(1500); s = await st();
+ok(s.space === 'photo' && s.items.length === 1, 'same sofa in the room photo');
+await page.screenshot({ path: `${shots}/${tag}-5-photo.png` });
+ok(!errs.length, 'no page errors ' + errs.join(' | '));
+await browser.close();

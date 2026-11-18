@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scan your furniture, place it in the new place · SHOWHAUS</title>
+<meta name="description" content="Photograph your sofa, lamp or table. Your phone cuts it out, sizes it and turns it into a 3D object, then you place it in a room photo or floor plan by saying what to change. Runs on your device; no sign-up.">
+<meta property="og:title" content="Scan your furniture into the new place · SHOWHAUS">
+<meta property="og:description" content="Photo → cut-out → size → 3D object → place it in your next home. On your phone, no sign-up.">
+<meta name="theme-color" content="#12161c">
+<link rel="stylesheet" href="./room.css">
+<script type="importmap">{"imports":{"three":"../walk/three.module.js"}}</script>
+</head>
+<body data-mode="scan">
+<header class="top">
+  <a class="brand" href="../?src=room-nav" aria-label="SHOWHAUS home">SHOWHAUS</a>
+  <nav class="modes" role="tablist">
+    <button role="tab" id="tabScan" aria-selected="true">① Scan a thing</button>
+    <button role="tab" id="tabRoom" aria-selected="false">② Place it <b id="libCount">0</b></button>
+  </nav>
+</header>
+
+<!-- ① scan -->
+<main id="scan">
+  <section id="drop" class="drop">
+    <h1>Photograph your sofa. Place it in the new place.</h1>
+    <p class="lead">Your phone cuts it out, guesses its size and makes a 3D relief: the front from the photo, the back guessed. The photo never leaves this device.</p>
+    <div class="go">
+      <label class="btn"><input id="cam" type="file" accept="image/*" capture="environment" hidden>Take a photo</label>
+      <label class="btn ghost"><input id="file" type="file" accept="image/*" hidden>Choose a photo</label>
+      <button class="btn ghost" id="sample" type="button">Try a sample</button>
+    </div>
+    <p class="fine">The first scan downloads the open vision models (DETR, SlimSAM, Depth Anything v2) once.</p>
+  </section>
+
+  <section id="stage" class="stage" hidden>
+    <div class="photo" id="photoBox"><img id="photo" alt=""><canvas id="hud"></canvas></div>
+    <p class="status" id="status" aria-live="polite"></p>
+  </section>
+
+  <aside id="sheet" class="sheet" hidden>
+    <div class="sheet-grid">
+      <canvas id="preview" width="300" height="300" aria-label="3D preview"></canvas>
+      <form id="objForm" autocomplete="off">
+        <label class="name">Name <input id="objName" maxlength="40" required></label>
+        <div class="dims">
+          <label>W <span><input id="dw" type="number" step="0.01" min="0.03" max="6" inputmode="decimal"> m</span></label>
+          <label>D <span><input id="dd" type="number" step="0.01" min="0.02" max="6" inputmode="decimal"> m</span></label>
+          <label>H <span><input id="dh" type="number" step="0.01" min="0.03" max="4" inputmode="decimal"> m</span></label>
+        </div>
+        <p class="fine" id="dimNote"></p>
+        <label class="toggle"><input id="isLight" type="checkbox"> Gives light (lamp, pendant)</label>
+        <p class="fine kind">3D from one photo: the front is measured from the photo’s depth, the back is mirrored.</p>
+        <div class="row">
+          <button class="btn" id="keep" type="submit">Keep it</button>
+          <button class="btn ghost" id="again" type="button">Pick another</button>
+        </div>
+      </form>
+    </div>
+  </aside>
+</main>
+
+<!-- ② room -->
+<main id="room" hidden>
+  <section id="spaces" class="spaces">
+    <h2>Where should it go?</h2>
+    <div class="space-grid">
+      <label class="space"><input id="roomPhoto" type="file" accept="image/*" hidden><b>A photo of the room</b><small>Your objects stand on its floor, with shadows. Tap a wall to repaint it.</small></label>
+      <div class="space" id="planPick"><b>A floor plan</b><small>Walk the 3D room, change walls, floor and light.</small><div id="planList" class="plan-list"></div></div>
+      <form class="space" id="tapeForm"><b>A tape measure</b><small>One room, wall to wall.</small>
+        <span class="tape"><input id="tw" type="number" step="0.1" min="1.5" max="20" value="4.2" inputmode="decimal"> × <input id="td" type="number" step="0.1" min="1.5" max="20" value="3.6" inputmode="decimal"> m <button class="btn sm">Build</button></span></form>
+      <form class="space" id="addrForm"><b>An address</b><small>Opens the address page. Most homes have no plan on file yet, so you measure one room here.</small>
+        <span class="tape"><input id="addr" placeholder="4/17 Flood St Clovelly"> <button class="btn sm">Go</button></span></form>
+    </div>
+  </section>
+
+  <section id="view" class="view" hidden>
+    <div id="host" class="host"><img id="roomImg" alt=""><canvas id="tint"></canvas></div>
+    <form id="say" class="say" autocomplete="off">
+      <input id="sayIn" placeholder="Say what to change: “sofa 30cm left”, “walls sage stripes”, “lights off”" enterkeyhint="send" aria-label="Tell the room what to change">
+      <button class="btn sm" aria-label="Apply">↵</button>
+    </form>
+    <p class="heard" id="heard" aria-live="polite"></p>
+    <div class="quick" id="quick">
+      <button data-say="night">☾ Night</button><button data-say="day">☀ Day</button><button data-say="warmer">Warmer</button><button data-say="lights off">Lights off</button>
+      <button id="viewBtn" data-v="above">Eye level</button><button id="horizonBtn" hidden>Match floor</button><button id="newSpace">Change space</button>
+    </div>
+    <input id="horizon" type="range" min="-0.2" max="0.6" step="0.005" hidden aria-label="Floor angle">
+    <div class="selbar" id="selbar" hidden>
+      <b id="selName"></b>
+      <button data-a="rotL" aria-label="Turn left">⟲</button><button data-a="rotR" aria-label="Turn right">⟳</button>
+      <button data-a="smaller" aria-label="Smaller">−</button><button data-a="bigger" aria-label="Bigger">+</button>
+      <button data-a="light" id="lightBtn">Light</button><button data-a="remove" aria-label="Remove">✕</button>
+    </div>
+    <div class="swatches" id="swatches" hidden></div>
+    <div class="tray" id="tray"></div>
+    <ol class="timeline" id="timeline" aria-label="Steps — tap one to go back to it"></ol>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script type="module" src="./room.js"></script>
+</body>
+</html>
