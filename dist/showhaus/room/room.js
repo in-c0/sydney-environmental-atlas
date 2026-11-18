@@ -94,23 +94,40 @@ const nice = l => NICE[l] || (l ? l[0].toUpperCase() + l.slice(1) : 'Item');
 hud.addEventListener('click', async e => {
   if (!A || phase === 'loading' || phase === 'scanning') return;
   const r = hud.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * A.img.width, y = (e.clientY - r.top) / r.height * A.img.height;
+  if (sel && !$('sheet').hidden) return refine(x, y);
   const inBox = A.boxes.map((b, i) => ({ b, i, a: (b.box.xmax - b.box.xmin) * (b.box.ymax - b.box.ymin) })).filter(({ b }) => x >= b.box.xmin && x <= b.box.xmax && y >= b.box.ymin && y <= b.box.ymax).sort((p, q) => p.a - q.a)[0];
   status('Cutting it out…');
   const v = await loadVision();
   // The detected box wins only if its cut-out contains the tapped pixel (a coffee table inside the sofa's box is not the sofa).
-  let mask, score, background, label = null, boxIndex = -1;
+  let mask, score, background, label = null, boxIndex = -1, pts, labels;
   try {
     if (inBox) { const r = await v.segment(A, [inBox.b.box.xmin, inBox.b.box.ymin, inBox.b.box.xmax, inBox.b.box.ymax], { object: true });
-      if (r.mask && near(r.mask, A.img.width, A.img.height, x, y, 8)) { ({ mask, score } = r); label = inBox.b.label; boxIndex = inBox.i; } }
-    if (!mask) ({ mask, score, background } = await v.segment(A, [x, y], { object: true }));
+      if (r.mask && near(r.mask, A.img.width, A.img.height, x, y, 8)) { ({ mask, score, pts, labels } = r); label = inBox.b.label; boxIndex = inBox.i; } }
+    if (!mask) ({ mask, score, background, pts, labels } = await v.segment(A, [x, y], { object: true }));
   } catch (err) { status('Could not cut that out (' + (err.message || err).slice(0, 80) + '). Tap again.'); return; }
   if (background) { status('That looks like the wall, floor or ceiling. Tap the middle of the thing itself.'); track('room_segment_bg'); return; }
   const cap = capture(A, mask); if (!cap) { status('Nothing to cut out there. Tap closer to the middle of the thing.'); return; }
-  sel = { i: boxIndex, label, cap, score };
+  sel = { i: boxIndex, label, cap, score, mask, pts, labels, base: pts.length };
   maskCanvas = maskImage(A, mask);
   track('room_segment', { label: sel.label || 'tap', score: +score.toFixed(2) });
   openSheet();
+  status('Not right? Tap a missed part to add it, or a wrong part to take it out.');
 });
+// a tap while the cut-out is open steers it: outside the cut-out adds that spot, inside takes it out
+async function refine(x, y) {
+  const inside = !!sel.mask[Math.round(y) * A.img.width + Math.round(x)];
+  status(inside ? 'Taking that part out…' : 'Adding that part…');
+  // taking out a spot you added earlier just drops that point; otherwise add a positive or a negative point
+  const near0 = inside ? sel.pts.findIndex((p, i) => sel.labels[i] === 1 && i >= sel.base && Math.hypot(p[0] - x, p[1] - y) < 24) : -1;
+  const pts = near0 >= 0 ? sel.pts.filter((_, i) => i !== near0) : [...sel.pts, [Math.round(x), Math.round(y)]];
+  const labels = near0 >= 0 ? sel.labels.filter((_, i) => i !== near0) : [...sel.labels, inside ? 0 : 1], v = await loadVision();
+  let r; try { r = await v.segment(A, { pts, labels }, { object: true }); } catch (err) { status('Could not change the cut-out (' + String(err.message || err).slice(0, 80) + ').'); return; }
+  const cap = r.mask && capture(A, r.mask); if (!cap) { status('That would leave nothing. Tap somewhere else.'); return; }
+  Object.assign(sel, { cap, mask: r.mask, pts, labels, score: r.score }); maskCanvas = maskImage(A, r.mask);
+  if (!measured) estimateDims(sel.label || priorForName($('objName').value)); else preview();
+  track('room_refine', { add: !inside, n: pts.length });
+  status('Tap again to keep steering, or Keep it.');
+}
 const near = (m, W, H, x, y, r) => { for (let dy = -r; dy <= r; dy += 2) for (let dx = -r; dx <= r; dx += 2) { const X = Math.round(x + dx), Y = Math.round(y + dy); if (X >= 0 && Y >= 0 && X < W && Y < H && m[Y * W + X]) return true; } return false; };
 function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), id = g.createImageData(W, H);
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const i = y * W + x; if (!mask[i]) continue; const edge = !mask[i - 1] || !mask[i + 1] || !mask[i - W] || !mask[i + W];

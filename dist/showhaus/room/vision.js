@@ -39,7 +39,8 @@ function dedupe(boxes) { const out = []; for (const b of boxes.sort((p, q) => q.
 export async function segment(a, prompt, opts = {}) {
   // This SAM export takes points only. A box becomes points: positives where the photo is nearest inside the box
   // (the object usually stands in front of what is behind it), negatives just outside its four sides.
-  const [pts, labels] = prompt.length === 4 ? boxPoints(a, prompt) : [[prompt], [1]];
+  // prompt: a box [x0,y0,x1,y1], a tap [x,y], or { pts, labels } (the visitor's own add/remove taps)
+  const [pts, labels] = prompt.pts ? [prompt.pts, prompt.labels] : prompt.length === 4 ? boxPoints(a, prompt) : [[prompt], [1]];
   const p = { input_points: [[pts]], input_labels: [[labels]] };
   const inp = await samProc(a.img, p);
   const out = await sam({ ...a.embed, input_points: inp.input_points, input_labels: inp.input_labels });
@@ -51,12 +52,12 @@ export async function segment(a, prompt, opts = {}) {
     for (let i = 0; i < n; i++) if (m.data[k * n + i]) { area++; const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     const edges = (y0 === 0) + (y1 === H - 1) + (x0 === 0) + (x1 === W - 1), span = Math.max((x1 - x0) / W, (y1 - y0) / H);
     return { k, score: sc[k], frac: area / n, edges, span }; });
-  const box = prompt.length === 4; // a detected box already says where the thing is; a bare tap gets the strict test
+  const box = prompt.length === 4 || !!prompt.pts; // a box or the visitor's own points already say where the thing is; a bare tap gets the strict test
   const things = stats.filter(t => t.frac > 0.002 && (box ? t.frac < 0.85 : t.frac < 0.3 && t.edges < 3 && t.span < 0.75)).sort((p, q) => q.score - p.score);
   const pickK = opts.object ? (things[0] ? things[0].k : -1) : stats.sort((p, q) => q.score - p.score)[0].k;
   if (pickK < 0) return { mask: null, background: true };
   const mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = m.data[pickK * n + i] ? 1 : 0;
-  return { mask, score: sc[pickK] };
+  return { mask, score: sc[pickK], pts, labels };
 }
 
 function boxPoints(a, [x0, y0, x1, y1]) {
