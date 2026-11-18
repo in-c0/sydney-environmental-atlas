@@ -13,6 +13,13 @@ export const PRIORS = {
   'teddy bear': { by: 'h', w: 0.3, h: 0.4, d: 0.25 }, book: { by: 'h', w: 0.16, h: 0.24, d: 0.03 }, suitcase: { by: 'h', w: 0.45, h: 0.68, d: 0.27 },
   bicycle: { by: 'w', w: 1.75, h: 1.05, d: 0.6 },
 };
+// Typical sizes for things the detector has no label for, matched on the name the visitor types.
+const NAMED = [[/coffee table|커피\s*테이블|좌탁/i, 'coffee table', { by: 'h', w: 1.1, h: 0.42, d: 0.6 }], [/side ?board|buffet|tv unit|tv stand|credenza|거실장|수납장/i, 'sideboard', { by: 'h', w: 1.8, h: 0.6, d: 0.45 }],
+  [/rug|carpet|러그|카펫/i, 'rug', { by: 'w', w: 2.0, h: 0.01, d: 1.4 }], [/desk|책상/i, 'desk', { by: 'h', w: 1.2, h: 0.74, d: 0.6 }], [/wardrobe|closet|옷장/i, 'wardrobe', { by: 'h', w: 1.2, h: 2.0, d: 0.6 }],
+  [/bookshelf|bookcase|shelf|책장|선반/i, 'bookshelf', { by: 'h', w: 0.8, h: 1.8, d: 0.3 }], [/floor lamp|lamp|스탠드|조명/i, 'floor lamp', { by: 'h', w: 0.4, h: 1.6, d: 0.4 }],
+  [/armchair|안락의자/i, 'armchair', { by: 'h', w: 0.85, h: 0.85, d: 0.85 }], [/ottoman|stool|스툴/i, 'stool', { by: 'h', w: 0.45, h: 0.45, d: 0.45 }], [/drawers|dresser|서랍장/i, 'chest of drawers', { by: 'h', w: 0.9, h: 0.9, d: 0.45 }],
+  [/bedside|nightstand|협탁/i, 'bedside table', { by: 'h', w: 0.45, h: 0.55, d: 0.4 }], [/mirror|거울/i, 'mirror', { by: 'h', w: 0.6, h: 1.6, d: 0.04 }]];
+export function priorForName(name) { const hit = NAMED.find(([re]) => re.test(name || '')); if (hit) PRIORS[hit[1]] = hit[2]; return hit ? hit[1] : null; }
 export const LIGHT_HINT = /lamp|light|조명|램프|스탠드|pendant|chandelier/i;
 
 // pxW/pxH: the mask's bounding box in pixels.

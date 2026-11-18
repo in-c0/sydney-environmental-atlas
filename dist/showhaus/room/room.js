@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { buildRoom } from '../walk/plan-room.js';
 import { bounds } from '../walk/plan-core.js';
 import { parse, apply, describe, emptyState, clamp as clampN, WALL_COLOURS, PATTERNS } from './intent.js';
-import { estimate, capture, buildMesh, LIGHT_HINT } from './mesh.js';
+import { estimate, capture, buildMesh, LIGHT_HINT, priorForName } from './mesh.js';
 
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search), src = qs.get('src') || qs.get('utm_source') || 'direct';
@@ -96,14 +96,22 @@ hud.addEventListener('click', async e => {
   const r = hud.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * A.img.width, y = (e.clientY - r.top) / r.height * A.img.height;
   const inBox = A.boxes.map((b, i) => ({ b, i, a: (b.box.xmax - b.box.xmin) * (b.box.ymax - b.box.ymin) })).filter(({ b }) => x >= b.box.xmin && x <= b.box.xmax && y >= b.box.ymin && y <= b.box.ymax).sort((p, q) => p.a - q.a)[0];
   status('Cutting it out…');
-  const v = await loadVision(), prompt = inBox ? [inBox.b.box.xmin, inBox.b.box.ymin, inBox.b.box.xmax, inBox.b.box.ymax] : [x, y];
-  let mask, score; try { ({ mask, score } = await v.segment(A, prompt)); } catch (err) { status('Could not cut that out (' + (err.message || err).slice(0, 80) + '). Tap again.'); return; }
+  const v = await loadVision();
+  // The detected box wins only if its cut-out contains the tapped pixel (a coffee table inside the sofa's box is not the sofa).
+  let mask, score, background, label = null, boxIndex = -1;
+  try {
+    if (inBox) { const r = await v.segment(A, [inBox.b.box.xmin, inBox.b.box.ymin, inBox.b.box.xmax, inBox.b.box.ymax], { object: true });
+      if (r.mask && near(r.mask, A.img.width, A.img.height, x, y, 8)) { ({ mask, score } = r); label = inBox.b.label; boxIndex = inBox.i; } }
+    if (!mask) ({ mask, score, background } = await v.segment(A, [x, y], { object: true }));
+  } catch (err) { status('Could not cut that out (' + (err.message || err).slice(0, 80) + '). Tap again.'); return; }
+  if (background) { status('That looks like the wall, floor or ceiling. Tap the middle of the thing itself.'); track('room_segment_bg'); return; }
   const cap = capture(A, mask); if (!cap) { status('Nothing to cut out there. Tap closer to the middle of the thing.'); return; }
-  sel = { i: inBox ? inBox.i : -1, label: inBox ? inBox.b.label : null, cap, score };
+  sel = { i: boxIndex, label, cap, score };
   maskCanvas = maskImage(A, mask);
   track('room_segment', { label: sel.label || 'tap', score: +score.toFixed(2) });
   openSheet();
 });
+const near = (m, W, H, x, y, r) => { for (let dy = -r; dy <= r; dy += 2) for (let dx = -r; dx <= r; dx += 2) { const X = Math.round(x + dx), Y = Math.round(y + dy); if (X >= 0 && Y >= 0 && X < W && Y < H && m[Y * W + X]) return true; } return false; };
 function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), id = g.createImageData(W, H);
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const i = y * W + x; if (!mask[i]) continue; const edge = !mask[i - 1] || !mask[i + 1] || !mask[i - W] || !mask[i + W];
     id.data[i * 4] = 255; id.data[i * 4 + 1] = edge ? 220 : 160; id.data[i * 4 + 2] = edge ? 180 : 90; id.data[i * 4 + 3] = edge ? 255 : 70; }
@@ -112,12 +120,19 @@ function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = docum
 // sheet: name, size, 3D preview
 let pv = null, dims = null, ratio = null, measured = false;
 function openSheet() {
-  const est = estimate(sel.label, ...sel.cap.px); dims = { w: est.w, h: est.h, d: est.d }; ratio = { ...dims }; measured = false;
-  $('objName').value = nice(sel.label); $('dw').value = dims.w; $('dd').value = dims.d; $('dh').value = dims.h;
+  measured = false; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
+  estimateDims(sel.label); $('sheet').hidden = false;
+  if (!sel.label) $('objName').focus();
+}
+function estimateDims(label) {
+  const est = estimate(label, ...sel.cap.px); dims = { w: est.w, h: est.h, d: est.d }; ratio = { ...dims };
+  $('dw').value = dims.w; $('dd').value = dims.d; $('dh').value = dims.h;
   $('dimNote').textContent = `Est. ${est.note} Type any real measurement and the others follow.`;
-  $('isLight').checked = LIGHT_HINT.test(sel.label || ''); $('sheet').hidden = false; status('');
+  $('isLight').checked = LIGHT_HINT.test(label || ''); status('');
   preview();
 }
+// a typed name with a typical size re-estimates the size until the visitor types a measurement
+$('objName').addEventListener('input', e => { if (!sel || measured || sel.label) return; const k = priorForName(e.target.value); if (k) estimateDims(k); });
 for (const k of ['w', 'd', 'h']) $('d' + k).addEventListener('input', e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; const f = v / ratio[k];
   for (const o of ['w', 'd', 'h']) { dims[o] = +(ratio[o] * f).toFixed(2); if (o !== k) $('d' + o).value = dims[o]; } $('dimNote').textContent = 'Measured by you; the other two follow the photo.'; measured = true; preview(); });
 $('isLight').onchange = preview;
