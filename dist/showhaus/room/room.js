@@ -5,7 +5,7 @@ import { buildRoom } from '../walk/plan-room.js';
 import { bounds } from '../walk/plan-core.js';
 import { fitLine } from './fit.js';
 import { parse, apply, describe, emptyState, clamp as clampN, WALL_COLOURS, PATTERNS } from './intent.js';
-import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES, ROUGH } from './mesh.js';
+import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES, ROUGH, hasPrior } from './mesh.js';
 
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search), src = qs.get('src') || qs.get('utm_source') || 'direct';
@@ -42,18 +42,20 @@ $('drop').addEventListener('dragover', e => e.preventDefault()); $('drop').addEv
 let phase = 'idle', band = 0, lastScan = null;
 // 90 MB is a lot on mobile data (measured first visit, loop 9): say so before the tap, and say when it is already here
 (async () => { try {
-  const cached = (await (await caches.open('transformers-cache')).keys()).length > 8;
+  const MODEL_FILES = 9; // configs + weights of the three models; fewer cached means a partial download
+  const cached = (await (await caches.open('transformers-cache')).keys()).length >= MODEL_FILES;
   const cell = navigator.connection && (navigator.connection.type === 'cellular' || navigator.connection.saveData);
   if (cached) $('dlNote').textContent = 'The vision models are already on this device: scans start right away.';
-  else if (cell) { $('dlNote').textContent = 'You’re on mobile data: the first scan downloads about 90 MB once. Wi-Fi is kinder to your plan.'; $('dlNote').classList.add('warn'); }
+  else if (cell) { $('dlNote').textContent = 'You’re on mobile data: the first scan downloads about 90 MB once. Use Wi-Fi if your data is limited.'; $('dlNote').classList.add('warn'); }
 } catch { /* no Cache API (private mode): keep the default note */ } })();
 $('retryScan').onclick = () => { $('retryScan').hidden = true; if (lastScan) startScan(lastScan, 'retry'); };
 async function startScan(f, how) {
   track('room_scan', { how }); scanT0 = performance.now(); $('retryScan').hidden = true;
   const url = await fileToUrl(f); $('photo').src = url; await $('photo').decode();
   $('drop').hidden = true; $('stage').hidden = false; $('sheet').hidden = true; sel = null; A = null; phase = 'loading'; sizeHud(); requestAnimationFrame(drawHud);
+  let v = null;
   try {
-    const v = await loadVision();
+    v = await loadVision();
     status('Loading vision models…');
     const dev = await v.load(b => status(`Loading vision models ${(b[0] / 1e6).toFixed(0)}${b[1] ? ' / ' + (b[1] / 1e6).toFixed(0) : ''} MB · the photo stays on this device`),
       (ms, n) => { status(`The model host is busy. Trying again in ${Math.round(ms / 1000)} s (${n} of 2)…`); track('room_model_retry', { n }); });
@@ -61,8 +63,8 @@ async function startScan(f, how) {
     A = await v.analyse(url); phase = 'reveal'; band = 0;
     track('room_detect', { n: A.boxes.length, ms: Math.round(performance.now() - scanT0), dev });
     status(A.boxes.length ? 'Tap the thing you want to keep. Not boxed? Tap it anyway.' : 'Nothing recognised. Tap the thing you want to keep.');
-  } catch (e) { phase = 'error'; const busy = vision && (await loadVision()).transient(e); lastScan = f;
-    status(busy ? 'Couldn’t download the scanning models: the model host is busy or the connection dropped. Nothing is wrong with your photo.'
+  } catch (e) { phase = 'error'; const busy = !!(v && v.transient(e)); lastScan = f;
+    status(busy ? 'Couldn’t download the scanning models: the model host is busy or the connection dropped. Your photo is fine; try again in a minute.'
       : 'The scan could not run on this browser (' + (e.message || e) + '). Try Chrome or Safari, or another photo.');
     $('retryScan').hidden = !busy; track('room_scan_error', { busy, msg: String(e.message || e).slice(0, 120) }); }
 }
@@ -90,14 +92,16 @@ function drawHud(now) {
     hg.font = `600 ${12 * devicePixelRatio}px ui-monospace,monospace`;
     // tags never leave the photo and never sit on each other: clamp to the edges, then step down past any tag already placed
     const tagAt = (x0, y0, tw) => { let x = Math.min(Math.max(0, x0), W - tw), y = y0 - th - 1 * devicePixelRatio; if (y < 0) y = y0 + 1;
-      for (let k = 0; k < 8 && tags.some(r => x < r.x + r.w && r.x < x + tw && y < r.y + th && r.y < y + th); k++) y += th + 2 * devicePixelRatio;
+      const hits = () => tags.some(r => x < r.x + r.w && r.x < x + tw && y < r.y + th && r.y < y + th);
+      for (let k = 0; k < 8 && hits(); k++) y += th + 2 * devicePixelRatio;
+      y = Math.min(y, H - th); if (hits()) return null; // no room left: the box corners still show it
       tags.push({ x, y, w: tw }); return { x, y }; };
     A.boxes.forEach((b, i) => { const { xmin, ymin, xmax, ymax } = b.box; if (ymin * sy > shown) return;
       const x0 = xmin * sx, y0 = ymin * sy, x1 = xmax * sx, y1 = ymax * sy, L = Math.min(18 * devicePixelRatio, (x1 - x0) / 4, (y1 - y0) / 4), on = sel && sel.i === i;
       hg.strokeStyle = on ? '#ffb27a' : 'rgba(255,255,255,.85)'; hg.lineWidth = (on ? 3 : 2) * devicePixelRatio; hg.beginPath();
       for (const [cx, cy, dx, dy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) { hg.moveTo(cx + dx * L, cy); hg.lineTo(cx, cy); hg.lineTo(cx, cy + dy * L); }
       hg.stroke(); const tag = `${nice(b.label)} ${Math.round(b.score * 100)}%`;
-      const tw = hg.measureText(tag).width + 10 * devicePixelRatio, p = tagAt(x0, y0, tw); hg.fillStyle = on ? '#ffb27a' : 'rgba(10,14,20,.78)'; hg.fillRect(p.x, p.y, tw, th);
+      const tw = hg.measureText(tag).width + 10 * devicePixelRatio, p = tagAt(x0, y0, tw); if (!p) return; hg.fillStyle = on ? '#ffb27a' : 'rgba(10,14,20,.78)'; hg.fillRect(p.x, p.y, tw, th);
       hg.fillStyle = on ? '#1a1206' : '#fff'; hg.fillText(tag, p.x + 5 * devicePixelRatio, p.y + th - 5 * devicePixelRatio); });
     if (maskCanvas) { hg.globalAlpha = 0.6 + 0.25 * Math.sin(t * 4); hg.drawImage(maskCanvas, 0, 0, W, H); hg.globalAlpha = 1; }
   }
@@ -184,7 +188,7 @@ async function refine(x, y) {
   if (!nameTyped && sel.label) $('objName').value = nice(sel.label);
   if (!measured) estimateDims(sel.label || priorForName($('objName').value)); else preview();
   track('room_refine', { add: !inside, n: pts.length });
-  status('Tap again to keep steering, or Keep it.');
+  status('Tap more of it to add, or a wrong bit to take out. Then Keep it.');
 }
 const iouMask = (a, b) => { let i = 0, u = 0; for (let k = 0; k < a.length; k++) { if (a[k] && b[k]) i++; if (a[k] || b[k]) u++; } return i / (u || 1); };
 const near = (m, W, H, x, y, r) => { for (let dy = -r; dy <= r; dy += 2) for (let dx = -r; dx <= r; dx += 2) { const X = Math.round(x + dx), Y = Math.round(y + dy); if (X >= 0 && Y >= 0 && X < W && Y < H && m[Y * W + X]) return true; } return false; };
@@ -226,17 +230,16 @@ function estimateDims(label) {
   dims = unknown ? { w: +(0.5 * sel.cap.px[0] / sel.cap.px[1]).toFixed(2), h: 0.5, d: 0.4 } : { w: est.w, h: est.h, d: est.d }; ratio = { ...dims }; rk = est.rk;
   $('dw').value = unknown ? '' : dims.w; $('dd').value = unknown ? '' : dims.d; $('dh').value = unknown ? '' : dims.h;
   $('dimNote').textContent = unknown ? est.note : `Est. ${est.note} Type any real measurement and the others follow.`;
-  $('rough').hidden = !!PRIORS_OK(label) || measured; $('keep').disabled = unknown && !measured;
-  $('rough').innerHTML = ROUGH.map(([k, t, h]) => `<button type="button" class="btn ghost sm${roughH === h ? ' on' : ''}" data-h="${h}">${t} · ${h < 1 ? h * 100 + ' cm' : h + ' m'}</button>`).join('');
+  $('rough').hidden = hasPrior(label) || measured; $('keep').disabled = unknown && !measured;
+  $('rough').innerHTML = ROUGH.map(([t, h]) => `<button type="button" class="btn ghost sm${roughH === h ? ' on' : ''}" data-h="${h}">${t} · ${h < 1 ? h * 100 + ' cm' : h + ' m'}</button>`).join('');
   $('isLight').checked = LIGHT_HINT.test(label || ''); status('');
   preview();
 }
 // a typed name with a typical size re-estimates the size until the visitor types a measurement
-const PRIORS_OK = label => estimate(label, 1, 1).basis !== 'unknown';
 $('rough').onclick = e => { const b = e.target.closest('button[data-h]'); if (!b || !sel) return; roughH = +b.dataset.h; track('room_rough', { h: roughH }); estimateDims(kindNow()); };
 $('objName').addEventListener('input', e => { nameTyped = true; if (!sel || measured || sel.label) return; const k = priorForName(e.target.value); if (k) estimateDims(k); });
 for (const k of ['w', 'd', 'h']) $('d' + k).addEventListener('input', e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; const f = v / ratio[k];
-  for (const o of ['w', 'd', 'h']) { dims[o] = +(ratio[o] * f).toFixed(2); if (o !== k) $('d' + o).value = dims[o]; } $('dimNote').textContent = 'Measured by you; the other two follow the photo.'; measured = true; $('keep').disabled = false; $('rough').hidden = true; preview(); });
+  for (const o of ['w', 'd', 'h']) { dims[o] = +(ratio[o] * f).toFixed(2); if (o !== k) $('d' + o).value = dims[o]; } $('dimNote').textContent = 'Measured by you; the other two follow the photo.'; measured = k; $('keep').disabled = false; $('rough').hidden = true; preview(); });
 $('isLight').onchange = preview;
 function preview() {
   if (!pv) { const r = new THREE.WebGLRenderer({ canvas: $('preview'), antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, devicePixelRatio)); r.toneMapping = THREE.ACESFilmicToneMapping;
@@ -477,7 +480,7 @@ $('tray').onclick = e => { const b = e.target.closest('button'); if (!b) return;
 
 // ---------- selected object bar
 function drawSel() { const s = state(), it = s?.items.find(i => i.uid === selUid); $('selbar').hidden = !it; $('fit').hidden = !it; if (!it) return;
-  const est = objOf(it.obj)?.measured && it.k === 1 ? '' : ' est.';
+  const ms = it.k === 1 && objOf(it.obj)?.measured, est = ms ? ` (${typeof ms === 'string' ? ms.toUpperCase() + ' measured, rest est.' : 'measured'})` : ' est.';
   $('selName').textContent = it.name; // the bar is narrow on a phone: the size lives in the fit line above it
   // the question a mover has: does it fit? A room photo has no measured walls, so it says so instead of guessing
   const f = s.space.kind === 'photo' ? { tone: 'tight', text: 'no fit check on a photo (walls not measured)' } : fitLine(planFor(s.space), s.items, it.uid);
