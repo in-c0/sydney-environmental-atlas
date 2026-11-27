@@ -11,7 +11,7 @@ button, input { font: inherit; color: inherit; }
 .modes button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
 .modes b { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 3px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 main { flex: 1 1 auto; position: relative; min-height: 0; }
-.btn { display: inline-block; border: 0; border-radius: 12px; padding: 13px 18px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn { display: inline-block; border: 0; border-radius: 12px; padding: 13px 18px; background: var(--accent); color: #1a1206; /* white on this orange is 3:1, below the 4.5:1 floor (axe, loop 8) */ font-weight: 600; cursor: pointer; text-decoration: none; }
 .btn.ghost { background: var(--bg2); color: var(--ink); border: 1px solid var(--line); }
 .btn.sm { padding: 8px 12px; border-radius: 10px; }
 .fine { color: var(--ink2); font-size: 12.5px; margin: 6px 0; }
