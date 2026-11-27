@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { buildRoom } from '../walk/plan-room.js';
 import { bounds } from '../walk/plan-core.js';
+import { fitLine } from './fit.js';
 import { parse, apply, describe, emptyState, clamp as clampN, WALL_COLOURS, PATTERNS } from './intent.js';
 import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES, ROUGH } from './mesh.js';
 
@@ -463,8 +464,12 @@ $('tray').onclick = e => { const b = e.target.closest('button'); if (!b) return;
   selUid = u; sync(); drawTray(); track('room_place', { n: s.items.length + 1, kind: s.space.kind }); };
 
 // ---------- selected object bar
-function drawSel() { const it = state()?.items.find(i => i.uid === selUid); $('selbar').hidden = !it; if (!it) return;
-  $('selName').textContent = `${it.name} · ${(it.dims.w * it.k).toFixed(2)} × ${(it.dims.d * it.k).toFixed(2)} × ${(it.dims.h * it.k).toFixed(2)} m${objOf(it.obj)?.measured && it.k === 1 ? '' : ' est.'}`; $('lightBtn').textContent = it.light ? (it.on ? 'Light off' : 'Light on') : 'Glow'; $('lightBtn').title = it.light ? '' : 'Make it a light'; }
+function drawSel() { const s = state(), it = s?.items.find(i => i.uid === selUid); $('selbar').hidden = !it; $('fit').hidden = !it; if (!it) return;
+  const est = objOf(it.obj)?.measured && it.k === 1 ? '' : ' est.';
+  $('selName').textContent = it.name; // the bar is narrow on a phone: the size lives in the fit line above it
+  // the question a mover has: does it fit? A room photo has no measured walls, so it says so instead of guessing
+  const f = s.space.kind === 'photo' ? { tone: 'tight', text: 'no fit check on a photo (walls not measured)' } : fitLine(planFor(s.space), s.items, it.uid);
+  $('fit').textContent = `${(it.dims.w * it.k).toFixed(2)} × ${(it.dims.d * it.k).toFixed(2)} m${est} · ${f.text}`; $('fit').dataset.tone = f.tone; $('lightBtn').textContent = it.light ? (it.on ? 'Light off' : 'Light on') : 'Glow'; $('lightBtn').title = it.light ? '' : 'Make it a light'; }
 $('selbar').onclick = e => { const a = e.target.closest('button')?.dataset.a, it = state().items.find(i => i.uid === selUid); if (!a || !it) return;
   const ops = { rotL: { op: 'rotate', uid: it.uid, by: 15 }, rotR: { op: 'rotate', uid: it.uid, by: -15 }, smaller: { op: 'scale', uid: it.uid, by: 1 / 1.05 }, bigger: { op: 'scale', uid: it.uid, by: 1.05 },
     light: { op: 'light', uid: it.uid, on: !(it.light && it.on), make: true }, remove: { op: 'remove', uid: it.uid } };
