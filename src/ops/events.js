@@ -22,9 +22,11 @@ export const CLIENT_EVENTS = new Set(['view', 'search', 'place_card', 'pro_inter
   'claim_viewed', 'claim_started', 'claim_signup', 'claim_guest', 'share_link_copied']);
 export const SERVER_EVENTS = new Set(['signup', 'login', 'logout', 'checkout_started', 'checkout_abandoned',
   'payment_succeeded', 'payment_failed', 'payment_pending', 'refund', 'dispute', 'claim_submitted', 'claim_verified',
-  'listing_private', 'finishes_requested', 'home_suggested', 'fix_reported', 'upgrade_notify', 'hunt_check', 'hunt_share', 'hunt_comment', 'arrange_share']); // a claimant made a listing private / asked for their real finishes (paid)
+  'listing_private', 'finishes_requested', 'home_suggested', 'fix_reported', 'upgrade_notify', 'hunt_check', 'hunt_share', 'hunt_comment', 'arrange_share',
+  // SHOWHAUS Pro (src/subscribe.js): a business asked for its free first listing; Stripe subscription lifecycle (src/ops/stripe.js)
+  'pro_start', 'subscription_started', 'subscription_renewed', 'subscription_cancelled']); // a claimant made a listing private / asked for their real finishes (paid)
 // Events that page the owner during a sprint (CVF polls them; see /api/ops/summary).
-export const ALERT_EVENTS = new Set(['checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted', 'listing_private', 'finishes_requested']);
+export const ALERT_EVENTS = new Set(['pro_start', 'subscription_started', 'subscription_cancelled', 'checkout_started', 'payment_succeeded', 'payment_failed', 'dispute', 'claim_submitted', 'listing_private', 'finishes_requested']);
 
 const BOT_UA = /cvf-e2e|cvf-promise-probe|headlesschrome|playwright|bot\b|crawler|spider|slurp|facebookexternalhit|preview/i;
 const PROD_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);

@@ -44,6 +44,11 @@ export function classify(e) {
     case 'checkout.session.async_payment_succeeded': return 'payment_succeeded';
     case 'checkout.session.async_payment_failed': case 'payment_intent.payment_failed': return 'payment_failed';
     case 'checkout.session.expired': return 'checkout_abandoned';
+    case 'customer.subscription.created': return 'subscription_started';
+    case 'customer.subscription.deleted': return 'subscription_cancelled';
+    // First invoice of a subscription is already counted by checkout.session.completed; later ones are renewals.
+    case 'invoice.paid': return o.billing_reason === 'subscription_cycle' ? 'subscription_renewed' : null;
+    case 'invoice.payment_failed': return 'payment_failed';
     case 'charge.refunded': return 'refund';
     case 'charge.dispute.created': return 'dispute';
     default: return null;
@@ -64,9 +69,10 @@ export async function recordStripeEvent(env, e, { forceEnv, fetchImpl = fetch } 
   const who = o.customer || o.customer_details?.email || o.receipt_email || null;
   const props = {
     stripe_type: e.type,
-    amount: o.amount_total ?? o.amount_received ?? o.amount_refunded ?? o.amount ?? null,
+    amount: o.amount_total ?? o.amount_received ?? o.amount_refunded ?? o.amount_paid ?? o.amount ?? o.items?.data?.[0]?.price?.unit_amount ?? null,
     currency: (o.currency || '').toUpperCase() || null,
-    mode: o.mode || null,
+    mode: o.mode || (o.object === 'subscription' || o.subscription ? 'subscription' : null),
+    plan: o.metadata?.showhaus_plan || o.items?.data?.[0]?.price?.lookup_key || o.lines?.data?.[0]?.price?.lookup_key || null,
     payment_link: typeof o.payment_link === 'string' ? o.payment_link : null,
     failure: o.last_payment_error?.code || o.failure_code || null,
   };
