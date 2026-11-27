@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { buildRoom } from '../walk/plan-room.js';
 import { bounds } from '../walk/plan-core.js';
 import { parse, apply, describe, emptyState, clamp as clampN, WALL_COLOURS, PATTERNS } from './intent.js';
-import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES } from './mesh.js';
+import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES, ROUGH } from './mesh.js';
 
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search), src = qs.get('src') || qs.get('utm_source') || 'direct';
@@ -184,21 +184,28 @@ function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = docum
 let pv = null, dims = null, ratio = null, measured = false, nameTyped = false, rk = rangeOf(null);
 const kindNow = () => sel && (sel.label || priorForName($('objName').value));
 function openSheet() {
-  measured = false; nameTyped = false; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
+  measured = false; nameTyped = false; roughH = null; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
   estimateDims(sel.label); $('sheet').hidden = false;
   if (!sel.label) $('objName').focus();
 }
+let roughH = null;
 function estimateDims(label) {
-  const est = estimate(label, ...sel.cap.px); dims = { w: est.w, h: est.h, d: est.d }; ratio = { ...dims }; rk = est.rk;
-  $('dw').value = dims.w; $('dd').value = dims.d; $('dh').value = dims.h;
-  $('dimNote').textContent = `Est. ${est.note} Type any real measurement and the others follow.`;
+  const est = estimate(label, ...sel.cap.px, roughH), unknown = est.basis === 'unknown';
+  // nothing says how big it is: ask (one tap) instead of inventing a number; the preview waits at a neutral 0.5 m
+  dims = unknown ? { w: +(0.5 * sel.cap.px[0] / sel.cap.px[1]).toFixed(2), h: 0.5, d: 0.4 } : { w: est.w, h: est.h, d: est.d }; ratio = { ...dims }; rk = est.rk;
+  $('dw').value = unknown ? '' : dims.w; $('dd').value = unknown ? '' : dims.d; $('dh').value = unknown ? '' : dims.h;
+  $('dimNote').textContent = unknown ? est.note : `Est. ${est.note} Type any real measurement and the others follow.`;
+  $('rough').hidden = !!PRIORS_OK(label) || measured; $('keep').disabled = unknown && !measured;
+  $('rough').innerHTML = ROUGH.map(([k, t, h]) => `<button type="button" class="btn ghost sm${roughH === h ? ' on' : ''}" data-h="${h}">${t} · ${h < 1 ? h * 100 + ' cm' : h + ' m'}</button>`).join('');
   $('isLight').checked = LIGHT_HINT.test(label || ''); status('');
   preview();
 }
 // a typed name with a typical size re-estimates the size until the visitor types a measurement
+const PRIORS_OK = label => estimate(label, 1, 1).basis !== 'unknown';
+$('rough').onclick = e => { const b = e.target.closest('button[data-h]'); if (!b || !sel) return; roughH = +b.dataset.h; track('room_rough', { h: roughH }); estimateDims(kindNow()); };
 $('objName').addEventListener('input', e => { nameTyped = true; if (!sel || measured || sel.label) return; const k = priorForName(e.target.value); if (k) estimateDims(k); });
 for (const k of ['w', 'd', 'h']) $('d' + k).addEventListener('input', e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; const f = v / ratio[k];
-  for (const o of ['w', 'd', 'h']) { dims[o] = +(ratio[o] * f).toFixed(2); if (o !== k) $('d' + o).value = dims[o]; } $('dimNote').textContent = 'Measured by you; the other two follow the photo.'; measured = true; preview(); });
+  for (const o of ['w', 'd', 'h']) { dims[o] = +(ratio[o] * f).toFixed(2); if (o !== k) $('d' + o).value = dims[o]; } $('dimNote').textContent = 'Measured by you; the other two follow the photo.'; measured = true; $('keep').disabled = false; $('rough').hidden = true; preview(); });
 $('isLight').onchange = preview;
 function preview() {
   if (!pv) { const r = new THREE.WebGLRenderer({ canvas: $('preview'), antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, devicePixelRatio)); r.toneMapping = THREE.ACESFilmicToneMapping;

@@ -94,3 +94,5 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 .hint { font: 500 12.5px/1.4 ui-monospace, monospace; color: var(--glow); margin: 0 0 8px; }
 .levels { display: flex; gap: 8px; margin: 0 0 10px; } .btn.sm:disabled { opacity: .35; }
 @media (max-width: 560px) { .stage:has(+ .sheet:not([hidden])) .status { display: none; } }
+.btn.on { background: var(--glow, #e8743b); color: #1a1206; border-color: transparent; }
+#rough { flex-wrap: wrap; gap: 6px; } #rough .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
