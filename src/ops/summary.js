@@ -7,6 +7,7 @@ import { mailMode } from './auth.js';
 import { entitlementSummary, alertHealth, markEntitlement } from './owner.js';
 import { claimSummary } from '../claim.js';
 import { suggestSummary, walkQueue } from '../suggest.js';
+import { proSummary } from '../subscribe.js';
 
 export const CLAIM_FUNNEL = ['claim_viewed', 'claim_started', 'claim_submitted', 'claim_verified', 'share_link_copied'];
 const FUNNEL = ['view', 'search', 'place_card', 'signin_open', 'signup', 'login', 'checkout_started', 'payment_succeeded'];
@@ -66,6 +67,7 @@ export async function health(env) {
     mail_mode: mailMode(env),
     webhook_secret: !!env.STRIPE_WEBHOOK_SECRET,
     payment_link: !!env.STUDIO_PAYMENT_LINK,
+    pro_links: ['agent', 'agency', 'builder'].filter(p => !!env['PRO_LINK_' + p.toUpperCase()]),
     mail_last_ok: d ? await getMeta(d, 'mail_last_ok') : null,
     mail_last_error: d ? JSON.parse(await getMeta(d, 'mail_last_error') || 'null')?.code ?? null : null,
     ...(d ? await alertHealth(d) : { alert_last_ok: null, alert_last_error: null }),
@@ -103,6 +105,7 @@ export async function summary(request, env) {
     claim_funnel: Object.fromEntries(CLAIM_FUNNEL.map(n => [n, new Set(prodRows.filter(r => r.name === n && r.actor).map(r => r.actor)).size])),
     claims: await claimSummary(env).catch(() => null),
     suggestions: await suggestSummary(env).catch(() => null),
+    pro: await proSummary(env).catch(() => null), // SHOWHAUS Pro: free-listing requests (open queue = listings to build) + subscription counts
     queue: await walkQueue(env).catch(() => null), // the build order the pages promise: base (asked-for homes), photoreal (votes), finishes (paid)
     // no-login input: homes asked for (by votes) and fix reports
   });

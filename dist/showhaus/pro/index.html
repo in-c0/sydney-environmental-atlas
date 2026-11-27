@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS Pro · Buyers walk the floor plan before the open home</title>
+<meta name="description" content="For NSW agencies and builders: send the floor plan you already have, and buyers walk the home in 3D on their phone and put their own furniture in. First listing free.">
+<meta property="og:title" content="Buyers walk the floor plan before the open home">
+<meta property="og:description" content="Send the floor plan you already have. Your first listing is free.">
+<meta property="og:image" content="https://showhaus.app/walk/data/buildtec-avalon/poster.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #efe6d4; --paper-2: #e6dac3; --ink: #1d2733; --ink-2: #4a5566; --line: #2f4c7a; --terracotta: #c4622d; --sun: #e2a234;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace; --sans: 'Inter Tight', system-ui, sans-serif; --serif: 'Fraunces', Georgia, serif; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper: #15181d; --paper-2: #1d2128; --ink: #ece4d3; --ink-2: #a9a291; --line: #8fb0e3; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  a { color: var(--line); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 48px; }
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .brand { font: 600 13px/1 var(--mono); letter-spacing: .14em; text-decoration: none; color: var(--ink); }
+  .brand span { color: var(--terracotta); }
+  .top a.right { margin-left: auto; font: 500 13px/1 var(--mono); }
+  h1 { font: 600 clamp(30px, 4.6vw, 50px)/1.06 var(--serif); margin: 0 0 12px; max-width: 18ch; }
+  .lede { font-size: clamp(16px, 1.6vw, 19px); color: var(--ink-2); max-width: 58ch; margin: 0 0 14px; }
+  .honest { border-left: 3px solid var(--terracotta); padding: 4px 0 4px 12px; margin: 0 0 22px; font-size: 14px; max-width: 60ch; }
+  .hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 22px; align-items: start; }
+  .live { position: relative; border-radius: 12px; overflow: hidden; background: var(--paper-2); aspect-ratio: 4 / 3; }
+  .live iframe, .live img { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+  .live button { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; border: 0; border-radius: 999px;
+    background: var(--ink); color: var(--paper); font: 600 15px/1 var(--sans); cursor: pointer; }
+  .cap { font: 12px/1.45 var(--mono); color: var(--ink-2); margin: 6px 0 0; }
+  .card { background: color-mix(in srgb, var(--paper-2) 70%, transparent); border-radius: 12px; padding: 18px 20px; }
+  .card h2 { font: 600 20px/1.2 var(--serif); margin: 0 0 8px; }
+  h3 { font: 500 12px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 16px 0 6px; }
+  ul { margin: 0; padding-left: 20px; } li { margin: 5px 0; }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 28px 0 8px; }
+  .plan { background: color-mix(in srgb, var(--paper-2) 70%, transparent); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; }
+  .plan.main { outline: 2px solid var(--terracotta); }
+  .plan .name { font: 600 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .plan .amt { font: 600 34px/1.1 var(--serif); margin: 10px 0 2px; }
+  .plan .per { font-size: 13px; color: var(--ink-2); }
+  .plan .line { margin: 10px 0 14px; font-size: 14.5px; flex: 1; }
+  .btn { display: block; text-align: center; padding: 13px 14px; border-radius: 10px; background: var(--terracotta); color: #fff8ee; text-decoration: none; font: 600 15px/1.2 var(--sans); border: 0; cursor: pointer; width: 100%; }
+  .btn.ghost { background: transparent; color: var(--ink); outline: 1.5px solid var(--ink-2); }
+  .fine { font-size: 12.5px; color: var(--ink-2); }
+  form label { display: block; font: 500 12px/1.3 var(--mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 4px; }
+  form input, form select { width: 100%; padding: 11px 12px; border-radius: 8px; border: 1.5px solid color-mix(in srgb, var(--ink-2) 40%, transparent); background: var(--paper); color: var(--ink); font: 16px/1.3 var(--sans); }
+  form .btn { margin-top: 16px; }
+  #startMsg { margin: 10px 0 0; font-size: 14.5px; min-height: 1.4em; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0; }
+  .steps div { border-top: 2px solid var(--line); padding-top: 10px; font-size: 14.5px; }
+  .steps b { display: block; font: 600 13px/1.3 var(--mono); margin-bottom: 4px; }
+  details { border-top: 1px solid color-mix(in srgb, var(--ink-2) 30%, transparent); padding: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  .welcome { display: none; background: var(--sun); color: #1d2733; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; }
+  footer { margin-top: 36px; font-size: 12.5px; color: var(--ink-2); }
+  @media (max-width: 820px) { .hero, .steps { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="brand" href="../">SHOW<span>HAUS</span> PRO</a><a class="right" href="../walk/?p=buildtec-avalon&src=pro">Open a live walk ↗</a></div>
+  <div class="welcome" id="welcome">You're subscribed. Send the next floor plan below and we'll build it within 2 business days.</div>
+
+  <h1>Buyers walk the floor plan before the open home.</h1>
+  <p class="lede">Send the floor plan you already have. In 2 business days buyers can walk that home on their phone and drag their own sofa in. No camera visit, no app.</p>
+  <div class="hero">
+    <div>
+      <div class="live" id="live">
+        <img src="../walk/data/buildtec-avalon/poster.jpg" alt="Avalon home design, 3D walk built from its published floor plan" loading="eager">
+        <button type="button" id="play">Walk it here</button>
+      </div>
+      <p class="cap">Live walk: Avalon home design, built from its published floor plan. Shown as an example; not endorsed by the builder.</p>
+      <p class="honest" style="margin-top:12px">Built from the plan, not photographed: walls and rooms are to scale, finishes are estimated. We say so on every listing.</p>
+    </div>
+    <aside class="card">
+      <h2>Every listing gets</h2>
+      <ul>
+        <li>A link for the listing, your emails and socials</li>
+        <li>Buyers drag in their own furniture, in real metres</li>
+        <li>The address page buyers check anyway: flood, bush fire, aircraft noise, zoning and area rents, from NSW government data</li>
+      </ul>
+      <h3>First listing free</h3>
+      <p class="fine" style="margin:0">Send one plan before paying anything. If it isn't good enough to show buyers, you've lost nothing.</p>
+      <a class="btn" href="#start" style="margin-top:14px">Start with one free listing</a>
+    </aside>
+  </div>
+
+  <div class="plans" id="plans" aria-live="polite"></div>
+  <p class="fine" id="payNote">Prices in AUD. Monthly, cancel any time: reply to any SHOWHAUS email and it stops that day.</p>
+
+  <div class="steps">
+    <div><b>1 · Send the plan</b>The floor plan image or PDF link from the listing, or the listing address.</div>
+    <div><b>2 · We build it</b>Within 2 business days. You check it before anyone else sees it.</div>
+    <div><b>3 · Buyers walk it</b>Put the link in the listing, the email campaign and the open-home sign-in follow-up.</div>
+  </div>
+
+  <div class="hero">
+    <form class="card" id="start" novalidate>
+      <h2>Your free first listing</h2>
+      <label for="company">Agency or company</label><input id="company" name="company" autocomplete="organization" required>
+      <label for="email">Work email (the finished link goes here)</label><input id="email" name="email" type="email" autocomplete="email" required>
+      <label for="listing">Listing address</label><input id="listing" name="listing" placeholder="12 Example St, Randwick">
+      <label for="plan_url">or a link to the floor plan</label><input id="plan_url" name="plan_url" type="url" placeholder="https://">
+      <label for="plan">Plan you're looking at</label>
+      <select id="plan" name="plan"></select>
+      <button class="btn" type="submit">Send it — first listing free</button>
+      <p id="startMsg" role="status"></p>
+      <p class="fine">We use the email only to send this listing and reply to you. No newsletter.</p>
+    </form>
+    <div>
+      <details open><summary>Who pays — us or the vendor?</summary><p>Either. Agencies on-charge it like photography in the vendor's marketing budget, or keep it as their own edge at the appraisal.</p></details>
+      <details><summary>What if the plan is wrong?</summary><p>Buyers and you can report a mistake in one line from the walk. We fix it and rebuild at no cost.</p></details>
+      <details><summary>Photoreal?</summary><p>Not in these plans. The walk is to scale with estimated finishes. Photoreal renders are quoted per home when you need them.</p></details>
+      <details><summary>Can I take a listing down?</summary><p>Yes, any time, from the listing's owner controls. It shows "made private at the builder's request".</p></details>
+    </div>
+  </div>
+
+  <footer>SHOWHAUS · <a href="https://showhaus.app">showhaus.app</a> · hello@showhaus.app · Address facts from NSW Planning Portal, NSW Spatial Services and Airservices / council ANEF maps. Figures marked est. are modelled, not measured.</footer>
+</div>
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
+  const src = (qs.get('src') || (document.referrer ? 'ref' : 'direct')).replace(/[^\w.-]/g, '').slice(0, 60);
+  const want = qs.get('plan');
+  const beacon = (name, props) => { try { window.SH && SH.track ? SH.track(name, props) : navigator.sendBeacon('/api/e', new Blob([JSON.stringify({ name, path: location.pathname, props })], { type: 'application/json' })); } catch { /* never break */ } };
+  if (qs.get('welcome')) $('welcome').style.display = 'block';
+  $('play').addEventListener('click', () => {
+    $('live').innerHTML = '<iframe src="../walk/?p=buildtec-avalon&src=pro-embed" title="3D walk" allow="fullscreen; xr-spatial-tracking"></iframe>';
+    beacon('cta', { cta: 'pro-walk', utm_source: src });
+  });
+  fetch('/api/pro-config', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null).then(cfg => {
+    if (!cfg) return;
+    $('plans').innerHTML = cfg.plans.map(p => {
+      const amt = p.price_label.replace(/^AUD /, '').replace(/ a month$/, '');
+      const href = p.payable ? '/pay/pro?plan=' + p.id + '&src=' + encodeURIComponent(src) : '#start';
+      const label = p.payable ? 'Subscribe · ' + p.name : 'Start with one free listing';
+      return '<div class="plan' + (p.id === 'agency' ? ' main' : '') + '"><span class="name">' + p.name + '</span><span class="amt">A$' + amt + '</span><span class="per">a month</span>'
+        + '<span class="line">' + p.line + '</span><a class="btn' + (p.payable ? '' : ' ghost') + '" data-plan="' + p.id + '" href="' + href + '">' + label + '</a></div>';
+    }).join('');
+    $('plan').innerHTML = cfg.plans.map(p => '<option value="' + p.id + '"' + ((want || 'agency') === p.id ? ' selected' : '') + '>' + p.name + ' · ' + p.price_label + '</option>').join('');
+    if (!cfg.plans.some(p => p.payable)) $('payNote').textContent = 'Prices in AUD. Start with one free listing; we send the subscription link with it. Monthly, cancel any time.';
+    $('plans').addEventListener('click', e => { const a = e.target.closest('a[data-plan]'); if (a) { beacon('cta', { cta: 'pro-plan-' + a.dataset.plan, utm_source: src }); if (a.getAttribute('href') === '#start') $('plan').value = a.dataset.plan; } });
+  });
+  $('start').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target, msg = $('startMsg'), b = f.querySelector('button');
+    const data = Object.fromEntries(new FormData(f)); data.src = src;
+    b.disabled = true; msg.textContent = 'Sending…';
+    const r = await fetch('/api/pro/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) })).catch(() => ({ ok: false, j: {} }));
+    b.disabled = false;
+    if (r.ok) { msg.textContent = 'Got it. Your walk link arrives at ' + data.email + ' within 2 business days.'; f.reset(); }
+    else msg.textContent = r.j.error || 'Could not send. Email hello@showhaus.app instead.';
+  });
+})();
+</script>
+</body>
+</html>

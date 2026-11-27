@@ -11,6 +11,7 @@ import { requireOps } from './oidc.js';
 import { summary, replay, health, entitlement } from './summary.js';
 import { db, pseudo } from './store.js';
 import { claimFile } from '../claim.js';
+import { proRequest } from '../subscribe.js';
 
 const sameOrigin = request => {
   const o = request.headers.get('origin');
@@ -35,6 +36,7 @@ export async function handleOps(request, env, ctx) {
     if (path === '/api/ops/summary') return await summary(request, env);
     if (path === '/api/ops/replay' && request.method === 'POST') return await replay(request, env);
     if (path === '/api/ops/claim-file') return (await claimFile(env, new URL(request.url).searchParams.get('id'), new URL(request.url).searchParams.get('f'))) || new Response('not found', { status: 404 }); // evidence upload, OIDC only
+    if (path === '/api/ops/pro-request') { const r = await proRequest(env, new URL(request.url).searchParams.get('id')); return r ? Response.json(r) : new Response('not found', { status: 404 }); } // one free-listing request incl. its work email (OIDC only)
     if (path === '/api/ops/entitlement' && request.method === 'POST') return await entitlement(request, env);
     if (path === '/api/ops/suggest-built' && request.method === 'POST') return Response.json(await suggestBuilt(env, await request.json().catch(() => ({})))); // a suggested home is live: tell those who asked, once
     if (path === '/api/ops/pro' && request.method === 'POST') { // owner grant/revoke by email (OIDC); the email is HMAC-ed, never stored

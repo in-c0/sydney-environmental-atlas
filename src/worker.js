@@ -8,6 +8,7 @@ import { handleSuggest } from './suggest.js';
 import { handleHunt } from './hunt.js';
 import { handleArrange } from './arrange.js';
 import { handlePlace } from './place.js';
+import { handlePro } from './subscribe.js';
 export { AuRelay } from './au-relay.js';
 
 const SHOWHAUS_HOSTS = new Set(['showhaus.app', 'www.showhaus.app']);
@@ -25,7 +26,7 @@ export default {
   async fetch(request, env, ctx) {
     const ops = await handleOps(request, env, ctx);
     if (ops) return ops;
-    const res = (await handleClaim(request, env, ctx)) || (await handleSuggest(request, env, ctx)) || (await handleHunt(request, env, ctx)) || (await handlePlace(request, env, ctx)) || (await handleArrange(request, env, ctx)) || (await handleStudio(request, env, ctx)) || (await route(request, env));
+    const res = (await handleClaim(request, env, ctx)) || (await handleSuggest(request, env, ctx)) || (await handleHunt(request, env, ctx)) || (await handlePlace(request, env, ctx)) || (await handleArrange(request, env, ctx)) || (await handleStudio(request, env, ctx)) || (await handlePro(request, env, ctx)) || (await route(request, env));
     return observeCheckout(request, res, env, ctx) || res;
   },
 };
