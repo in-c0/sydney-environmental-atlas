@@ -21,7 +21,8 @@ export const PRIORS = {
   handbag: { by: 'w', w: 0.32, h: 0.25, d: 0.14 }, umbrella: { by: 'h', w: 0.1, h: 0.9, d: 0.1 }, scissors: { by: 'w', w: 0.2, h: 0.08, d: 0.01 },
 };
 // One tap instead of a tape when nothing says how big a thing is (same chips as the Android app's Rough).
-export const ROUGH = [['hand', 'Hand', 0.15], ['knee', 'Knee', 0.5], ['waist', 'Waist', 0.9], ['person', 'Person', 1.7]];
+export const ROUGH = [['Hand', 0.15], ['Knee', 0.5], ['Waist', 0.9], ['Person', 1.7]];
+export const hasPrior = label => !!PRIORS[label];
 // Typical sizes for things the detector has no label for, matched on the name the visitor types.
 const NAMED = [[/coffee table|커피\s*테이블|좌탁/i, 'coffee table', { by: 'h', w: 1.1, h: 0.42, d: 0.6 }], [/side ?board|buffet|tv unit|tv stand|credenza|거실장|수납장/i, 'sideboard', { by: 'h', w: 1.8, h: 0.6, d: 0.45 }],
   [/rug|carpet|러그|카펫/i, 'rug', { by: 'w', w: 2.0, h: 0.01, d: 1.4 }], [/desk|책상/i, 'desk', { by: 'h', w: 1.2, h: 0.74, d: 0.6 }], [/wardrobe|closet|옷장/i, 'wardrobe', { by: 'h', w: 1.2, h: 2.0, d: 0.6 }],
@@ -51,7 +52,7 @@ export function estimate(label, pxW, pxH, roughH) {
   if (!p) {
     if (!roughH) return { w: null, h: null, d: null, basis: 'unknown', rk, note: 'No typical size for this kind of thing. About how tall is it?' };
     const h = roughH, w = +(h * pxW / pxH).toFixed(2);
-    return { w, h, d: +Math.min(w, h).toFixed(2), basis: 'rough', rk: [0.6, 1.6], note: `About ${h} m tall (your pick), the rest from the photo; it could be ${(w * 0.6).toFixed(2)}–${(w * 1.6).toFixed(2)} m wide.` };
+    return { w, h, d: +Math.min(w, h).toFixed(2), basis: 'rough', rk: [0.6, 1.6], note: `About ${h} m tall (your pick), width from the photo, depth a guess; it could be ${(w * 0.6).toFixed(2)}–${(w * 1.6).toFixed(2)} m wide.` };
   }
   const ratio = pxW / pxH, out = { basis: 'prior' };
   const other = p.by === 'w' ? 'h' : 'w', fromPhoto = p.by === 'w' ? p.w / ratio : p.h * ratio;
