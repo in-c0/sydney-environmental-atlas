@@ -12,15 +12,26 @@ const cb = onP => e => { if (e.file && (e.status === 'progress' || e.status === 
 async function tf() { if (!T) { T = await import(TF); T.env.allowLocalModels = false; } return T; }
 const device = async () => ('gpu' in navigator && (await navigator.gpu.requestAdapter().catch(() => null))) ? 'webgpu' : 'wasm';
 
-export async function load(onP) {
+// The hub answers 429 when it is busy (seen from a shared address on 27 Nov). A busy or dropped download is not the
+// browser's fault: wait and try again, keeping the models that already arrived.
+export const transient = e => /\b(429|50[0-9])\b|Failed to fetch|NetworkError|network|timed? ?out/i.test(String(e?.message || e));
+const WAITS = [6000, 20000];
+export async function load(onP, onWait) {
   const t = await tf(), dev = await device(), opt = { device: dev, dtype: dev === 'webgpu' ? 'fp32' : 'q8', progress_callback: cb(onP) };
-  [det, depthP, sam, samProc] = await Promise.all([
-    det || t.pipeline('object-detection', MODELS.detect, opt),
-    depthP || t.pipeline('depth-estimation', MODELS.depth, { ...opt, dtype: dev === 'webgpu' ? 'fp16' : 'q8' }),
-    sam || t.SamModel.from_pretrained(MODELS.sam, opt),
-    samProc || t.AutoProcessor.from_pretrained(MODELS.sam, { progress_callback: cb(onP) }),
-  ]);
-  return dev;
+  for (let k = 0; ; k++) {
+    try {
+      await Promise.all([
+        det || t.pipeline('object-detection', MODELS.detect, opt).then(p => { det = p; }),
+        depthP || t.pipeline('depth-estimation', MODELS.depth, { ...opt, dtype: dev === 'webgpu' ? 'fp16' : 'q8' }).then(p => { depthP = p; }),
+        sam || t.SamModel.from_pretrained(MODELS.sam, opt).then(p => { sam = p; }),
+        samProc || t.AutoProcessor.from_pretrained(MODELS.sam, { progress_callback: cb(onP) }).then(p => { samProc = p; }),
+      ]);
+      return dev;
+    } catch (e) {
+      if (!transient(e) || k >= WAITS.length) throw e;
+      onWait && onWait(WAITS[k], k + 1); await new Promise(r => setTimeout(r, WAITS[k]));
+    }
+  }
 }
 
 // One photo → { img (RawImage), boxes, depth (Uint8 W×H, near = 255), embed } ready for taps.

@@ -39,20 +39,25 @@ $('sample').onclick = () => startScan('../walk/data/buildtec-avalon/photo2.jpg',
 addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/')); if (f && document.body.dataset.mode === 'scan') startScan(f, 'paste'); });
 $('drop').addEventListener('dragover', e => e.preventDefault()); $('drop').addEventListener('drop', e => { e.preventDefault(); const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (f) startScan(f, 'drop'); });
 
-let phase = 'idle', band = 0;
+let phase = 'idle', band = 0, lastScan = null;
+$('retryScan').onclick = () => { $('retryScan').hidden = true; if (lastScan) startScan(lastScan, 'retry'); };
 async function startScan(f, how) {
-  track('room_scan', { how }); scanT0 = performance.now();
+  track('room_scan', { how }); scanT0 = performance.now(); $('retryScan').hidden = true;
   const url = await fileToUrl(f); $('photo').src = url; await $('photo').decode();
   $('drop').hidden = true; $('stage').hidden = false; $('sheet').hidden = true; sel = null; A = null; phase = 'loading'; sizeHud(); requestAnimationFrame(drawHud);
   try {
     const v = await loadVision();
     status('Loading vision models…');
-    const dev = await v.load(b => status(`Loading vision models ${(b[0] / 1e6).toFixed(0)}${b[1] ? ' / ' + (b[1] / 1e6).toFixed(0) : ''} MB · the photo stays on this device`));
+    const dev = await v.load(b => status(`Loading vision models ${(b[0] / 1e6).toFixed(0)}${b[1] ? ' / ' + (b[1] / 1e6).toFixed(0) : ''} MB · the photo stays on this device`),
+      (ms, n) => { status(`The model host is busy. Trying again in ${Math.round(ms / 1000)} s (${n} of 2)…`); track('room_model_retry', { n }); });
     status(`Scanning on this device (${dev === 'webgpu' ? 'GPU' : 'CPU'})…`); phase = 'scanning';
     A = await v.analyse(url); phase = 'reveal'; band = 0;
     track('room_detect', { n: A.boxes.length, ms: Math.round(performance.now() - scanT0), dev });
     status(A.boxes.length ? 'Tap the thing you want to keep. Not boxed? Tap it anyway.' : 'Nothing recognised. Tap the thing you want to keep.');
-  } catch (e) { phase = 'error'; status('The scan could not run on this browser (' + (e.message || e) + '). Try Chrome or Safari, or another photo.'); track('room_scan_error', { msg: String(e.message || e).slice(0, 120) }); }
+  } catch (e) { phase = 'error'; const busy = vision && (await loadVision()).transient(e); lastScan = f;
+    status(busy ? 'Couldn’t download the scanning models: the model host is busy or the connection dropped. Nothing is wrong with your photo.'
+      : 'The scan could not run on this browser (' + (e.message || e) + '). Try Chrome or Safari, or another photo.');
+    $('retryScan').hidden = !busy; track('room_scan_error', { busy, msg: String(e.message || e).slice(0, 120) }); }
 }
 const status = t => { $('status').textContent = t; $('sheetHint').textContent = t; }; // the sheet covers the photo's status on phones, so it carries a copy
 function sizeHud() { const im = $('photo'); hud.width = im.clientWidth * devicePixelRatio; hud.height = im.clientHeight * devicePixelRatio; }
