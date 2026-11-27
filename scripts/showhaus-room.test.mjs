@@ -37,3 +37,12 @@ test('steps are pure and every earlier state survives', () => {
   assert.equal(apply(s3, { op: 'rotate', uid: 'x', by: -90 }).items[0].r, 270);
   assert.match(describe({ op: 'add', name: 'Lamp' }), /Placed Lamp/);
 });
+
+import { estimate, shapeOf } from '../dist/showhaus/room/mesh.js';
+test('sizes: everyday things have real sizes, unknown things ask instead of inventing one', () => {
+  assert.equal(estimate('remote', 400, 100).w, 0.2);           // was 2.55 m wide (probe, 27 Nov)
+  assert.equal(estimate('cat', 300, 260).h, 0.3);              // was 80 cm tall
+  const u = estimate(null, 300, 200); assert.equal(u.basis, 'unknown'); assert.equal(u.h, null);
+  const r = estimate(null, 300, 200, 0.15); assert.equal(r.basis, 'rough'); assert.equal(r.h, 0.15); assert.ok(r.w < 0.3);
+  assert.equal(shapeOf('couch'), 'sofa'); assert.equal(shapeOf('cat'), null);
+});
