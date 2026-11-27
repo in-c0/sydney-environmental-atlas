@@ -275,7 +275,7 @@ function setSpace(space) {
   const keep = state()?.items || [];
   const op = { op: 'space', space, keepItems: true };
   push(op); // items survive a change of space; positions are re-fitted below
-  const s = state(); if (keep.length) { const b = spaceBounds(s.space); s.items.forEach((it, k) => { it.x = Math.min(b[2] - 0.4, Math.max(b[0] + 0.4, (b[0] + b[2]) / 2 + (k - keep.length / 2) * 0.8)); it.y = (b[1] + b[3]) / 2; }); save(); }
+  const s = state(); if (keep.length) { const b = spaceBounds(s.space); s.items.forEach((it, k) => { it.x = Math.min(b[2] - 0.4, Math.max(b[0] + 0.4, (b[0] + b[2]) / 2 + (k - keep.length / 2) * 0.8)); it.y = s.space.kind === 'photo' ? photoDepth(s, it.dims) : (b[1] + b[3]) / 2; }); save(); }
   track('room_space', { kind: space.kind }); showSpace();
 }
 function planFor(space) {
@@ -284,6 +284,17 @@ function planFor(space) {
   return { outline: [[0, 0], [w, 0], [w, d], [0, d]], ceiling: { type: 'flat', h: 2.7 }, openings: [{ edge: 0, type: 'door', a: 0.4, b: 1.22 }, { edge: 2, type: 'window', a: w * 0.7, b: w * 0.3, sill: 0.9, head: 2.2, mullions: 1 }], finishes: {} };
 }
 const PHOTO_BOUNDS = [-2.6, 1.2, 2.6, 7];
+// A room photo's camera is a guess (1.4 m up, tilted by the horizon): stand a new thing where its base lands in the
+// lower part of the picture, far enough that it takes at most ~40 % of the width, instead of a fixed 3.2 m that put a
+// 2 m sofa across the dining table (desktop click-through, 27 Nov). Dragging still moves it along the guessed floor.
+function photoDepth(s, dims) {
+  if (!three) return 3.2;
+  // the photo camera's own field of view (size(): 66° across), not whatever view the canvas showed before the switch
+  const ht = Math.tan(33 * Math.PI / 180), vt = ht / ((three.w / three.h) || 1.5);
+  const atRow = 1.4 / Math.tan((s.horizon ?? 0.12) + Math.atan(0.6 * vt));      // base 80 % down the picture
+  const toFit = (dims?.w || 1) / (2 * ht * 0.4);                                  // ≤ 40 % of the picture’s width
+  return +clampN(Math.max(atRow, toFit), 1.6, 7).toFixed(2);
+}
 function spaceBounds(sp) { return sp.kind === 'photo' ? PHOTO_BOUNDS : bounds(planFor(sp).outline); }
 
 async function showSpace() {
@@ -446,7 +457,7 @@ function drawTray() { const el = $('tray'); if (!el) return; const on = new Set(
     : '<button class="add wide" data-scan="1">Nothing kept yet: ① scan a thing you own first</button>'; }
 $('tray').onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.scan) return mode('scan');
   const o = objOf(b.dataset.id), s = state(), bd = spaceBounds(s.space);
-  let x = (bd[0] + bd[2]) / 2, y = s.space.kind === 'photo' ? 3.2 : (bd[1] + bd[3]) / 2;
+  let x = (bd[0] + bd[2]) / 2, y = s.space.kind === 'photo' ? photoDepth(s, o.dims) : (bd[1] + bd[3]) / 2;
   for (let n = 0; n < 8 && s.items.some(i => Math.hypot(i.x - x, i.y - y) < 0.6); n++) x += 0.7 * (n % 2 ? -n : n);
   const u = uid(); push({ op: 'add', uid: u, obj: o.id, name: o.name, label: o.label, light: o.light, dims: o.dims, x: +clampN(x, bd[0] + 0.3, bd[2] - 0.3).toFixed(3), y: +y.toFixed(3) });
   selUid = u; sync(); drawTray(); track('room_place', { n: s.items.length + 1, kind: s.space.kind }); };
