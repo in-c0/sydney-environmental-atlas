@@ -24,6 +24,12 @@ const hb = await page.locator('#hud').boundingBox(), cx = 300, cy = 560; // on t
 await page.mouse.click(hb.x + cx / size[0] * hb.width, hb.y + cy / size[1] * hb.height);
 await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
 ok(await page.inputValue('#objName') === 'Sofa', 'named Sofa'); ok(+await page.inputValue('#dw') === 2 && +await page.inputValue('#dh') < 1.2, 'size from the sofa prior: 2.0 m wide, sofa height');
+ok((await page.textContent('#sheetHint')).length > 10, 'the tap hint is inside the sheet, not hidden under it');
+if (!(await page.locator('#levels').isHidden())) { // SAM offered more than one size: stepping changes the cut-out and comes back
+  const pa = (await page.evaluate(() => window.__room.sel())).px, dirBtn = (await page.locator('#lvSmaller').isDisabled()) ? '#lvBigger' : '#lvSmaller', back = dirBtn === '#lvBigger' ? '#lvSmaller' : '#lvBigger';
+  await page.click(dirBtn); const pb = (await page.evaluate(() => window.__room.sel())).px; ok(pa.join() !== pb.join(), `Smaller/Bigger changes the cut-out: ${pa} → ${pb}`);
+  await page.click(back); ok(await page.inputValue('#objName') === 'Sofa', 'stepping back is the sofa again');
+} else console.log('one size only for this tap');
 // steer the cut-out: tap the coffee table (outside → added), then tap it again (inside → taken out)
 const px0 = (await page.evaluate(() => window.__room.sel())).px;
 const steer = async (x, y) => { const b = await page.locator('#hud').boundingBox(); await page.mouse.click(b.x + x / size[0] * b.width, b.y + y / size[1] * b.height);

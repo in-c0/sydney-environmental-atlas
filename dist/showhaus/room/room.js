@@ -53,7 +53,7 @@ async function startScan(f, how) {
     status(A.boxes.length ? 'Tap the thing you want to keep. Not boxed? Tap it anyway.' : 'Nothing recognised. Tap the thing you want to keep.');
   } catch (e) { phase = 'error'; status('The scan could not run on this browser (' + (e.message || e) + '). Try Chrome or Safari, or another photo.'); track('room_scan_error', { msg: String(e.message || e).slice(0, 120) }); }
 }
-const status = t => { $('status').textContent = t; };
+const status = t => { $('status').textContent = t; $('sheetHint').textContent = t; }; // the sheet covers the photo's status on phones, so it carries a copy
 function sizeHud() { const im = $('photo'); hud.width = im.clientWidth * devicePixelRatio; hud.height = im.clientHeight * devicePixelRatio; }
 new ResizeObserver(() => { if (!$('stage').hidden) sizeHud(); }).observe($('photo'));
 let maskCanvas = null;
@@ -94,25 +94,59 @@ const nice = l => NICE[l] || (l ? l[0].toUpperCase() + l.slice(1) : 'Item');
 hud.addEventListener('click', async e => {
   if (!A || phase === 'loading' || phase === 'scanning') return;
   const r = hud.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * A.img.width, y = (e.clientY - r.top) / r.height * A.img.height;
-  if (sel && !$('sheet').hidden) return refine(x, y);
-  const inBox = A.boxes.map((b, i) => ({ b, i, a: (b.box.xmax - b.box.xmin) * (b.box.ymax - b.box.ymin) })).filter(({ b }) => x >= b.box.xmin && x <= b.box.xmax && y >= b.box.ymin && y <= b.box.ymax).sort((p, q) => p.a - q.a)[0];
-  status('Cutting it out…');
-  const v = await loadVision();
-  // The detected box wins only if its cut-out contains the tapped pixel (a coffee table inside the sofa's box is not the sofa).
-  let mask, score, background, label = null, boxIndex = -1, pts, labels;
-  try {
-    if (inBox) { const r = await v.segment(A, [inBox.b.box.xmin, inBox.b.box.ymin, inBox.b.box.xmax, inBox.b.box.ymax], { object: true });
-      if (r.mask && near(r.mask, A.img.width, A.img.height, x, y, 8)) { ({ mask, score, pts, labels } = r); label = inBox.b.label; boxIndex = inBox.i; } }
-    if (!mask) ({ mask, score, background, pts, labels } = await v.segment(A, [x, y], { object: true }));
-  } catch (err) { status('Could not cut that out (' + (err.message || err).slice(0, 80) + '). Tap again.'); return; }
-  if (background) { status('That looks like the wall, floor or ceiling. Tap the middle of the thing itself.'); track('room_segment_bg'); return; }
-  const cap = capture(A, mask); if (!cap) { status('Nothing to cut out there. Tap closer to the middle of the thing.'); return; }
-  sel = { i: boxIndex, label, cap, score, mask, pts, labels, base: pts.length };
-  maskCanvas = maskImage(A, mask);
-  track('room_segment', { label: sel.label || 'tap', score: +score.toFixed(2) });
-  openSheet();
-  status('Not right? Tap a missed part to add it, or a wrong part to take it out.');
+  if (sel && !$('sheet').hidden) {
+    // a tap on another detected thing (its box clear of the current cut-out) starts a new pick instead of adding to this one
+    const ob = boxAt(x, y), inside = !!sel.mask[Math.round(y) * A.img.width + Math.round(x)];
+    if (inside || !ob || ob.i === sel.i || boxShare(ob.b.box, sel.mask) > 0.3) return refine(x, y);
+  }
+  return pick(x, y);
 });
+const boxAt = (x, y) => A.boxes.map((b, i) => ({ b, i, a: (b.box.xmax - b.box.xmin) * (b.box.ymax - b.box.ymin) })).filter(({ b }) => x >= b.box.xmin && x <= b.box.xmax && y >= b.box.ymin && y <= b.box.ymax).sort((p, q) => p.a - q.a)[0];
+function maskBox(mask) { const W = A.img.width, n = mask.length; let x0 = W, x1 = -1, y0 = 1e9, y1 = -1;
+  for (let i = 0; i < n; i++) if (mask[i]) { const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return x1 < 0 ? null : { xmin: x0, ymin: y0, xmax: x1, ymax: y1 }; }
+const boxArea = b => Math.max(0, b.xmax - b.xmin) * Math.max(0, b.ymax - b.ymin);
+// share of a detected box that the cut-out's own bounding box covers
+function boxShare(box, mask) { const m = maskBox(mask); if (!m) return 0;
+  const i = { xmin: Math.max(m.xmin, box.xmin), ymin: Math.max(m.ymin, box.ymin), xmax: Math.min(m.xmax, box.xmax), ymax: Math.min(m.ymax, box.ymax) };
+  return boxArea(i) / (boxArea(box) || 1); }
+// The name and typical size come from a detected box only when the cut-out really is that thing: their outlines
+// must overlap well (IoU ≥ 0.5). A salad cut out inside the table's box is not a table, so it stays unnamed.
+function labelFor(mask) { const m = maskBox(mask); if (!m) return { label: null, i: -1 }; let best = { label: null, i: -1, s: 0.5 };
+  A.boxes.forEach((b, i) => { const k = { xmin: Math.max(m.xmin, b.box.xmin), ymin: Math.max(m.ymin, b.box.ymin), xmax: Math.min(m.xmax, b.box.xmax), ymax: Math.min(m.ymax, b.box.ymax) };
+    const s = boxArea(k) / (boxArea(m) + boxArea(b.box) - boxArea(k) || 1); if (s >= best.s) best = { label: b.label, i, s }; });
+  return best; }
+async function pick(x, y) {
+  status('Cutting it out…'); $('sheet').hidden = true; maskCanvas = null; sel = null;
+  const v = await loadVision(), inBox = boxAt(x, y);
+  // The tap says what the visitor means; SAM offers it at up to three sizes (salad → plate → table) and its own best is shown first.
+  let r;
+  try {
+    r = await v.segment(A, [x, y], { object: true });
+    if (!r.mask && inBox) { const b = inBox.b.box, rb = await v.segment(A, [b.xmin, b.ymin, b.xmax, b.ymax], { object: true });
+      if (rb.mask && near(rb.mask, A.img.width, A.img.height, x, y, 8)) r = rb; }
+  } catch (err) { status('Could not cut that out (' + (err.message || err).slice(0, 80) + '). Tap again.'); return; }
+  if (!r.mask) { status('That looks like the wall, floor or ceiling. Tap the middle of the thing itself.'); track('room_segment_bg'); return; }
+  const levels = (r.levels || []).filter(l => l.mask && capture(A, l.mask)); let lv = Math.max(0, levels.findIndex(l => l.mask === r.mask));
+  // This is a furniture scanner: when one of the sizes is the detected thing under the finger (the sofa, not one cushion;
+  // the fork, not the plate) start there. Smaller / Bigger reach the others (the salad on the table).
+  if (inBox) { let best = 0; levels.forEach((l, k) => { const m = labelFor(l.mask); if (m.i === inBox.i && m.s > best) { best = m.s; lv = k; } }); }
+  if (!levels.length) { status('Nothing to cut out there. Tap closer to the middle of the thing.'); return; }
+  sel = { levels, lv, pts: r.pts, labels: r.labels, base: r.pts.length }; useLevel(lv);
+  track('room_segment', { label: sel.label || 'tap', score: +sel.score.toFixed(2), levels: levels.length });
+  openSheet();
+  status(levels.length > 1 ? 'Want just the thing on it, or all of it? Smaller / Bigger. Tap a missed part to add it, or another thing to pick that.' : 'Not right? Tap a missed part to add it, a wrong part to take it out, or another thing to pick that.');
+}
+function useLevel(k) { const l = sel.levels[k], m = labelFor(l.mask);
+  Object.assign(sel, { lv: k, mask: l.mask, score: l.score, cap: capture(A, l.mask), label: m.label, i: m.i }); maskCanvas = maskImage(A, l.mask);
+  $('lvSmaller').disabled = k === 0; $('lvBigger').disabled = k === sel.levels.length - 1; $('levels').hidden = sel.levels.length < 2; }
+function stepLevel(d) { if (!sel || !sel.levels) return; const k = sel.lv + d; if (k < 0 || k >= sel.levels.length) return;
+  // stepping size drops the visitor's own add/remove taps, they belonged to the old outline
+  sel.pts = sel.pts.slice(0, sel.base); sel.labels = sel.labels.slice(0, sel.base); useLevel(k);
+  if (!nameTyped) $('objName').value = sel.label ? nice(sel.label) : '';
+  if (!measured) estimateDims(sel.label || priorForName($('objName').value)); else preview();
+  track('room_level', { d, label: sel.label || 'tap' }); }
+$('lvSmaller').onclick = () => stepLevel(-1); $('lvBigger').onclick = () => stepLevel(1);
 // a tap while the cut-out is open steers it: outside the cut-out adds that spot, inside takes it out
 async function refine(x, y) {
   const inside = !!sel.mask[Math.round(y) * A.img.width + Math.round(x)];
@@ -122,12 +156,19 @@ async function refine(x, y) {
   const pts = near0 >= 0 ? sel.pts.filter((_, i) => i !== near0) : [...sel.pts, [Math.round(x), Math.round(y)]];
   const labels = near0 >= 0 ? sel.labels.filter((_, i) => i !== near0) : [...sel.labels, inside ? 0 : 1], v = await loadVision();
   let r; try { r = await v.segment(A, { pts, labels }, { object: true }); } catch (err) { status('Could not change the cut-out (' + String(err.message || err).slice(0, 80) + ').'); return; }
-  const cap = r.mask && capture(A, r.mask); if (!cap) { status('That would leave nothing. Tap somewhere else.'); return; }
-  Object.assign(sel, { cap, mask: r.mask, pts, labels, score: r.score }); maskCanvas = maskImage(A, r.mask);
+  // of SAM's sizes take the one closest to the current outline that obeys the tap (added spot in, removed spot out),
+  // so steering a chosen size (the whole sofa) never jumps back to SAM's own favourite (one cushion)
+  const W = A.img.width, at = Math.round(y) * W + Math.round(x), want = near0 >= 0 ? null : !inside;
+  const fits = (r.levels || []).filter(l => l.mask && (want === null || !!l.mask[at] === want));
+  const mask = fits.length ? fits.map(l => ({ m: l.mask, s: iouMask(l.mask, sel.mask) })).sort((p, q) => q.s - p.s)[0].m : r.mask;
+  const cap = mask && capture(A, mask); if (!cap) { status('That would leave nothing. Tap somewhere else.'); return; }
+  const lb = labelFor(mask); Object.assign(sel, { cap, mask, pts, labels, score: r.score }); if (lb.label) Object.assign(sel, { label: lb.label, i: lb.i }); maskCanvas = maskImage(A, mask);
+  if (!nameTyped && sel.label) $('objName').value = nice(sel.label);
   if (!measured) estimateDims(sel.label || priorForName($('objName').value)); else preview();
   track('room_refine', { add: !inside, n: pts.length });
   status('Tap again to keep steering, or Keep it.');
 }
+const iouMask = (a, b) => { let i = 0, u = 0; for (let k = 0; k < a.length; k++) { if (a[k] && b[k]) i++; if (a[k] || b[k]) u++; } return i / (u || 1); };
 const near = (m, W, H, x, y, r) => { for (let dy = -r; dy <= r; dy += 2) for (let dx = -r; dx <= r; dx += 2) { const X = Math.round(x + dx), Y = Math.round(y + dy); if (X >= 0 && Y >= 0 && X < W && Y < H && m[Y * W + X]) return true; } return false; };
 function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), id = g.createImageData(W, H);
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const i = y * W + x; if (!mask[i]) continue; const edge = !mask[i - 1] || !mask[i + 1] || !mask[i - W] || !mask[i + W];
@@ -135,9 +176,9 @@ function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = docum
   g.putImageData(id, 0, 0); return c; }
 
 // sheet: name, size, 3D preview
-let pv = null, dims = null, ratio = null, measured = false;
+let pv = null, dims = null, ratio = null, measured = false, nameTyped = false;
 function openSheet() {
-  measured = false; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
+  measured = false; nameTyped = false; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
   estimateDims(sel.label); $('sheet').hidden = false;
   if (!sel.label) $('objName').focus();
 }
@@ -149,7 +190,7 @@ function estimateDims(label) {
   preview();
 }
 // a typed name with a typical size re-estimates the size until the visitor types a measurement
-$('objName').addEventListener('input', e => { if (!sel || measured || sel.label) return; const k = priorForName(e.target.value); if (k) estimateDims(k); });
+$('objName').addEventListener('input', e => { nameTyped = true; if (!sel || measured || sel.label) return; const k = priorForName(e.target.value); if (k) estimateDims(k); });
 for (const k of ['w', 'd', 'h']) $('d' + k).addEventListener('input', e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; const f = v / ratio[k];
   for (const o of ['w', 'd', 'h']) { dims[o] = +(ratio[o] * f).toFixed(2); if (o !== k) $('d' + o).value = dims[o]; } $('dimNote').textContent = 'Measured by you; the other two follow the photo.'; measured = true; preview(); });
 $('isLight').onchange = preview;

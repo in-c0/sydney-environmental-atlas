@@ -91,3 +91,6 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
   .quick { flex-wrap: nowrap; overflow-x: auto; right: 10px; top: 74px; } .quick button { flex: 0 0 auto; padding: 5px 9px; font-size: 12px; } .heard { top: 52px; } .swatches, #horizon { top: 112px; }
   .selbar { bottom: 140px; gap: 3px; } .selbar b { max-width: 34vw; } .selbar button { padding: 6px 9px; }
 }
+.hint { font: 500 12.5px/1.4 ui-monospace, monospace; color: var(--glow); margin: 0 0 8px; }
+.levels { display: flex; gap: 8px; margin: 0 0 10px; } .btn.sm:disabled { opacity: .35; }
+@media (max-width: 560px) { .stage:has(+ .sheet:not([hidden])) .status { display: none; } }

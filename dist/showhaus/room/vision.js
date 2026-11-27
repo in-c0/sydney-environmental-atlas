@@ -55,9 +55,15 @@ export async function segment(a, prompt, opts = {}) {
   const box = prompt.length === 4 || !!prompt.pts; // a box or the visitor's own points already say where the thing is; a bare tap gets the strict test
   const things = stats.filter(t => t.frac > 0.002 && (box ? t.frac < 0.85 : t.frac < 0.3 && t.edges < 3 && t.span < 0.75)).sort((p, q) => q.score - p.score);
   const pickK = opts.object ? (things[0] ? things[0].k : -1) : stats.sort((p, q) => q.score - p.score)[0].k;
-  if (pickK < 0) return { mask: null, background: true };
-  const mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = m.data[pickK * n + i] ? 1 : 0;
-  return { mask, score: sc[pickK], pts, labels };
+  if (pickK < 0) return { mask: null, background: true, levels: [] };
+  const toMask = k => { const mk = new Uint8Array(n); for (let i = 0; i < n; i++) mk[i] = m.data[k * n + i] ? 1 : 0; return mk; };
+  // every usable level, small to large (salad → plate → table), so the visitor can step between them
+  const levels = (opts.object ? things : stats).slice().sort((p, q) => p.frac - q.frac)
+    .filter((t, i, a) => i === 0 || t.k === pickK || t.frac > a[i - 1].frac * 1.15)
+    .map(t => ({ k: t.k, score: t.score, frac: t.frac, mask: t.k === pickK ? null : toMask(t.k) }));
+  const mask = toMask(pickK); for (const l of levels) if (l.k === pickK) l.mask = mask;
+  if (!levels.some(l => l.k === pickK)) levels.push({ k: pickK, score: sc[pickK], mask });
+  return { mask, score: sc[pickK], pts, labels, levels, pick: levels.findIndex(l => l.k === pickK) };
 }
 
 function boxPoints(a, [x0, y0, x1, y1]) {
