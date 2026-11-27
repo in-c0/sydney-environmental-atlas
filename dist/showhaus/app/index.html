@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SHOWHAUS Room for Android</title>
+<meta name="description" content="Put furniture in the room you are standing in, at real size, and see how sure each number is.">
+<style>
+  :root { color-scheme: dark; --ink:#0e1420; --panel:#151c2a; --line:#263044; --text:#e9edf3; --mute:#9aa4b2; --accent:#e8743b; --ok:#7bd389; --warn:#f2c14e; }
+  * { box-sizing: border-box; } body { margin:0; background:var(--ink); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:520px; margin:0 auto; padding:28px 20px 48px; }
+  .brand { font:700 22px/1 Georgia,serif; letter-spacing:.14em; color:var(--text); text-decoration:none; }
+  h1 { font-size:28px; line-height:1.2; margin:28px 0 8px; } p { color:var(--mute); margin:0 0 16px; }
+  .get { display:flex; align-items:center; justify-content:center; gap:10px; background:var(--accent); color:#111; font-weight:700; font-size:18px;
+         text-decoration:none; padding:16px; border-radius:14px; margin:22px 0 8px; }
+  .fine { font:12.5px/1.4 ui-monospace,monospace; color:var(--mute); }
+  ol { padding-left:20px; color:var(--text); } li { margin:8px 0; } li span { color:var(--mute); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:18px 0; }
+  .chip { display:inline-flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:5px 10px; font-size:13px; }
+  .chip i { width:8px; height:8px; border-radius:50%; background:var(--ok); } .chip.q i { background:var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="../?src=app-nav">SHOWHAUS</a>
+  <h1>가구를 지금 이 방에,<br>실제 크기로.</h1>
+  <p>AR로 소파·식탁·침대를 놓고, 재보지 않은 크기는 범위로 보여줘요. 한 변만 재면 확정돼요.</p>
+  <div class="chips" aria-label="화면에 늘 보이는 것">
+    <span class="chip"><i></i>바닥 4.2 m² 확인</span><span class="chip q"><i></i>벽 미확인</span><span class="chip"><i></i>빛 실측 (HDR)</span>
+    <span class="chip q"><i></i>폭 2 m (1.5 m–2.7 m 추정)</span>
+  </div>
+  <a class="get" id="get" href="./showhaus-room.apk" download>Android 앱 받기 <span class="fine" style="color:#111">APK · 18 MB</span></a>
+  <p class="fine">v0.1.0 · Galaxy S10 이후 ARCore 폰 · Play 스토어 등록 전 테스트판</p>
+  <ol>
+    <li>받은 파일을 열어요 <span>— "이 출처 허용"을 물으면 켜요</span></li>
+    <li>처음 열면 Google Play AR 서비스 설치를 물어요 <span>— 설치하면 돼요</span></li>
+    <li>폰을 천천히 좌우로 움직여 바닥을 보여주고, 탭해서 놓아요</li>
+  </ol>
+  <p class="fine">iPhone은 준비 중이에요. 웹에서 바로 해보려면 <a href="../room/" style="color:var(--accent)">showhaus.app/room</a>.</p>
+</main>
+<script src="../lib/ph.js"></script>
+<script src="../lib/ops.js"></script>
+<script>
+  const track = (n, p = {}) => { try { window.SH && window.SH.track(n, p); } catch (e) { /* analytics never breaks the page */ } };
+  track('app_view', { android: /Android/i.test(navigator.userAgent) });
+  document.getElementById('get').addEventListener('click', () => track('app_download', { v: '0.1.0' }));
+</script>
+</body>
+</html>
