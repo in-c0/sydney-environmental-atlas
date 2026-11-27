@@ -19,20 +19,35 @@ const NAMED = [[/coffee table|커피\s*테이블|좌탁/i, 'coffee table', { by:
   [/bookshelf|bookcase|shelf|책장|선반/i, 'bookshelf', { by: 'h', w: 0.8, h: 1.8, d: 0.3 }], [/floor lamp|lamp|스탠드|조명/i, 'floor lamp', { by: 'h', w: 0.4, h: 1.6, d: 0.4 }],
   [/armchair|안락의자/i, 'armchair', { by: 'h', w: 0.85, h: 0.85, d: 0.85 }], [/ottoman|stool|스툴/i, 'stool', { by: 'h', w: 0.45, h: 0.45, d: 0.45 }], [/drawers|dresser|서랍장/i, 'chest of drawers', { by: 'h', w: 0.9, h: 0.9, d: 0.45 }],
   [/bedside|nightstand|협탁/i, 'bedside table', { by: 'h', w: 0.45, h: 0.55, d: 0.4 }], [/mirror|거울/i, 'mirror', { by: 'h', w: 0.6, h: 1.6, d: 0.04 }]];
+// How far a real one of a kind usually strays from the typical size [low, high] (same numbers as the Android app's Kind.kt).
+const RANGE = { couch: [0.75, 1.35], armchair: [0.85, 1.2], chair: [0.85, 1.2], 'dining table': [0.6, 1.4], 'coffee table': [0.7, 1.3], desk: [0.75, 1.4],
+  bed: [0.6, 1.25], sideboard: [0.65, 1.3], bookshelf: [0.7, 1.3], wardrobe: [0.7, 1.4], 'bedside table': [0.8, 1.25], 'floor lamp': [0.8, 1.2],
+  rug: [0.6, 1.6], 'potted plant': [0.5, 1.8], 'chest of drawers': [0.75, 1.3], stool: [0.8, 1.3], bench: [0.7, 1.4], tv: [0.6, 1.5] };
+export const rangeOf = label => RANGE[label] || (PRIORS[label] ? [0.75, 1.35] : [0.5, 1.8]);
+// Kinds drawn as a clean shape at the given size instead of the one-photo relief (which read as a crumpled slab).
+const SHAPE = { couch: 'sofa', armchair: 'sofa', chair: 'chair', 'dining table': 'table', 'coffee table': 'table', desk: 'table', bench: 'table', stool: 'table',
+  bed: 'bed', sideboard: 'cabinet', bookshelf: 'shelf', wardrobe: 'cabinet', 'chest of drawers': 'cabinet', 'bedside table': 'cabinet', refrigerator: 'cabinet',
+  oven: 'cabinet', microwave: 'cabinet', 'floor lamp': 'lamp', rug: 'rug', 'potted plant': 'plant', tv: 'panel' };
+export const shapeOf = label => SHAPE[label] || null;
+// Things that hold other things: Smaller on one of these means "just what's on it".
+export const SURFACES = new Set(['dining table', 'coffee table', 'desk', 'bed', 'bench', 'sideboard', 'bedside table', 'chest of drawers']);
 export function priorForName(name) { const hit = NAMED.find(([re]) => re.test(name || '')); if (hit) PRIORS[hit[1]] = hit[2]; return hit ? hit[1] : null; }
 export const LIGHT_HINT = /lamp|light|조명|램프|스탠드|pendant|chandelier/i;
 
 // pxW/pxH: the mask's bounding box in pixels.
 export function estimate(label, pxW, pxH) {
   const p = PRIORS[label];
-  if (!p) { const h = 0.8; return { w: +(h * pxW / pxH).toFixed(2), h, d: +Math.min(0.6, h * pxW / pxH * 0.6).toFixed(2), basis: 'guess', note: 'No typical size for this kind of thing: type one real measurement.' }; }
+  const rk = rangeOf(label);
+  if (!p) { const h = 0.8, w = +(h * pxW / pxH).toFixed(2); return { w, h, d: +Math.min(0.6, h * pxW / pxH * 0.6).toFixed(2), basis: 'guess', rk, note: `No typical size for this kind of thing; it could be ${(w * rk[0]).toFixed(1)}–${(w * rk[1]).toFixed(1)} m wide.` }; }
   const ratio = pxW / pxH, out = { basis: 'prior' };
   const other = p.by === 'w' ? 'h' : 'w', fromPhoto = p.by === 'w' ? p.w / ratio : p.h * ratio;
   out[p.by] = p[p.by];
   // a photo taken at an angle bends the proportions; past ±35 % of the typical size, the typical size is the better guess
   const bent = Math.abs(fromPhoto / p[other] - 1) > 0.35;
   out[other] = +(bent ? p[other] : fromPhoto).toFixed(2); out.d = p.d;
-  out.note = `Typical ${label}: ${p.by === 'w' ? 'width' : 'height'} ${p[p.by]} m${bent ? `, ${other === 'h' ? 'height' : 'width'} ${p[other]} m (the photo is at an angle)` : ', the rest from the photo’s proportions'}.`;
+  out.note = `Typical ${label === 'couch' ? 'sofa' : label}: ${p.by === 'w' ? 'width' : 'height'} ${p[p.by]} m${bent ? `, ${other === 'h' ? 'height' : 'width'} ${p[other]} m (the photo is at an angle)` : ', the rest from the photo’s proportions'}.`;
+  const [lo, hi] = rk; out.rk = rk;
+  out.note += ` Real ones run ${(out.w * lo).toFixed(1)}–${(out.w * hi).toFixed(1)} m wide.`;
   return out;
 }
 
@@ -62,12 +77,48 @@ export function capture(a, mask) {
   // thumbnail: object on the dark tile it is shown on
   const th = document.createElement('canvas'); th.width = th.height = 160; const tg = th.getContext('2d'), k = Math.min(140 / cv.width, 140 / cv.height);
   tg.drawImage(cv, (160 - cv.width * k) / 2, (160 - cv.height * k) / 2, cv.width * k, cv.height * k);
-  return { tex: cv.toDataURL('image/png'), thumb: th.toDataURL('image/png'), gw, gh, depth: Array.from(depth, v => +v.toFixed(3)), px: [bw, bh] };
+  return { rgb: medianRGB(a, mask), tex: cv.toDataURL('image/png'), thumb: th.toDataURL('image/png'), gw, gh, depth: Array.from(depth, v => +v.toFixed(3)), px: [bw, bh] };
 }
 
 // Asset → THREE.Group standing on y = 0, centred on x/z, sized dims {w,h,d} metres.
 const texCache = new Map();
-export function buildMesh(THREE, asset, dims, { glow = false } = {}) {
+export function buildMesh(THREE, asset, dims, { glow = false, kind, ghost } = {}) {
+  const shape = shapeOf(kind ?? asset.kind ?? asset.label);
+  const grp = shape ? buildShape(THREE, shape, dims, asset, glow) : buildRelief(THREE, asset, dims, { glow });
+  if (ghost) { const g = new THREE.Mesh(new THREE.BoxGeometry(ghost.w, ghost.h, ghost.d), new THREE.MeshBasicMaterial({ color: '#e8743b', transparent: true, opacity: 0.1, depthWrite: false }));
+    g.position.y = ghost.h / 2; const e = new THREE.LineSegments(new THREE.EdgesGeometry(g.geometry), new THREE.LineDashedMaterial({ color: '#ffb27a', dashSize: 0.05, gapSize: 0.04, transparent: true, opacity: 0.8 }));
+    e.computeLineDistances(); g.add(e); grp.add(g); }
+  return grp;
+}
+
+// Plain parts at the real size, coloured from the photo. Same shapes as the Android app's Shapes.kt.
+function buildShape(THREE, kind, { w, d: dd, h }, asset, glow) {
+  const grp = new THREE.Group(), col = new THREE.Color(...(asset.rgb || [203, 187, 165]).map(v => v / 255)).convertSRGBToLinear();
+  const mat = (c, r = 0.85) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
+  const body = mat(col), soft = mat(col.clone().lerp(new THREE.Color(1, 1, 1), 0.1), 0.95), dark = mat(new THREE.Color('#3b3129').convertSRGBToLinear(), 0.6);
+  const box = (bw, bh, bd, x, y, z, m = body) => { const o = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), m); o.position.set(x, y + bh / 2, z); o.castShadow = o.receiveShadow = true; grp.add(o); };
+  const cyl = (r, ch, x, y, z, m) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, ch, 28), m); o.position.set(x, y + ch / 2, z); o.castShadow = true; grp.add(o); };
+  const legs = (lw, ld, lh, t = 0.045) => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(t, lh, t, sx * (lw / 2 - t), 0, sz * (ld / 2 - t), dark); };
+  if (kind === 'sofa') { const seat = h * 0.5, arm = Math.min(0.22, Math.max(0.1, w * 0.11)), back = Math.min(0.28, Math.max(0.14, dd * 0.22));
+    box(w, 0.08, dd * 0.96, 0, 0, 0, dark); box(w, seat - 0.08, dd, 0, 0.08, 0); box(w - 2 * arm, 0.12, dd - back - 0.02, 0, seat - 0.02, back / 2, soft);
+    box(w - 2 * arm, h - seat, back, 0, seat, -dd / 2 + back / 2); for (const sx of [-1, 1]) box(arm, h * 0.68 - 0.08, dd, sx * (w / 2 - arm / 2), 0.08, 0); }
+  else if (kind === 'chair') { const sy = h * 0.52; legs(w * 0.92, dd * 0.92, sy, 0.035); box(w, 0.06, dd, 0, sy, 0, soft); box(w, h - sy - 0.06, 0.05, 0, sy + 0.06, -dd / 2 + 0.025); }
+  else if (kind === 'table') { const top = h < 0.5 ? 0.05 : 0.035; legs(w * 0.96, dd * 0.94, h - top, h < 0.5 ? 0.06 : 0.05); box(w, top, dd, 0, h - top, 0); }
+  else if (kind === 'bed') { const fr = h * 0.3; box(w, fr, dd, 0, 0, 0, dark); box(w - 0.04, 0.22, dd - 0.08, 0, fr, 0.02, soft); box(w, h, 0.07, 0, 0, -dd / 2 + 0.035);
+    for (const sx of [-1, 1]) box(w * 0.38, 0.12, 0.36, sx * w * 0.23, fr + 0.22, -dd / 2 + 0.3, soft); }
+  else if (kind === 'cabinet' || kind === 'shelf') { box(w, 0.06, dd * 0.94, 0, 0, 0, dark); box(w, h - 0.06, dd, 0, 0.06, 0);
+    if (kind === 'shelf') { const n = Math.max(2, Math.floor(h / 0.35)); for (let i = 1; i < n; i++) box(w - 0.04, 0.02, 0.01, 0, h * i / n, dd / 2 + 0.005, dark); }
+    else { const n = w > 1.5 ? 3 : w > 0.9 ? 2 : 1; for (let i = 0; i < n; i++) box(w / n - 0.02, h - 0.1, 0.01, -w / 2 + w / n * (i + 0.5), 0.08, dd / 2 + 0.005, soft); } }
+  else if (kind === 'lamp') { const sh = Math.min(0.4, Math.max(0.2, h * 0.22)); cyl(w * 0.35, 0.03, 0, 0, 0, dark); cyl(0.015, h - sh, 0, 0.03, 0, dark);
+    cyl(w / 2, sh, 0, h - sh, 0, new THREE.MeshStandardMaterial({ color: '#f3e3c3', roughness: 1, ...(glow ? { emissive: '#ffd9a0', emissiveIntensity: 1.2 } : {}) })); }
+  else if (kind === 'rug') box(w, Math.max(h, 0.01), dd, 0, 0, 0, soft);
+  else if (kind === 'plant') { const ph = h * 0.32; cyl(w * 0.28, ph, 0, 0, 0, mat(new THREE.Color('#b9a58c').convertSRGBToLinear(), 0.9));
+    const f = new THREE.Mesh(new THREE.SphereGeometry(w / 2, 24, 16), mat(col)); f.scale.y = (h - ph) / w; f.position.y = ph + (h - ph) / 2; f.castShadow = true; grp.add(f); }
+  else /* panel */ box(w, h, Math.max(dd, 0.03), 0, 0, 0, dark);
+  return grp;
+}
+
+function buildRelief(THREE, asset, dims, { glow = false } = {}) {
   const { gw, gh, depth } = asset, { w, h, d } = dims, cell = (i, j) => i >= 0 && j >= 0 && i < gw && j < gh && depth[j * gw + i] >= 0;
   // vertex depth = mean of the masked cells around it
   const vw = gw + 1, vh = gh + 1, vd = new Float32Array(vw * vh), used = new Uint8Array(vw * vh);
@@ -107,6 +158,10 @@ export function buildMesh(THREE, asset, dims, { glow = false } = {}) {
   const grp = new THREE.Group(); grp.add(mesh); return grp;
 }
 
+// median colour of the cut-out: the fabric or wood, not a highlight or a cushion
+function medianRGB(a, mask) { const d = a.img.data, ch = a.img.channels, rs = [], gs = [], bs = [], step = Math.max(1, Math.floor(mask.length / 6000));
+  for (let i = 0; i < mask.length; i += step) if (mask[i]) { rs.push(d[i * ch]); gs.push(d[i * ch + 1]); bs.push(d[i * ch + 2]); }
+  const med = v => v.sort((p, q) => p - q)[v.length >> 1] ?? 160; return [med(rs), med(gs), med(bs)]; }
 // keep the biggest connected piece of a mask (drops bits of the chair behind the sofa)
 function largest(mask, W, H) {
   const lab = new Int32Array(W * H), q = new Int32Array(W * H); let best = 0, bestN = 0, id = 0;

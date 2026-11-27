@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { buildRoom } from '../walk/plan-room.js';
 import { bounds } from '../walk/plan-core.js';
 import { parse, apply, describe, emptyState, clamp as clampN, WALL_COLOURS, PATTERNS } from './intent.js';
-import { estimate, capture, buildMesh, LIGHT_HINT, priorForName } from './mesh.js';
+import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES } from './mesh.js';
 
 const $ = id => document.getElementById(id);
 const qs = new URLSearchParams(location.search), src = qs.get('src') || qs.get('utm_source') || 'direct';
@@ -73,14 +73,19 @@ function drawHud(now) {
     if (phase === 'reveal') { band = Math.min(1, band + 0.022); if (band >= 1) phase = 'ready'; }
     if (!A.depthCanvas) A.depthCanvas = depthImage(A);
     if (phase === 'reveal') { const by = band * H; hg.save(); hg.globalAlpha = 0.55; hg.beginPath(); hg.rect(0, Math.max(0, by - H * 0.25), W, Math.min(H * 0.25, by)); hg.clip(); hg.drawImage(A.depthCanvas, 0, 0, W, H); hg.restore(); }
-    const shown = phase === 'reveal' ? band * H : H;
+    const shown = phase === 'reveal' ? band * H : H, tags = [], th = 17 * devicePixelRatio;
+    hg.font = `600 ${12 * devicePixelRatio}px ui-monospace,monospace`;
+    // tags never leave the photo and never sit on each other: clamp to the edges, then step down past any tag already placed
+    const tagAt = (x0, y0, tw) => { let x = Math.min(Math.max(0, x0), W - tw), y = y0 - th - 1 * devicePixelRatio; if (y < 0) y = y0 + 1;
+      for (let k = 0; k < 8 && tags.some(r => x < r.x + r.w && r.x < x + tw && y < r.y + th && r.y < y + th); k++) y += th + 2 * devicePixelRatio;
+      tags.push({ x, y, w: tw }); return { x, y }; };
     A.boxes.forEach((b, i) => { const { xmin, ymin, xmax, ymax } = b.box; if (ymin * sy > shown) return;
       const x0 = xmin * sx, y0 = ymin * sy, x1 = xmax * sx, y1 = ymax * sy, L = Math.min(18 * devicePixelRatio, (x1 - x0) / 4, (y1 - y0) / 4), on = sel && sel.i === i;
       hg.strokeStyle = on ? '#ffb27a' : 'rgba(255,255,255,.85)'; hg.lineWidth = (on ? 3 : 2) * devicePixelRatio; hg.beginPath();
       for (const [cx, cy, dx, dy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) { hg.moveTo(cx + dx * L, cy); hg.lineTo(cx, cy); hg.lineTo(cx, cy + dy * L); }
-      hg.stroke(); const tag = `${nice(b.label)} ${Math.round(b.score * 100)}%`; hg.font = `600 ${12 * devicePixelRatio}px ui-monospace,monospace`;
-      const tw = hg.measureText(tag).width + 10 * devicePixelRatio; hg.fillStyle = on ? '#ffb27a' : 'rgba(10,14,20,.78)'; hg.fillRect(x0, y0 - 18 * devicePixelRatio, tw, 17 * devicePixelRatio);
-      hg.fillStyle = on ? '#1a1206' : '#fff'; hg.fillText(tag, x0 + 5 * devicePixelRatio, y0 - 5 * devicePixelRatio); });
+      hg.stroke(); const tag = `${nice(b.label)} ${Math.round(b.score * 100)}%`;
+      const tw = hg.measureText(tag).width + 10 * devicePixelRatio, p = tagAt(x0, y0, tw); hg.fillStyle = on ? '#ffb27a' : 'rgba(10,14,20,.78)'; hg.fillRect(p.x, p.y, tw, th);
+      hg.fillStyle = on ? '#1a1206' : '#fff'; hg.fillText(tag, p.x + 5 * devicePixelRatio, p.y + th - 5 * devicePixelRatio); });
     if (maskCanvas) { hg.globalAlpha = 0.6 + 0.25 * Math.sin(t * 4); hg.drawImage(maskCanvas, 0, 0, W, H); hg.globalAlpha = 1; }
   }
   requestAnimationFrame(drawHud);
@@ -135,7 +140,7 @@ async function pick(x, y) {
   sel = { levels, lv, pts: r.pts, labels: r.labels, base: r.pts.length }; useLevel(lv);
   track('room_segment', { label: sel.label || 'tap', score: +sel.score.toFixed(2), levels: levels.length });
   openSheet();
-  status(levels.length > 1 ? 'Want just the thing on it, or all of it? Smaller / Bigger. Tap a missed part to add it, or another thing to pick that.' : 'Not right? Tap a missed part to add it, a wrong part to take it out, or another thing to pick that.');
+  status(levels.length > 1 ? (SURFACES.has(sel.label) ? 'Just what’s on it? Smaller. All of it? Bigger.' : sel.label ? 'Just one part? Smaller. The whole thing? Bigger.' : 'Wrong size? Smaller / Bigger.') + ' Tap a missed part to add it, or another thing to pick that.' : 'Not right? Tap a missed part to add it, a wrong part to take it out, or another thing to pick that.');
 }
 function useLevel(k) { const l = sel.levels[k], m = labelFor(l.mask);
   Object.assign(sel, { lv: k, mask: l.mask, score: l.score, cap: capture(A, l.mask), label: m.label, i: m.i }); maskCanvas = maskImage(A, l.mask);
@@ -176,14 +181,15 @@ function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = docum
   g.putImageData(id, 0, 0); return c; }
 
 // sheet: name, size, 3D preview
-let pv = null, dims = null, ratio = null, measured = false, nameTyped = false;
+let pv = null, dims = null, ratio = null, measured = false, nameTyped = false, rk = rangeOf(null);
+const kindNow = () => sel && (sel.label || priorForName($('objName').value));
 function openSheet() {
   measured = false; nameTyped = false; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
   estimateDims(sel.label); $('sheet').hidden = false;
   if (!sel.label) $('objName').focus();
 }
 function estimateDims(label) {
-  const est = estimate(label, ...sel.cap.px); dims = { w: est.w, h: est.h, d: est.d }; ratio = { ...dims };
+  const est = estimate(label, ...sel.cap.px); dims = { w: est.w, h: est.h, d: est.d }; ratio = { ...dims }; rk = est.rk;
   $('dw').value = dims.w; $('dd').value = dims.d; $('dh').value = dims.h;
   $('dimNote').textContent = `Est. ${est.note} Type any real measurement and the others follow.`;
   $('isLight').checked = LIGHT_HINT.test(label || ''); status('');
@@ -198,14 +204,19 @@ function preview() {
   if (!pv) { const r = new THREE.WebGLRenderer({ canvas: $('preview'), antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, devicePixelRatio)); r.toneMapping = THREE.ACESFilmicToneMapping;
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight('#fff', '#556', 2.2)); const dl = new THREE.DirectionalLight('#fff', 1.6); dl.position.set(2, 3, 3); sc.add(dl);
     const cam = new THREE.PerspectiveCamera(35, 1, 0.01, 50); pv = { r, sc, cam, obj: null }; const spin = t => { if (pv.obj) { pv.obj.rotation.y = Math.sin(t / 1400) * 0.9; } r.render(sc, cam); requestAnimationFrame(spin); }; requestAnimationFrame(spin); }
+  // the canvas is stretched by CSS (full width × 110 px on a phone): draw at its real size and aspect, or a sofa comes out as a flat slab
+  const cv = $('preview'), cw = cv.clientWidth || 300, ch = cv.clientHeight || 300; pv.r.setSize(cw, ch, false); pv.cam.aspect = cw / ch; pv.cam.updateProjectionMatrix();
   if (pv.obj) pv.sc.remove(pv.obj);
-  pv.obj = buildMesh(THREE, sel.cap, dims, { glow: $('isLight').checked }); pv.sc.add(pv.obj);
-  const s = Math.max(dims.w, dims.h); pv.cam.position.set(0, dims.h * 0.6, s * 2.6); pv.cam.lookAt(0, dims.h * 0.45, 0);
+  const kind = kindNow(), shaped = !!shapeOf(kind), ghost = measured ? null : { w: dims.w * rk[1], d: dims.d * rk[1], h: dims.h * rk[1] };
+  pv.obj = buildMesh(THREE, sel.cap, dims, { glow: $('isLight').checked, kind, ghost }); pv.sc.add(pv.obj);
+  $('kindNote').textContent = (shaped ? `A ${nice(kind).toLowerCase()} shape at these sizes, in your photo’s colour.` : 'From one photo: front from its depth, back mirrored.')
+    + (measured ? '' : ' Dashed box: the largest it could be.');
+  const s = Math.max(ghost ? ghost.w : dims.w, ghost ? ghost.h : dims.h); const back = s * Math.max(1.75, 2.2 / Math.min(1.6, pv.cam.aspect)); pv.cam.position.set(s * 0.9, s * 0.85 + dims.h * 0.4, back); pv.cam.lookAt(0, dims.h * 0.4, 0); // three-quarter view from above: a seat reads as a seat
 }
 $('again').onclick = () => { $('sheet').hidden = true; maskCanvas = null; sel = null; status('Tap the thing you want to keep.'); };
 $('objForm').onsubmit = async e => {
   e.preventDefault(); if (!sel) return;
-  const o = { id: uid(), name: $('objName').value.trim() || nice(sel.label), label: sel.label, light: $('isLight').checked, dims: { ...dims }, measured, created: Date.now(), ...sel.cap };
+  const o = { id: uid(), name: $('objName').value.trim() || nice(sel.label), label: sel.label, kind: kindNow() || null, light: $('isLight').checked, dims: { ...dims }, measured, created: Date.now(), ...sel.cap };
   await lib.put(o); await refreshLib(); track('room_keep', { label: o.label || 'tap', light: o.light });
   $('sheet').hidden = true; maskCanvas = null; sel = null;
   toast(`${o.name} kept. Scan another, or place it →`); status(`${objects.length} kept. Tap another thing, or go to ② Place it.`);
@@ -312,7 +323,7 @@ function sync() {
   for (const it of s.items) { const obj = objOf(it.obj); if (!obj) continue; seen.add(it.uid);
     let n = t.nodes.get(it.uid);
     const dk = JSON.stringify(it.dims) + it.light;
-    if (!n || n.dk !== dk) { if (n) t.items.remove(n.g); const g = buildMesh(THREE, obj, it.dims, { glow: it.light }); const L = new THREE.PointLight('#ffd6a0', 0, 7, 1.6); L.position.set(0, it.dims.h * 0.92, 0.1); g.add(L);
+    if (!n || n.dk !== dk) { if (n) t.items.remove(n.g); const g = buildMesh(THREE, obj, it.dims, { glow: it.light }) /* no dashed largest-size box here: it belongs to the scan sheet, not the room picture */; const L = new THREE.PointLight('#ffd6a0', 0, 7, 1.6); L.position.set(0, it.dims.h * 0.92, 0.1); g.add(L);
       n = { g, L, dk }; t.nodes.set(it.uid, n); t.items.add(g); }
     n.g.position.set(it.x, 0, -it.y); n.g.rotation.y = it.r * Math.PI / 180; n.g.scale.setScalar(it.k);
     n.L.intensity = it.light && it.on ? (s.sun ? 3 : 9) : 0;

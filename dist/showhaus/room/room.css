@@ -40,7 +40,7 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 .kind { opacity: .8; }
 .row { display: flex; gap: 8px; margin-top: 10px; }
 @media (min-width: 980px) { .sheet { left: auto; top: 0; width: 380px; max-height: none; border-top: 0; border-left: 1px solid var(--line); } .sheet-grid { grid-template-columns: 1fr; } #preview { width: 100%; height: 260px; } .stage:has(+ .sheet:not([hidden])) { right: 380px; } }
-@media (max-width: 560px) { .sheet { max-height: 62%; padding: 10px 12px; } .sheet-grid { grid-template-columns: 1fr; gap: 6px; } #preview { width: 100%; height: 110px; } .stage:has(+ .sheet:not([hidden])) { justify-content: flex-start; } .photo img { max-height: 36dvh; } }
+@media (max-width: 560px) { .sheet { max-height: 62%; padding: 10px 12px; } .sheet-grid { grid-template-columns: 1fr; gap: 6px; } #preview { width: 100%; height: 150px; } .stage:has(+ .sheet:not([hidden])) { justify-content: flex-start; } .photo img { max-height: 36dvh; } }
 
 /* ② room: choose a space */
 .spaces { max-width: 900px; margin: 0 auto; padding: 22px 16px; overflow: auto; height: 100%; }

@@ -33,7 +33,11 @@ export async function analyse(url) {
 }
 const iou = (a, b) => { const x0 = Math.max(a.xmin, b.xmin), y0 = Math.max(a.ymin, b.ymin), x1 = Math.min(a.xmax, b.xmax), y1 = Math.min(a.ymax, b.ymax);
   const i = Math.max(0, x1 - x0) * Math.max(0, y1 - y0), A = r => (r.xmax - r.xmin) * (r.ymax - r.ymin); return i / (A(a) + A(b) - i || 1); };
-function dedupe(boxes) { const out = []; for (const b of boxes.sort((p, q) => q.score - p.score)) if (!out.some(o => iou(o.box, b.box) > 0.7)) out.push(b); return out.slice(0, 12); }
+// one thing, one box: a weaker box of the same label that overlaps a kept one or sits mostly inside it is the same thing
+const inside = (a, b) => { const x0 = Math.max(a.xmin, b.xmin), y0 = Math.max(a.ymin, b.ymin), x1 = Math.min(a.xmax, b.xmax), y1 = Math.min(a.ymax, b.ymax);
+  return Math.max(0, x1 - x0) * Math.max(0, y1 - y0) / (((b.xmax - b.xmin) * (b.ymax - b.ymin)) || 1); };
+function dedupe(boxes) { const out = []; for (const b of boxes.sort((p, q) => q.score - p.score))
+  if (!out.some(o => iou(o.box, b.box) > 0.7 || (o.label === b.label && inside(o.box, b.box) > 0.6))) out.push(b); return out.slice(0, 12); }
 
 // Prompt SAM with a box [x0,y0,x1,y1] or a point [x,y] (original pixels) → best mask as Uint8 W×H (1 = object).
 export async function segment(a, prompt, opts = {}) {
