@@ -97,3 +97,6 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 .btn.on { background: var(--glow, #e8743b); color: #1a1206; border-color: transparent; }
 #rough { flex-wrap: wrap; gap: 6px; } #rough .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
 #guess { flex-wrap: wrap; align-items: center; gap: 6px; } #guess .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
+.fit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 196px; margin: 0; max-width: calc(100% - 24px); padding: 6px 12px; border-radius: 10px;
+  font: 600 13px/1.3 system-ui, sans-serif; background: rgba(18,22,28,.92); border: 1px solid var(--line); text-align: center; }
+.fit[data-tone="ok"] { color: #7bd389; } .fit[data-tone="tight"] { color: #f2c14e; } .fit[data-tone="no"] { color: #ff8a80; border-color: #ff8a80; }

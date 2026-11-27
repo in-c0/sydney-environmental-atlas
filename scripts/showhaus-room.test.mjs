@@ -46,3 +46,17 @@ test('sizes: everyday things have real sizes, unknown things ask instead of inve
   const r = estimate(null, 300, 200, 0.15); assert.equal(r.basis, 'rough'); assert.equal(r.h, 0.15); assert.ok(r.w < 0.3);
   assert.equal(shapeOf('couch'), 'sofa'); assert.equal(shapeOf('cat'), null);
 });
+
+import { fitLine, footprint } from '../dist/showhaus/room/fit.js';
+import { roomPlan } from '../dist/showhaus/walk/plan-core.js';
+test('fit: says whether a thing fits where it stands, and when a walkway is too narrow', () => {
+  const plan = roomPlan(4.2, 3.6), sofa = (x, y, r = 0) => ({ uid: 's', name: 'Sofa', x, y, r, k: 1, dims: { w: 2.2, d: 1.0, h: 0.9 } });
+  const b = plan.outline.reduce((a, [x, y]) => [Math.min(a[0], x), Math.min(a[1], y), Math.max(a[2], x), Math.max(a[3], y)], [9, 9, -9, -9]);
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  assert.equal(fitLine(plan, [sofa(cx, cy)], 's').tone, 'ok');
+  assert.equal(fitLine(plan, [sofa(b[2] - 0.5, cy)], 's').tone, 'no');                       // half through the east wall
+  assert.match(fitLine(plan, [sofa(b[0] + 1.1 + 0.3, cy)], 's').text, /only 30 cm to walk past/); // 30 cm from the west wall
+  const bed = { uid: 'b', name: 'Bed', x: cx, y: cy, r: 0, k: 1, dims: { w: 1.6, d: 2.0, h: 1 } };
+  assert.equal(fitLine(plan, [sofa(cx, cy), bed], 's').text, 'Overlaps the bed');
+  assert.ok(Math.abs(footprint(sofa(0, 0, 90)).w - 1.0) < 1e-9);                               // turned 90°: footprint swaps
+});
