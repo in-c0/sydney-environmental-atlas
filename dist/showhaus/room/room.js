@@ -40,6 +40,13 @@ addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])].f
 $('drop').addEventListener('dragover', e => e.preventDefault()); $('drop').addEventListener('drop', e => { e.preventDefault(); const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (f) startScan(f, 'drop'); });
 
 let phase = 'idle', band = 0, lastScan = null;
+// 90 MB is a lot on mobile data (measured first visit, loop 9): say so before the tap, and say when it is already here
+(async () => { try {
+  const cached = (await (await caches.open('transformers-cache')).keys()).length > 8;
+  const cell = navigator.connection && (navigator.connection.type === 'cellular' || navigator.connection.saveData);
+  if (cached) $('dlNote').textContent = 'The vision models are already on this device: scans start right away.';
+  else if (cell) { $('dlNote').textContent = 'You’re on mobile data: the first scan downloads about 90 MB once. Wi-Fi is kinder to your plan.'; $('dlNote').classList.add('warn'); }
+} catch { /* no Cache API (private mode): keep the default note */ } })();
 $('retryScan').onclick = () => { $('retryScan').hidden = true; if (lastScan) startScan(lastScan, 'retry'); };
 async function startScan(f, how) {
   track('room_scan', { how }); scanT0 = performance.now(); $('retryScan').hidden = true;
