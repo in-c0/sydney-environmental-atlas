@@ -30,6 +30,8 @@ for (const photo of photos) {
         h: +document.querySelector('#dh').value, levels: !document.querySelector('#levels').hidden, hint: document.querySelector('#sheetHint').textContent,
         dimNote: document.querySelector('#dimNote').textContent, kindNote: document.querySelector('#kindNote').textContent })), { px: (await page.evaluate(() => window.__room.sel()))?.px });
       await page.waitForTimeout(600); await page.screenshot({ path: `${shots}/${name}-tap${k}-${b.label.replace(/\W+/g, '_')}.png` });
+      t.guesses = await page.$$eval('#guess button', bs => bs.map(b => b.textContent));
+      if (t.guesses.length) { await page.click('#guess button'); t.afterGuess = await page.evaluate(() => ({ name: document.querySelector('#objName').value, h: +document.querySelector('#dh').value })); }
       await page.click('#again');
     } else t.status = await page.textContent('#status');
     row.taps.push(t);

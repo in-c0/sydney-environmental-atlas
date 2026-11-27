@@ -96,3 +96,4 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 @media (max-width: 560px) { .stage:has(+ .sheet:not([hidden])) .status { display: none; } }
 .btn.on { background: var(--glow, #e8743b); color: #1a1206; border-color: transparent; }
 #rough { flex-wrap: wrap; gap: 6px; } #rough .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
+#guess { flex-wrap: wrap; align-items: center; gap: 6px; } #guess .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }

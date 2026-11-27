@@ -137,7 +137,7 @@ async function pick(x, y) {
   // the fork, not the plate) start there. Smaller / Bigger reach the others (the salad on the table).
   if (inBox) { let best = 0; levels.forEach((l, k) => { const m = labelFor(l.mask); if (m.i === inBox.i && m.s > best) { best = m.s; lv = k; } }); }
   if (!levels.length) { status('Nothing to cut out there. Tap closer to the middle of the thing.'); return; }
-  sel = { levels, lv, pts: r.pts, labels: r.labels, base: r.pts.length }; useLevel(lv);
+  sel = { levels, lv, pts: r.pts, labels: r.labels, base: r.pts.length, tap: [x, y] }; useLevel(lv);
   track('room_segment', { label: sel.label || 'tap', score: +sel.score.toFixed(2), levels: levels.length });
   openSheet();
   status(levels.length > 1 ? (SURFACES.has(sel.label) ? 'Just what’s on it? Smaller. All of it? Bigger.' : sel.label ? 'Just one part? Smaller. The whole thing? Bigger.' : 'Wrong size? Smaller / Bigger.') + ' Tap a missed part to add it, or another thing to pick that.' : 'Not right? Tap a missed part to add it, a wrong part to take it out, or another thing to pick that.');
@@ -183,11 +183,29 @@ function maskImage(a, mask) { const W = a.img.width, H = a.img.height, c = docum
 // sheet: name, size, 3D preview
 let pv = null, dims = null, ratio = null, measured = false, nameTyped = false, rk = rangeOf(null);
 const kindNow = () => sel && (sel.label || priorForName($('objName').value));
+// An unnamed cut-out usually overlaps something the detector did name (a banana in the fruit bowl, a cat half
+// hidden by a cushion): offer those names as one-tap guesses before asking anyone to type.
+function guesses() {
+  if (sel.label || !sel.mask) return [];
+  const seen = new Set(), out = [];
+  const [tx, ty] = sel.tap || [-1, -1], under = b => tx >= b.box.xmin && tx <= b.box.xmax && ty >= b.box.ymin && ty <= b.box.ymax;
+  for (const b of A.boxes.map(b => ({ ...b, s: boxShare(b.box, sel.mask) + (under(b) ? 2 - (b.box.xmax - b.box.xmin) * (b.box.ymax - b.box.ymin) / (A.img.width * A.img.height) : 0) })).filter(b => b.s > 0.25).sort((p, q) => q.s - p.s))
+    if (!seen.has(b.label)) { seen.add(b.label); out.push(b.label); }
+  return out.slice(0, 3);
+}
+function showGuesses() {
+  const g = guesses(); $('guess').hidden = !g.length;
+  $('guess').innerHTML = g.length ? '<span class="fine">Is it</span>' + g.map(l => `<button type="button" class="btn ghost sm" data-l="${l}">${nice(l)}?</button>`).join('') : '';
+}
 function openSheet() {
   measured = false; nameTyped = false; roughH = null; $('objName').value = sel.label ? nice(sel.label) : ''; $('objName').placeholder = 'What is it? e.g. coffee table';
-  estimateDims(sel.label); $('sheet').hidden = false;
-  if (!sel.label) $('objName').focus();
+  estimateDims(sel.label); showGuesses(); $('sheet').hidden = false;
+  // the keyboard would cover the guesses and the height chips on a phone: focus the name only when there is nothing to tap
+  if (!sel.label && $('guess').hidden && matchMedia('(min-width: 561px)').matches) $('objName').focus();
 }
+$('guess').onclick = e => { const b = e.target.closest('button[data-l]'); if (!b || !sel) return;
+  const l = b.dataset.l; sel.label = l; sel.i = A.boxes.findIndex(x => x.label === l); $('objName').value = nice(l); nameTyped = false;
+  track('room_guess', { label: l }); showGuesses(); if (!measured) estimateDims(l); else preview(); };
 let roughH = null;
 function estimateDims(label) {
   const est = estimate(label, ...sel.cap.px, roughH), unknown = est.basis === 'unknown';
