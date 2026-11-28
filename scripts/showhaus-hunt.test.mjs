@@ -45,6 +45,11 @@ test('paste: a Domain link gives its street, suburb and postcode; realestate.com
   assert.deepEqual(parsePasted('12 Smith St Blacktown'), { address: '12 Smith St Blacktown' });
 });
 
+test('paste: malformed encoded listing slug requests a street instead of throwing', () => {
+  assert.deepEqual(parsePasted('https://www.domain.com.au/%E0%A4%A'), { need: 'address', link: 'domain.com.au' });
+  assert.deepEqual(parsePasted('https://www.realestate.com.au/%ZZ'), { need: 'address', link: 'realestate.com.au' });
+});
+
 test('summarise: a failed service is unknown, never "none"; hits and misses are plain words', () => {
   const s = summarise({ zoning: { ok: true, rows: [{ SYM_CODE: 'R2', LAY_CLASS: 'Low Density Residential' }] }, bushfire: { ok: true, rows: [] }, flood: { ok: false }, anec: { ok: true, rows: [{ ANEF_CODE: '20-25' }] }, canopy: { ok: true, rows: [{ Canopy_pc: 0.314 }] } });
   assert.equal(s.flood, null);
