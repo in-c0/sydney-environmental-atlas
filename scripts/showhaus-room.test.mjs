@@ -65,7 +65,7 @@ test('fit verdict: an unmeasured side is checked at the largest it could be', ()
   const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2, at = (w, d) => [{ uid: 's', name: 'Sofa', x: cx, y: cy, r: 0, k: 1, dims: { w, d, h: 0.9 } }];
   assert.equal(fitVerdict(plan, at(2.2, 1.0), 's', { w: 1, d: 1 }).tone, 'ok');                // all measured: the plain verdict
   const v = fitVerdict(plan, at(4.0, 1.0), 's', { w: 1.35, d: 1 });                            // 4.0 m fits a 4.2 m wall, 5.4 m does not
-  assert.equal(v.tone, 'tight'); assert.match(v.text, /Measure its width to be sure/);
+  assert.equal(v.tone, 'tight'); assert.match(v.text, /^Probably fits, \d+ cm to spare\. Measure its width to be sure$/);
   assert.equal(fitVerdict(plan, at(2.2, 1.0), 's', { w: 1, d: 1.35 }).unsure, undefined);       // deeper still fits: no hedge
   assert.equal(fitVerdict(plan, at(5.0, 1.0), 's', { w: 1.35, d: 1 }).tone, 'no');              // too big at the guess stays a no
 });

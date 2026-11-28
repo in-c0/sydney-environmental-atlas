@@ -12,7 +12,7 @@ const errs = []; page.on('pageerror', e => errs.push(String(e))); page.on('conso
 const ok = (c, msg) => { if (!c) { console.error('FAIL', msg, errs.slice(-5)); process.exitCode = 1; } else console.log('ok', msg); };
 const st = () => page.evaluate(() => window.__room.state());
 const tag = phone ? 'phone' : 'desk';
-await page.goto(base + '/room/?synthetic=1');
+await page.goto(base + '/room/?synthetic=1'); await page.screenshot({ path: `${shots}/${tag}-0-start.png` });
 await page.click('#sample');
 await page.waitForFunction(() => ['ready', 'reveal', 'error'].includes(window.__room.phase()), null, { timeout: 600000 });
 ok(await page.evaluate(() => window.__room.phase()) !== 'error', 'models load and the photo is scanned: ' + await page.textContent('#status'));
@@ -24,7 +24,7 @@ const hb = await page.locator('#hud').boundingBox(), cx = 300, cy = 560; // on t
 await page.mouse.click(hb.x + cx / size[0] * hb.width, hb.y + cy / size[1] * hb.height);
 await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
 ok(await page.inputValue('#objName') === 'Sofa', 'named Sofa'); ok(+await page.inputValue('#dw') === 2 && +await page.inputValue('#dh') < 1.2, 'size from the sofa prior: 2.0 m wide, sofa height');
-ok((await page.textContent('#sheetHint')).length > 10, 'the tap hint is inside the sheet, not hidden under it');
+ok((await page.textContent('#sheetHint')).length > 10, 'the tap hint is inside the sheet, not hidden under it'); ok(await page.locator('#isLight').isHidden(), 'no lamp question for a sofa');
 if (!(await page.locator('#levels').isHidden())) { // SAM offered more than one size: stepping changes the cut-out and comes back
   const pa = (await page.evaluate(() => window.__room.sel())).px, dirBtn = (await page.locator('#lvSmaller').isDisabled()) ? '#lvBigger' : '#lvSmaller', back = dirBtn === '#lvBigger' ? '#lvSmaller' : '#lvBigger';
   await page.click(dirBtn); const pb = (await page.evaluate(() => window.__room.sel())).px; ok(pa.join() !== pb.join(), `Smaller/Bigger changes the cut-out: ${pa} → ${pb}`);
@@ -51,6 +51,12 @@ await page.click('#tabRoom'); await page.click('#tapeForm button');
 await page.waitForSelector('#tray button[data-id]'); await page.click('#tray button[data-id]');
 let s = await st(); ok(s.items.length === 1 && s.space === 'tape', 'sofa placed in the tape room');
 const fitText = await page.textContent('#fitVerdict'); ok(/^Fits/.test(fitText), 'a fit verdict shows for the placed sofa: ' + fitText);
+ok(await page.locator('#sayIn').isHidden() && await page.locator('[data-say="night"]').isHidden(), 'before Decorate the screen is the answer: no sentence box, no light chips');
+ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'nothing runs off the side of the screen');
+await page.waitForTimeout(800); await page.screenshot({ path: `${shots}/${tag}-3a-verdict.png` });
+await page.click('#decoBtn');
+const nb = async () => { const f = await page.locator('#fit').boundingBox(), y = await page.locator('#say').boundingBox(); return f.y + f.height <= y.y + 1; };
+ok(await nb(), 'the sentence box sits below the verdict, not behind it'); 
 const x0 = s.items[0].x, s0 = s.items[0];
 for (const t of ['sofa 50cm left', '벽지 세이지 줄무늬', 'night']) { await page.fill('#sayIn', t); await page.press('#sayIn', 'Enter'); await page.waitForTimeout(300); }
 s = await st(); ok(Math.abs(Math.hypot(s.items[0].x - x0, s.items[0].y - s0.y) - 0.5) < 0.05, 'sofa moved 50 cm'); ok(s.wall.colour === 'sage' && s.wall.pattern === 'stripes', 'walls sage stripes'); ok(s.sun === false, 'night');
@@ -62,7 +68,8 @@ ok(s.cur === 1 && s.sun === true && s.wall.colour === null, 'tapping step 2 reop
 await page.screenshot({ path: `${shots}/${tag}-4-rewind.png` });
 await page.fill('#sayIn', 'lights off'); await page.press('#sayIn', 'Enter'); s = await st(); ok(s.steps === 2 || s.steps === 3, 'a new change from step 2 branches: ' + s.steps);
 await page.click('#newSpace'); await page.click('#planList button[data-sample]'); await page.waitForTimeout(1500); s = await st();
-ok(s.space === 'photo' && s.items.length === 1, 'same sofa in the room photo');
+ok(s.space === 'photo' && s.items.length === 1, 'same sofa in the room photo'); ok(/no measured walls/.test(await page.textContent('#fitVerdict')) && await page.locator('#fitAct').isVisible(), 'a room photo asks for the room size in the verdict slot');
 await page.screenshot({ path: `${shots}/${tag}-5-photo.png` });
+await page.click('#fitAct'); ok(await page.evaluate(() => document.activeElement?.id === 'tw'), '“Enter the room’s size” lands in the width box');
 ok(!errs.length, 'no page errors ' + errs.join(' | '));
 await browser.close();

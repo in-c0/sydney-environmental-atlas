@@ -83,13 +83,13 @@
     <div id="host" class="host"><img id="roomImg" alt=""><canvas id="tint"></canvas></div>
     <div class="topstack">
     <div class="fit" id="fit" hidden><b id="fitVerdict"></b><span id="fitBasis"></span><button class="btn sm" id="fitAct" type="button" hidden>Enter the room’s size</button></div>
-    <form id="say" class="say" autocomplete="off">
+    <form id="say" class="say deco" autocomplete="off">
       <input id="sayIn" placeholder="Say what to change: “sofa 30cm left”, “walls sage stripes”, “lights off”" enterkeyhint="send" aria-label="Tell the room what to change">
       <button class="btn sm" aria-label="Apply">↵</button>
     </form>
     <p class="heard" id="heard" aria-live="polite"></p>
     <div class="quick" id="quick">
-      <button data-say="night">☾ Night</button><button data-say="day">☀ Day</button><button data-say="warmer">Warmer</button><button data-say="lights off">Lights off</button>
+      <button id="decoBtn" type="button" aria-pressed="false">Decorate</button><button class="deco" data-say="night">☾ Night</button><button class="deco" data-say="day">☀ Day</button><button class="deco" data-say="warmer">Warmer</button><button class="deco" data-say="lights off">Lights off</button>
       <button id="viewBtn" data-v="above">Eye level</button><button id="horizonBtn" hidden>Match floor</button><button id="newSpace">Change space</button>
     </div>
     </div>

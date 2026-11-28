@@ -110,3 +110,5 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 .topstack .fit, .topstack .say, .topstack .heard, .topstack .quick { position: static; left: auto; right: auto; top: auto; margin: 0; max-width: none; }
 .topstack .heard { pointer-events: none; } .topstack .heard:empty { display: none; }
 .fit #fitAct { justify-self: start; margin-top: 4px; }
+.view:not(.decorating) .deco { display: none !important; }
+#decoBtn[aria-pressed="true"] { border-color: var(--glow); color: var(--glow); }

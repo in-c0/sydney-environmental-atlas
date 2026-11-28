@@ -485,7 +485,7 @@ function drawSel() { const s = state(), it = s?.items.find(i => i.uid === selUid
   $('selName').textContent = it.name; // the bar is narrow on a phone: the size lives in the fit line above it
   // the question a mover has: does it fit? A room photo has no measured walls, so it says so instead of guessing
   // unmeasured sides are checked at the largest they could be: a size read off one photo can be a third out
-  const o = objOf(it.obj), hi = rangeOf(o?.label)[1], side = k => ms === true || ms === k ? 1 : ms ? 1.35 : hi;
+  const o = objOf(it.obj), hi = rangeOf(o?.label)[1], mz = o?.measured, side = k => mz === true || mz === k ? 1 : mz ? 1.35 : hi; // resized with −/+ is still the size they measured
   const f = s.space.kind === 'photo' ? { tone: 'none', text: 'Will it fit? A photo has no measured walls' } : fitVerdict(planFor(s.space), s.items, it.uid, { w: side('w'), d: side('d') });
   const room = s.space.kind === 'photo' ? 'Enter the room’s size for a yes or no' : s.space.kind === 'plan' ? (s.space.name || 'this plan') : `${s.space.w} × ${s.space.d} m room`;
   $('fitAct').hidden = s.space.kind !== 'photo';
@@ -498,6 +498,8 @@ $('selbar').onclick = e => { const a = e.target.closest('button')?.dataset.a, it
 // ---------- say what to change
 $('say').onsubmit = e => { e.preventDefault(); const text = $('sayIn').value.trim(); if (!text) return; run(text); $('sayIn').value = ''; };
 $('quick').onclick = e => { const b = e.target.closest('button'); if (b?.dataset.say) run(b.dataset.say); };
+// light, walls and sentences are for after the answer: folded under one chip so the screen is about the fit (UX review: it read as an editor)
+$('decoBtn').onclick = () => { const on = $('view').classList.toggle('decorating'); $('decoBtn').setAttribute('aria-pressed', on); $('decoBtn').textContent = on ? 'Done' : 'Decorate'; if (on) track('room_deco'); };
 function run(text) {
   const s = state(), { ops } = parse(text, { items: s.items, selected: selUid });
   track('room_say', { n: ops.length, len: text.length });

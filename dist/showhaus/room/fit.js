@@ -20,7 +20,7 @@ export function fitVerdict(plan, items, uid, worst = { w: 1, d: 1 }) {
   const big = items.map(i => i.uid === uid ? { ...i, dims: { ...i.dims, w: i.dims.w * worst.w, d: i.dims.d * worst.d } } : i);
   if (fitLine(plan, big, uid).tone !== 'no') return guess;
   const side = worst.w > 1 && worst.d > 1 ? 'width and depth' : worst.w > 1 ? 'width' : 'depth';
-  return { tone: 'tight', unsure: side, text: `Probably fits. Measure its ${side} to be sure` };
+  return { tone: 'tight', unsure: side, text: guess.gap ? `Probably fits, ${cm(guess.gap)} to spare. Measure its ${side} to be sure` : `Probably fits. Measure its ${side} to be sure` };
 }
 
 /** → { tone: 'ok' | 'tight' | 'no', text } */
@@ -32,7 +32,7 @@ export function fitLine(plan, items, uid) {
   if (hit) return { tone: 'no', text: `Overlaps the ${hit.name.toLowerCase()}` };
   const gaps = Object.values(clearances(plan, others, me)).filter(v => v != null);
   const narrow = gaps.filter(v => v > 0.05 && v < WALK).sort((a, b) => a - b)[0];
-  if (narrow != null) return { tone: 'tight', text: `Fits, tight: ${cm(narrow)} to walk past` };
+  if (narrow != null) return { tone: 'tight', gap: narrow, text: `Fits, tight: ${cm(narrow)} to walk past` };
   const open = gaps.filter(v => v > 0.05); // against a wall (≈0) is a choice, not a squeeze
-  return { tone: 'ok', text: open.length ? `Fits · ${cm(Math.min(...open))} clear on the tightest side` : 'Fits' };
+  return { tone: 'ok', gap: open.length ? Math.min(...open) : null, text: open.length ? `Fits · ${cm(Math.min(...open))} clear on the tightest side` : 'Fits' };
 }
