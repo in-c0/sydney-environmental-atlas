@@ -529,6 +529,6 @@ $('horizon').onchange = e => { const v = +e.target.value; state().horizon = step
 
 // test hook for the click-through judge
 window.__room = { state: () => ({ steps: steps.length, cur, objects: objects.length, items: state()?.items.map(({ uid, name, x, y, r, k, on, light }) => ({ uid, name, x, y, r, k, on, light })), space: state()?.space?.kind, wall: state()?.wall, sun: state()?.sun }),
-  run, push, mode, select: u => { selUid = u; sync(); }, phase: () => phase, boxes: () => A && A.boxes.map(b => ({ label: b.label, score: b.score, box: b.box })), size: () => A && [A.img.width, A.img.height], sel: () => sel && { label: sel.label, px: sel.cap.px } };
+  run, push, mode, select: u => { selUid = u; sync(); }, phase: () => phase, boxes: () => A && A.boxes.map(b => ({ label: b.label, score: b.score, box: b.box })), size: () => A && [A.img.width, A.img.height], sel: () => sel && { label: sel.label, px: sel.cap.px, swatch: !!sel.cap.swatch } };
 
 refreshLib().then(() => { if (qs.get('m') === 'room' || location.hash === '#room') mode('room'); });
