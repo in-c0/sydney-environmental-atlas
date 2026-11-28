@@ -284,7 +284,7 @@ $('tapeForm').onsubmit = e => { e.preventDefault(); const w = +$('tw').value, d 
 $('addrForm').onsubmit = e => { e.preventDefault(); const a = $('addr').value.trim(); if (!a) return; open('../p/go?q=' + encodeURIComponent(a), '_blank', 'noopener');
   setSpace({ kind: 'tape', w: +$('tw').value || 4.2, d: +$('td').value || 3.6, title: a }); toast('No plan on file for this address: measuring one room. Change the size with “width 4.5m room”.', 4200); };
 $('roomPhoto').onchange = async e => { const f = e.target.files[0]; if (!f) return; const url = await fileToUrl(f, 1600); setSpace({ kind: 'photo', title: 'Your room photo', photo: await stash(url) }); };
-$('newSpace').onclick = () => { $('spaces').hidden = false; $('view').hidden = true; };
+$('newSpace').onclick = () => { $('spaces').hidden = false; $('view').hidden = true; $('view').classList.remove('decorating'); $('decoBtn').setAttribute('aria-pressed', false); $('decoBtn').textContent = 'Decorate'; };
 $('fitAct').onclick = () => { $('newSpace').click(); $('tw').focus(); };
 async function stash(url) { const k = 'ph_' + uid(); await blobs.put(k, url); return k; }
 

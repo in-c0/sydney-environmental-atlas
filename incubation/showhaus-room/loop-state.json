@@ -2,18 +2,17 @@
   "version": 1,
   "created": "2026-11-28T06:33:19.226Z",
   "max": 10,
-  "iteration": 2,
+  "iteration": 3,
   "status": "running",
   "open": {
-    "i": 3,
+    "i": 4,
     "why": [
-      "editor-overload",
-      "measured-scale-hedge",
-      "verdict-flow-untested",
-      "hedge-drops-gap",
-      "photo-stack-height"
+      "android-first-screen-trust",
+      "hedge-gap-axis",
+      "chip-row-clipped",
+      "decorate-state-persists"
     ],
-    "at": "2026-11-28T06:48:53.314Z"
+    "at": "2026-11-28T06:51:58.554Z"
   },
   "gates_file": "/home/claude/sydney-environmental-atlas/incubation/showhaus-room/gates.json",
   "gates_hash": "413d60d907f96479",
@@ -22,16 +21,14 @@
     "auc": 0.529,
     "source": "/home/claude/combinatory-venture-farming/ops/validate/backtest/result.json"
   },
-  "best": 1.41,
+  "best": 1.52,
   "stale": 0,
   "last_failures": [
-    "editor-overload",
-    "measured-scale-hedge",
-    "verdict-flow-untested",
-    "hedge-drops-gap",
-    "photo-stack-height",
-    "textureless-result",
-    "android-first-screen-trust"
+    "hedge-gap-axis",
+    "chip-row-clipped",
+    "decorate-state-persists",
+    "android-first-screen-trust",
+    "textureless-result"
   ],
   "history": [
     {
@@ -94,6 +91,36 @@
       "reasons": [
         "slop-gate",
         "pairwise=0.41<0.5"
+      ],
+      "verdict": "CONTINUE"
+    },
+    {
+      "i": 3,
+      "why": [
+        "editor-overload",
+        "measured-scale-hedge",
+        "verdict-flow-untested",
+        "hedge-drops-gap",
+        "photo-stack-height"
+      ],
+      "at": "2026-11-28T06:48:53.314Z",
+      "ended": "2026-11-28T06:51:58.520Z",
+      "gates": {
+        "slop_pass": false,
+        "critical": 0,
+        "pairwise": 0.52
+      },
+      "failures": [
+        "hedge-gap-axis",
+        "chip-row-clipped",
+        "decorate-state-persists",
+        "android-first-screen-trust",
+        "textureless-result"
+      ],
+      "asset": "Decorate fold + click-through checks for verdict layout",
+      "score": 1.52,
+      "reasons": [
+        "slop-gate"
       ],
       "verdict": "CONTINUE"
     }
