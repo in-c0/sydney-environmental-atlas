@@ -22,7 +22,7 @@ export function fitLine(plan, items, uid) {
   if (hit) return { tone: 'no', text: `Overlaps the ${hit.name.toLowerCase()}` };
   const gaps = Object.values(clearances(plan, others, me)).filter(v => v != null);
   const narrow = gaps.filter(v => v > 0.05 && v < WALK).sort((a, b) => a - b)[0];
-  if (narrow != null) return { tone: 'tight', text: `Fits, but only ${cm(narrow)} to walk past` };
+  if (narrow != null) return { tone: 'tight', text: `Fits, tight: ${cm(narrow)} to walk past` };
   const open = gaps.filter(v => v > 0.05); // against a wall (≈0) is a choice, not a squeeze
   return { tone: 'ok', text: open.length ? `Fits · ${cm(Math.min(...open))} clear on the tightest side` : 'Fits' };
 }

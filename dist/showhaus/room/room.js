@@ -260,7 +260,7 @@ $('objForm').onsubmit = async e => {
   const o = { id: uid(), name: $('objName').value.trim() || nice(sel.label), label: sel.label, kind: kindNow() || null, light: $('isLight').checked, dims: { ...dims }, measured, created: Date.now(), ...sel.cap };
   await lib.put(o); await refreshLib(); track('room_keep', { label: o.label || 'tap', light: o.light });
   $('sheet').hidden = true; maskCanvas = null; sel = null;
-  toast(`${o.name} kept. Scan another, or place it →`); status(`${objects.length} kept. Tap another thing, or go to ② Place it.`);
+  toast(`${o.name} kept. Next: will it fit? → ② Room`); status(`${objects.length} kept. Tap another thing, or check the fit in ② Room.`);
 };
 
 // ================= ② ROOM =================
@@ -483,8 +483,10 @@ function drawSel() { const s = state(), it = s?.items.find(i => i.uid === selUid
   const ms = it.k === 1 && objOf(it.obj)?.measured, est = ms ? ` (${typeof ms === 'string' ? ms.toUpperCase() + ' measured, rest est.' : 'measured'})` : ' est.';
   $('selName').textContent = it.name; // the bar is narrow on a phone: the size lives in the fit line above it
   // the question a mover has: does it fit? A room photo has no measured walls, so it says so instead of guessing
-  const f = s.space.kind === 'photo' ? { tone: 'tight', text: 'no fit check on a photo (walls not measured)' } : fitLine(planFor(s.space), s.items, it.uid);
-  $('fit').textContent = `${(it.dims.w * it.k).toFixed(2)} × ${(it.dims.d * it.k).toFixed(2)} m${est} · ${f.text}`; $('fit').dataset.tone = f.tone; $('lightBtn').textContent = it.light ? (it.on ? 'Light off' : 'Light on') : 'Glow'; $('lightBtn').title = it.light ? '' : 'Make it a light'; }
+  const f = s.space.kind === 'photo' ? { tone: 'none', text: 'No fit check on a photo' } : fitLine(planFor(s.space), s.items, it.uid);
+  // the answer is the headline of this screen (UX review 28 Nov: it was a 12 px note under the scene); the basis sits under it
+  const room = s.space.kind === 'photo' ? 'a photo has no measured walls: use your room’s size' : s.space.kind === 'plan' ? (s.space.name || 'this plan') : `${s.space.w} × ${s.space.d} m room`;
+  $('fitVerdict').textContent = f.text; $('fitBasis').textContent = `${it.name} ${(it.dims.w * it.k).toFixed(2)} × ${(it.dims.d * it.k).toFixed(2)} m${est} · ${room}`; $('fit').dataset.tone = f.tone; $('lightBtn').textContent = it.light ? (it.on ? 'Light off' : 'Light on') : 'Glow'; $('lightBtn').title = it.light ? '' : 'Make it a light'; }
 $('selbar').onclick = e => { const a = e.target.closest('button')?.dataset.a, it = state().items.find(i => i.uid === selUid); if (!a || !it) return;
   const ops = { rotL: { op: 'rotate', uid: it.uid, by: 15 }, rotR: { op: 'rotate', uid: it.uid, by: -15 }, smaller: { op: 'scale', uid: it.uid, by: 1 / 1.05 }, bigger: { op: 'scale', uid: it.uid, by: 1.05 },
     light: { op: 'light', uid: it.uid, on: !(it.light && it.on), make: true }, remove: { op: 'remove', uid: it.uid } };

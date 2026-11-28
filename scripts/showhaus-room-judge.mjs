@@ -50,7 +50,7 @@ await page.click('#again');
 await page.click('#tabRoom'); await page.click('#tapeForm button');
 await page.waitForSelector('#tray button[data-id]'); await page.click('#tray button[data-id]');
 let s = await st(); ok(s.items.length === 1 && s.space === 'tape', 'sofa placed in the tape room');
-const fitText = await page.textContent('#fit'); ok(/ · Fits/.test(fitText), 'a fit verdict shows for the placed sofa: ' + fitText);
+const fitText = await page.textContent('#fitVerdict'); ok(/^Fits/.test(fitText), 'a fit verdict shows for the placed sofa: ' + fitText);
 const x0 = s.items[0].x, s0 = s.items[0];
 for (const t of ['sofa 50cm left', '벽지 세이지 줄무늬', 'night']) { await page.fill('#sayIn', t); await page.press('#sayIn', 'Enter'); await page.waitForTimeout(300); }
 s = await st(); ok(Math.abs(Math.hypot(s.items[0].x - x0, s.items[0].y - s0.y) - 0.5) < 0.05, 'sofa moved 50 cm'); ok(s.wall.colour === 'sage' && s.wall.pattern === 'stripes', 'walls sage stripes'); ok(s.sun === false, 'night');

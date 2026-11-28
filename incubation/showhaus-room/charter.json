@@ -1,0 +1,24 @@
+{
+  "campaign": "showhaus-room /iterate 2026-11-28",
+  "outcome": {
+    "metric": "real_room_keeps",
+    "target": 1,
+    "source": "PostHog room_keep events from real visitors (internal and test sessions excluded)"
+  },
+  "boundaries": [
+    "no cold email",
+    "no posts or DMs to people outside in-c0",
+    "no fake reviews or invented users",
+    "no spend",
+    "no GPU jobs or pop-ups at night (22:00-07:00 Sydney)"
+  ],
+  "proxies": [
+    {
+      "name": "room-gates",
+      "maxIterations": 10,
+      "minGain": 0.05
+    }
+  ],
+  "unlocks": [],
+  "stallCheckpoints": 3
+}

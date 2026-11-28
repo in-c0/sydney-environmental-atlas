@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "created": "2026-11-28T06:33:19.226Z",
+  "max": 10,
+  "iteration": 0,
+  "status": "running",
+  "open": {
+    "i": 1,
+    "why": [
+      "initial"
+    ],
+    "at": "2026-11-28T06:36:49.078Z"
+  },
+  "gates_file": "/home/claude/sydney-environmental-atlas/incubation/showhaus-room/gates.json",
+  "gates_hash": "413d60d907f96479",
+  "calibration": {
+    "calibrated": false,
+    "auc": 0.529,
+    "source": "/home/claude/combinatory-venture-farming/ops/validate/backtest/result.json"
+  },
+  "best": null,
+  "stale": 0,
+  "last_failures": [],
+  "history": []
+}
