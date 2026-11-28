@@ -1,0 +1,6 @@
+{"t":"2026-11-28T07:12:42.291Z","kind":"checkpoint","outcome":0,"activity":1,"note":"iterate 1 merged+deployed"}
+{"t":"2026-11-28T07:12:42.312Z","kind":"checkpoint","outcome":0,"activity":2,"note":"iterate 2 merged+deployed"}
+{"t":"2026-11-28T07:12:42.330Z","kind":"checkpoint","outcome":0,"activity":3,"note":"iterate 3 merged+deployed"}
+{"t":"2026-11-28T07:12:42.347Z","kind":"checkpoint","outcome":0,"activity":4,"note":"iterate 4 merged+deployed"}
+{"t":"2026-11-28T07:13:06.517Z","kind":"note","note":"outcome 0 above was not read from PostHog/D1: this cloud session has no ops credential (/api/ops/summary 401, no CF token). Real room_keeps = unknown, read it from the Console ops feed."}
+{"t":"2026-11-28T07:14:51.660Z","kind":"checkpoint","outcome":null,"activity":5,"note":"iterate 5 merged+deployed; real outcome unreadable here"}
