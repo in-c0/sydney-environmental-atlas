@@ -97,14 +97,16 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 .btn.on { background: var(--glow, #e8743b); color: #1a1206; border-color: transparent; }
 #rough { flex-wrap: wrap; gap: 6px; } #rough .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
 #guess { flex-wrap: wrap; align-items: center; gap: 6px; } #guess .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
-.fit { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 6; margin: 0; padding: 12px 14px; border-radius: 14px; background: rgba(14,18,24,.94);
+.fit { margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(14,18,24,.94);
   border: 1px solid var(--line); border-left: 6px solid var(--line); display: grid; gap: 3px; }
 .fit b { font: 700 20px/1.2 system-ui, sans-serif; } .fit span { font: 500 13px/1.35 system-ui, sans-serif; color: #b8c0cc; }
 .fit[data-tone="ok"] { border-left-color: #7bd389; } .fit[data-tone="ok"] b { color: #7bd389; }
 .fit[data-tone="tight"] { border-left-color: #f2c14e; } .fit[data-tone="tight"] b { color: #f2c14e; }
 .fit[data-tone="no"] { border-left-color: #ff8a80; } .fit[data-tone="no"] b { color: #ff8a80; }
 #dlNote.warn { color: var(--glow, #e8743b); }
-/* the verdict banner owns the top of the scene; the sentence box and chips move under it while it shows */
-.view:has(#fit:not([hidden])) .say { top: 112px; }
-.view:has(#fit:not([hidden])) .heard { top: 160px; }
-.view:has(#fit:not([hidden])) .quick { top: 186px; }
+/* banner, sentence box, what was heard and chips stack in one column at the top: a two-line verdict pushes the rest down instead of covering it */
+.topstack { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; max-width: 720px; margin: 0 auto; z-index: 6; pointer-events: none; }
+.topstack > * { pointer-events: auto; }
+.topstack .fit, .topstack .say, .topstack .heard, .topstack .quick { position: static; left: auto; right: auto; top: auto; margin: 0; max-width: none; }
+.topstack .heard { pointer-events: none; } .topstack .heard:empty { display: none; }
+.fit #fitAct { justify-self: start; margin-top: 4px; }

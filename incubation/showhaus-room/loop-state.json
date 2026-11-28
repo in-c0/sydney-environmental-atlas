@@ -2,14 +2,18 @@
   "version": 1,
   "created": "2026-11-28T06:33:19.226Z",
   "max": 10,
-  "iteration": 0,
+  "iteration": 1,
   "status": "running",
   "open": {
-    "i": 1,
+    "i": 2,
     "why": [
-      "initial"
+      "fit-footprint-mismatch",
+      "banner-overlaps-input",
+      "photo-mode-dead-end",
+      "questions-product-could-know",
+      "headline-overpromises-door"
     ],
-    "at": "2026-11-28T06:36:49.078Z"
+    "at": "2026-11-28T06:44:09.493Z"
   },
   "gates_file": "/home/claude/sydney-environmental-atlas/incubation/showhaus-room/gates.json",
   "gates_hash": "413d60d907f96479",
@@ -18,8 +22,47 @@
     "auc": 0.529,
     "source": "/home/claude/combinatory-venture-farming/ops/validate/backtest/result.json"
   },
-  "best": null,
+  "best": 0.47,
   "stale": 0,
-  "last_failures": [],
-  "history": []
+  "last_failures": [
+    "fit-footprint-mismatch",
+    "banner-overlaps-input",
+    "photo-mode-dead-end",
+    "questions-product-could-know",
+    "headline-overpromises-door",
+    "textureless-result",
+    "android-first-screen-trust"
+  ],
+  "history": [
+    {
+      "i": 1,
+      "why": [
+        "initial"
+      ],
+      "at": "2026-11-28T06:36:49.078Z",
+      "ended": "2026-11-28T06:43:26.725Z",
+      "gates": {
+        "slop_pass": false,
+        "critical": 1,
+        "pairwise": 0.47
+      },
+      "failures": [
+        "fit-footprint-mismatch",
+        "banner-overlaps-input",
+        "photo-mode-dead-end",
+        "questions-product-could-know",
+        "headline-overpromises-door",
+        "textureless-result",
+        "android-first-screen-trust"
+      ],
+      "asset": "verdict banner component (#fit verdict+basis) and reference contact sheets /tmp/judge",
+      "score": 0.47,
+      "reasons": [
+        "slop-gate",
+        "critical=1",
+        "pairwise=0.47<0.5"
+      ],
+      "verdict": "CONTINUE"
+    }
+  ]
 }
