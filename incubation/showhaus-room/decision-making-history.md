@@ -4,3 +4,4 @@ date | node | decision | options | predicted severity | asked? | Ji's answer | m
 2026-11-28 | setup | gates: slop pass, 0 critical, pairwise >= 0.5 vs 5 refs; panel recorded only (AUC 0.53) | defaults / other refs / stricter | major | yes | defaults | <1 | - | correct
 2026-11-28 | setup | panel: ask Ji every time; unattended with loop-guard | max10 / every time / no panel; guard / only when present | major | yes | every time; guard on | <1 | - | correct
 | 2026-11-28 18:40 | iter 4 critical android-fit-trusts-partial-walls (green "Fits" from one seen wall) | fixed in iter 5 without asking Ji: a correctness bug with one obvious fix (amber "only N wall seen"), no product trade-off | Claude |
+| 2026-11-28 19:20 | loop-guard BUSY_NO_OUTCOME after 5 merged iterations | stopped the polish loop at iteration 5 of 10 (guard exit 2 is final); next step must move real room_keeps: a real-user walk, not more panel polish | guard |
