@@ -17,10 +17,14 @@ const cm = v => v < 1 ? `${Math.round(v * 100)} cm` : `${v.toFixed(2)} m`;
  *  worst = { w, d } multipliers for the sides nobody measured (1 = measured). → { tone, text, unsure? } */
 export function fitVerdict(plan, items, uid, worst = { w: 1, d: 1 }) {
   const guess = fitLine(plan, items, uid); if (!guess || guess.tone === 'no' || (worst.w <= 1 && worst.d <= 1)) return guess;
-  const big = items.map(i => i.uid === uid ? { ...i, dims: { ...i.dims, w: i.dims.w * worst.w, d: i.dims.d * worst.d } } : i);
-  if (fitLine(plan, big, uid).tone !== 'no') return guess;
-  const side = worst.w > 1 && worst.d > 1 ? 'width and depth' : worst.w > 1 ? 'width' : 'depth';
-  return { tone: 'tight', unsure: side, text: guess.gap ? `Probably fits, ${cm(guess.gap)} to spare. Measure its ${side} to be sure` : `Probably fits. Measure its ${side} to be sure` };
+  const it = items.find(i => i.uid === uid), grow = t => ({ w: it.dims.w * (1 + (worst.w - 1) * t), d: it.dims.d * (1 + (worst.d - 1) * t) });
+  const fits = t => fitLine(plan, items.map(i => i === it ? { ...i, dims: { ...i.dims, ...grow(t) } } : i), uid).tone !== 'no';
+  if (fits(1)) return guess;
+  // the largest unmeasured size that still fits: the one number to hold a tape against
+  let lo = 0, hi = 1; for (let n = 0; n < 16; n++) { const t = (lo + hi) / 2; if (fits(t)) lo = t; else hi = t; }
+  const g = grow(lo), k = it.k || 1, side = worst.w > 1 && worst.d > 1 ? 'width and depth' : worst.w > 1 ? 'width' : 'depth';
+  const limit = side === 'width' ? `its width is under ${cm(g.w * k)}` : side === 'depth' ? `its depth is under ${cm(g.d * k)}` : `it is under ${cm(g.w * k)} × ${cm(g.d * k)}`;
+  return { tone: 'tight', unsure: side, limit: g, text: `Fits if ${limit}. Measure its ${side}` };
 }
 
 /** → { tone: 'ok' | 'tight' | 'no', text } */

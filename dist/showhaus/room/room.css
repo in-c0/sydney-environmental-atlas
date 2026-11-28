@@ -107,6 +107,7 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 /* banner, sentence box, what was heard and chips stack in one column at the top: a two-line verdict pushes the rest down instead of covering it */
 .topstack { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; max-width: 720px; margin: 0 auto; z-index: 6; pointer-events: none; }
 .topstack > * { pointer-events: auto; }
+.topstack .quick { flex-wrap: wrap; }
 .topstack .fit, .topstack .say, .topstack .heard, .topstack .quick { position: static; left: auto; right: auto; top: auto; margin: 0; max-width: none; }
 .topstack .heard { pointer-events: none; } .topstack .heard:empty { display: none; }
 .fit #fitAct { justify-self: start; margin-top: 4px; }
