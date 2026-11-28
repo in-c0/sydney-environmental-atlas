@@ -2,18 +2,18 @@
   "version": 1,
   "created": "2026-11-28T06:33:19.226Z",
   "max": 10,
-  "iteration": 1,
+  "iteration": 2,
   "status": "running",
   "open": {
-    "i": 2,
+    "i": 3,
     "why": [
-      "fit-footprint-mismatch",
-      "banner-overlaps-input",
-      "photo-mode-dead-end",
-      "questions-product-could-know",
-      "headline-overpromises-door"
+      "editor-overload",
+      "measured-scale-hedge",
+      "verdict-flow-untested",
+      "hedge-drops-gap",
+      "photo-stack-height"
     ],
-    "at": "2026-11-28T06:44:09.493Z"
+    "at": "2026-11-28T06:48:53.314Z"
   },
   "gates_file": "/home/claude/sydney-environmental-atlas/incubation/showhaus-room/gates.json",
   "gates_hash": "413d60d907f96479",
@@ -22,14 +22,14 @@
     "auc": 0.529,
     "source": "/home/claude/combinatory-venture-farming/ops/validate/backtest/result.json"
   },
-  "best": 0.47,
+  "best": 1.41,
   "stale": 0,
   "last_failures": [
-    "fit-footprint-mismatch",
-    "banner-overlaps-input",
-    "photo-mode-dead-end",
-    "questions-product-could-know",
-    "headline-overpromises-door",
+    "editor-overload",
+    "measured-scale-hedge",
+    "verdict-flow-untested",
+    "hedge-drops-gap",
+    "photo-stack-height",
     "textureless-result",
     "android-first-screen-trust"
   ],
@@ -61,6 +61,39 @@
         "slop-gate",
         "critical=1",
         "pairwise=0.47<0.5"
+      ],
+      "verdict": "CONTINUE"
+    },
+    {
+      "i": 2,
+      "why": [
+        "fit-footprint-mismatch",
+        "banner-overlaps-input",
+        "photo-mode-dead-end",
+        "questions-product-could-know",
+        "headline-overpromises-door"
+      ],
+      "at": "2026-11-28T06:44:09.493Z",
+      "ended": "2026-11-28T06:48:12.940Z",
+      "gates": {
+        "slop_pass": false,
+        "critical": 0,
+        "pairwise": 0.41
+      },
+      "failures": [
+        "editor-overload",
+        "measured-scale-hedge",
+        "verdict-flow-untested",
+        "hedge-drops-gap",
+        "photo-stack-height",
+        "textureless-result",
+        "android-first-screen-trust"
+      ],
+      "asset": "fitVerdict worst-case check (fit.js) with unit tests",
+      "score": 1.41,
+      "reasons": [
+        "slop-gate",
+        "pairwise=0.41<0.5"
       ],
       "verdict": "CONTINUE"
     }
