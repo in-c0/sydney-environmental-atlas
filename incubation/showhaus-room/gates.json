@@ -1,0 +1,10 @@
+{
+  "target": "SHOWHAUS Room: my own furniture -> will it fit in my next home (web showhaus.app/room + Android showhaus.app/app)",
+  "decided_by_ji": "2026-11-28 17:2x AEST, in chat: defaults as proposed",
+  "slop_pass": true,
+  "critical": 0,
+  "pairwise_min": 0.5,
+  "pairwise_method": "blind pairwise by a non-builder vision judge: our first-use flow screenshots vs each reference's first-use flow, both orders; question: which flow gets a first-time user to 'my sofa fits / does not fit here' sooner and with more trust",
+  "references": ["IKEA Kreativ", "Simulon", "Magicplan", "Planner 5D", "Polycam"],
+  "panel": { "revisit_min": 0.5, "convert_min": 0.1, "counts_only_if_calibrated": true, "run": "ask Ji each time (Control Room pop-up)" }
+}

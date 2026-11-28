@@ -55,7 +55,7 @@ test('fit: says whether a thing fits where it stands, and when a walkway is too 
   const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
   assert.equal(fitLine(plan, [sofa(cx, cy)], 's').tone, 'ok');
   assert.equal(fitLine(plan, [sofa(b[2] - 0.5, cy)], 's').tone, 'no');                       // half through the east wall
-  assert.match(fitLine(plan, [sofa(b[0] + 1.1 + 0.3, cy)], 's').text, /only 30 cm to walk past/); // 30 cm from the west wall
+  assert.match(fitLine(plan, [sofa(b[0] + 1.1 + 0.3, cy)], 's').text, /tight: 30 cm to walk past/); // 30 cm from the west wall
   const bed = { uid: 'b', name: 'Bed', x: cx, y: cy, r: 0, k: 1, dims: { w: 1.6, d: 2.0, h: 1 } };
   assert.equal(fitLine(plan, [sofa(cx, cy), bed], 's').text, 'Overlaps the bed');
   assert.ok(Math.abs(footprint(sofa(0, 0, 90)).w - 1.0) < 1e-9);                               // turned 90°: footprint swaps

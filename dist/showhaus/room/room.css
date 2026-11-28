@@ -97,7 +97,14 @@ main { flex: 1 1 auto; position: relative; min-height: 0; }
 .btn.on { background: var(--glow, #e8743b); color: #1a1206; border-color: transparent; }
 #rough { flex-wrap: wrap; gap: 6px; } #rough .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
 #guess { flex-wrap: wrap; align-items: center; gap: 6px; } #guess .btn { white-space: nowrap; font-size: 13px; padding: 7px 11px; min-height: 0; }
-.fit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 196px; margin: 0; max-width: calc(100% - 24px); padding: 6px 12px; border-radius: 10px;
-  font: 600 13px/1.3 system-ui, sans-serif; background: rgba(18,22,28,.92); border: 1px solid var(--line); text-align: center; }
-.fit[data-tone="ok"] { color: #7bd389; } .fit[data-tone="tight"] { color: #f2c14e; } .fit[data-tone="no"] { color: #ff8a80; border-color: #ff8a80; }
+.fit { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 6; margin: 0; padding: 12px 14px; border-radius: 14px; background: rgba(14,18,24,.94);
+  border: 1px solid var(--line); border-left: 6px solid var(--line); display: grid; gap: 3px; }
+.fit b { font: 700 20px/1.2 system-ui, sans-serif; } .fit span { font: 500 13px/1.35 system-ui, sans-serif; color: #b8c0cc; }
+.fit[data-tone="ok"] { border-left-color: #7bd389; } .fit[data-tone="ok"] b { color: #7bd389; }
+.fit[data-tone="tight"] { border-left-color: #f2c14e; } .fit[data-tone="tight"] b { color: #f2c14e; }
+.fit[data-tone="no"] { border-left-color: #ff8a80; } .fit[data-tone="no"] b { color: #ff8a80; }
 #dlNote.warn { color: var(--glow, #e8743b); }
+/* the verdict banner owns the top of the scene; the sentence box and chips move under it while it shows */
+.view:has(#fit:not([hidden])) .say { top: 112px; }
+.view:has(#fit:not([hidden])) .heard { top: 160px; }
+.view:has(#fit:not([hidden])) .quick { top: 186px; }
