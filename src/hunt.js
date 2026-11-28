@@ -40,7 +40,10 @@ export function parsePasted(raw) {
   const s = String(raw ?? '').trim().slice(0, 300);
   let u = null; try { if (/^https?:\/\//i.test(s)) u = new URL(s); } catch { /* not a link */ }
   if (!u) return { address: s };
-  const host = u.hostname.replace(/^www\./, ''), seg = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '').toLowerCase();
+  const host = u.hostname.replace(/^www\./, '');
+  let seg;
+  try { seg = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '').toLowerCase(); }
+  catch { return { need: 'address', link: host }; }
   if (/(^|\.)domain\.com\.au$/.test(host)) {
     const w = seg.replace(/-\d{6,}$/, '').split('-'), i = w.lastIndexOf('nsw');
     if (i > 1) return { address: w.slice(0, i).join(' ').replace(/^(\d+[a-z]?) (\d+[a-z]?) /, '$1/$2 '), postcode: /^2\d{3}$/.test(w[i + 1] || '') ? w[i + 1] : null, link: host };
