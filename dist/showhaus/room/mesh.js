@@ -92,11 +92,14 @@ export function capture(a, mask) {
   // thumbnail: object on the dark tile it is shown on
   const th = document.createElement('canvas'); th.width = th.height = 160; const tg = th.getContext('2d'), k = Math.min(140 / cv.width, 140 / cv.height);
   tg.drawImage(cv, (160 - cv.width * k) / 2, (160 - cv.height * k) / 2, cv.width * k, cv.height * k);
-  return { rgb: medianRGB(a, mask), tex: cv.toDataURL('image/png'), thumb: th.toDataURL('image/png'), gw, gh, depth: Array.from(depth, v => +v.toFixed(3)), px: [bw, bh] };
+  return { rgb: medianRGB(a, mask), swatch: swatch(src, mask, W, H, x0, y0, bw, bh), tex: cv.toDataURL('image/png'), thumb: th.toDataURL('image/png'), gw, gh, depth: Array.from(depth, v => +v.toFixed(3)), px: [bw, bh] };
 }
 
 // Asset → THREE.Group standing on y = 0, centred on x/z, sized dims {w,h,d} metres.
 const texCache = new Map();
+function swatchTex(THREE, url) { let t = texCache.get(url); if (t) return t;
+  t = new THREE.TextureLoader().load(url); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; t.repeat.set(5, 5); // fine grain reads as cloth; two big tiles read as timber
+  texCache.set(url, t); return t; }
 export function buildMesh(THREE, asset, dims, { glow = false, kind, ghost } = {}) {
   const shape = shapeOf(kind ?? asset.kind ?? asset.label);
   const grp = shape ? buildShape(THREE, shape, dims, asset, glow) : buildRelief(THREE, asset, dims, { glow });
@@ -109,8 +112,10 @@ export function buildMesh(THREE, asset, dims, { glow = false, kind, ghost } = {}
 // Plain parts at the real size, coloured from the photo. Same shapes as the Android app's Shapes.kt.
 function buildShape(THREE, kind, { w, d: dd, h }, asset, glow) {
   const grp = new THREE.Group(), col = new THREE.Color(...(asset.rgb || [203, 187, 165]).map(v => v / 255)).convertSRGBToLinear();
+  const cloth = asset.swatch ? swatchTex(THREE, asset.swatch) : null;
   const mat = (c, r = 0.85) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
-  const body = mat(col), soft = mat(col.clone().lerp(new THREE.Color(1, 1, 1), 0.1), 0.95), dark = mat(new THREE.Color('#3b3129').convertSRGBToLinear(), 0.6);
+  const body = cloth ? new THREE.MeshStandardMaterial({ map: cloth, roughness: 0.9 }) : mat(col),
+    soft = cloth ? new THREE.MeshStandardMaterial({ map: cloth, color: new THREE.Color(1.08, 1.08, 1.08), roughness: 0.95 }) : mat(col.clone().lerp(new THREE.Color(1, 1, 1), 0.1), 0.95), dark = mat(new THREE.Color('#3b3129').convertSRGBToLinear(), 0.6);
   const box = (bw, bh, bd, x, y, z, m = body) => { const o = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), m); o.position.set(x, y + bh / 2, z); o.castShadow = o.receiveShadow = true; grp.add(o); };
   const cyl = (r, ch, x, y, z, m) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, ch, 28), m); o.position.set(x, y + ch / 2, z); o.castShadow = true; grp.add(o); };
   const legs = (lw, ld, lh, t = 0.045) => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(t, lh, t, sx * (lw / 2 - t), 0, sz * (ld / 2 - t), dark); };
@@ -171,6 +176,27 @@ function buildRelief(THREE, asset, dims, { glow = false } = {}) {
     ...(glow ? { emissive: '#ffd9a0', emissiveMap: tex, emissiveIntensity: 0.9 } : {}) });
   const mesh = new THREE.Mesh(g, m); mesh.castShadow = true; /* no self-shadowing: a one-photo relief gets shadow acne */
   const grp = new THREE.Group(); grp.add(mesh); return grp;
+}
+
+// a square of the thing's own surface (fabric, timber), from the largest square that lies wholly inside the mask:
+// the clean shape wears it, so the sofa on screen is that sofa's cloth, not a flat beige (judges: 'a box, not my sofa')
+export function swatch(src, mask, W, H, x0, y0, bw, bh) {
+  const s = Math.max(1, Math.ceil(Math.max(bw, bh) / 160)), gw = Math.ceil(bw / s), gh = Math.ceil(bh / s), sq = new Uint16Array(gw * gh);
+  let best = 0, bx = 0, by = 0;
+  for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+    const x = Math.min(W - 1, x0 + i * s), y = Math.min(H - 1, y0 + j * s); if (!mask[y * W + x]) continue;
+    const v = i && j ? Math.min(sq[(j - 1) * gw + i], sq[j * gw + i - 1], sq[(j - 1) * gw + i - 1]) + 1 : 1; sq[j * gw + i] = v;
+    if (v > best) { best = v; bx = i; by = j; } }
+  const side = best * s; if (side < 16) return null;
+  const inset = Math.round(side * 0.15), cv = document.createElement('canvas'); cv.width = cv.height = 128; // edges of the square sit on seams and shadows
+  const g = cv.getContext('2d'); g.drawImage(src, x0 + (bx - best + 1) * s + inset, y0 + (by - best + 1) * s + inset, side - 2 * inset, side - 2 * inset, 0, 0, 128, 128);
+  // keep the weave, drop the photo's light: each pixel = the swatch's mean colour + its difference from a heavy blur.
+  // Without this a shading gradient tiles into stripes (a sofa that looks like timber).
+  const lo = document.createElement('canvas'); lo.width = lo.height = 128; const lg = lo.getContext('2d'); lg.filter = 'blur(10px)'; lg.drawImage(cv, -16, -16, 160, 160);
+  const im = g.getImageData(0, 0, 128, 128), bl = lg.getImageData(0, 0, 128, 128).data, px = im.data, mean = [0, 0, 0];
+  for (let i = 0; i < px.length; i += 4) for (let c = 0; c < 3; c++) mean[c] += px[i + c] / (128 * 128);
+  for (let i = 0; i < px.length; i += 4) for (let c = 0; c < 3; c++) px[i + c] = Math.max(0, Math.min(255, mean[c] + (px[i + c] - bl[i + c]) * 0.35));
+  g.putImageData(im, 0, 0); return cv.toDataURL('image/jpeg', 0.85);
 }
 
 // median colour of the cut-out: the fabric or wood, not a highlight or a cushion

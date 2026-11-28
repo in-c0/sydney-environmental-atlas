@@ -2,17 +2,18 @@
   "version": 1,
   "created": "2026-11-28T06:33:19.226Z",
   "max": 10,
-  "iteration": 3,
+  "iteration": 4,
   "status": "running",
   "open": {
-    "i": 4,
+    "i": 5,
     "why": [
-      "android-first-screen-trust",
-      "hedge-gap-axis",
-      "chip-row-clipped",
-      "decorate-state-persists"
+      "android-fit-trusts-partial-walls",
+      "android-wall-side-by-camera",
+      "android-yaw-ignores-anchor-rotation",
+      "android-verdict-and-hint-collide",
+      "textureless-result"
     ],
-    "at": "2026-11-28T06:51:58.554Z"
+    "at": "2026-11-28T07:06:44.108Z"
   },
   "gates_file": "/home/claude/sydney-environmental-atlas/incubation/showhaus-room/gates.json",
   "gates_hash": "413d60d907f96479",
@@ -22,13 +23,14 @@
     "source": "/home/claude/combinatory-venture-farming/ops/validate/backtest/result.json"
   },
   "best": 1.52,
-  "stale": 0,
+  "stale": 1,
   "last_failures": [
-    "hedge-gap-axis",
-    "chip-row-clipped",
-    "decorate-state-persists",
-    "android-first-screen-trust",
-    "textureless-result"
+    "android-fit-trusts-partial-walls",
+    "android-wall-side-by-camera",
+    "android-yaw-ignores-anchor-rotation",
+    "android-verdict-and-hint-collide",
+    "textureless-result",
+    "android-no-real-device-run"
   ],
   "history": [
     {
@@ -121,6 +123,38 @@
       "score": 1.52,
       "reasons": [
         "slop-gate"
+      ],
+      "verdict": "CONTINUE"
+    },
+    {
+      "i": 4,
+      "why": [
+        "android-first-screen-trust",
+        "hedge-gap-axis",
+        "chip-row-clipped",
+        "decorate-state-persists"
+      ],
+      "at": "2026-11-28T06:51:58.554Z",
+      "ended": "2026-11-28T07:06:44.077Z",
+      "gates": {
+        "slop_pass": false,
+        "critical": 1,
+        "pairwise": 0.49
+      },
+      "failures": [
+        "android-fit-trusts-partial-walls",
+        "android-wall-side-by-camera",
+        "android-yaw-ignores-anchor-rotation",
+        "android-verdict-and-hint-collide",
+        "textureless-result",
+        "android-no-real-device-run"
+      ],
+      "asset": "Android Fit.kt wall verdict + tr() bilingual strings; APK 0.1.6",
+      "score": 0.49,
+      "reasons": [
+        "slop-gate",
+        "critical=1",
+        "pairwise=0.49<0.5"
       ],
       "verdict": "CONTINUE"
     }
