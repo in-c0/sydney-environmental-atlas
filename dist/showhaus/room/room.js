@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { buildRoom } from '../walk/plan-room.js';
 import { bounds } from '../walk/plan-core.js';
-import { fitLine } from './fit.js';
+import { fitVerdict } from './fit.js';
 import { parse, apply, describe, emptyState, clamp as clampN, WALL_COLOURS, PATTERNS } from './intent.js';
 import { estimate, capture, buildMesh, LIGHT_HINT, priorForName, shapeOf, rangeOf, SURFACES, ROUGH, hasPrior } from './mesh.js';
 
@@ -232,7 +232,7 @@ function estimateDims(label) {
   $('dimNote').textContent = unknown ? est.note : `Est. ${est.note} Type any real measurement and the others follow.`;
   $('rough').hidden = hasPrior(label) || measured; $('keep').disabled = unknown && !measured;
   $('rough').innerHTML = ROUGH.map(([t, h]) => `<button type="button" class="btn ghost sm${roughH === h ? ' on' : ''}" data-h="${h}">${t} · ${h < 1 ? h * 100 + ' cm' : h + ' m'}</button>`).join('');
-  $('isLight').checked = LIGHT_HINT.test(label || ''); status('');
+  $('isLight').checked = LIGHT_HINT.test(label || ''); $('isLight').parentElement.hidden = !!shapeOf(kindNow()) && !$('isLight').checked; status('');
   preview();
 }
 // a typed name with a typical size re-estimates the size until the visitor types a measurement
@@ -285,6 +285,7 @@ $('addrForm').onsubmit = e => { e.preventDefault(); const a = $('addr').value.tr
   setSpace({ kind: 'tape', w: +$('tw').value || 4.2, d: +$('td').value || 3.6, title: a }); toast('No plan on file for this address: measuring one room. Change the size with “width 4.5m room”.', 4200); };
 $('roomPhoto').onchange = async e => { const f = e.target.files[0]; if (!f) return; const url = await fileToUrl(f, 1600); setSpace({ kind: 'photo', title: 'Your room photo', photo: await stash(url) }); };
 $('newSpace').onclick = () => { $('spaces').hidden = false; $('view').hidden = true; };
+$('fitAct').onclick = () => { $('newSpace').click(); $('tw').focus(); };
 async function stash(url) { const k = 'ph_' + uid(); await blobs.put(k, url); return k; }
 
 function setSpace(space) {
@@ -483,9 +484,11 @@ function drawSel() { const s = state(), it = s?.items.find(i => i.uid === selUid
   const ms = it.k === 1 && objOf(it.obj)?.measured, est = ms ? ` (${typeof ms === 'string' ? ms.toUpperCase() + ' measured, rest est.' : 'measured'})` : ' est.';
   $('selName').textContent = it.name; // the bar is narrow on a phone: the size lives in the fit line above it
   // the question a mover has: does it fit? A room photo has no measured walls, so it says so instead of guessing
-  const f = s.space.kind === 'photo' ? { tone: 'none', text: 'No fit check on a photo' } : fitLine(planFor(s.space), s.items, it.uid);
-  // the answer is the headline of this screen (UX review 28 Nov: it was a 12 px note under the scene); the basis sits under it
-  const room = s.space.kind === 'photo' ? 'a photo has no measured walls: use your room’s size' : s.space.kind === 'plan' ? (s.space.name || 'this plan') : `${s.space.w} × ${s.space.d} m room`;
+  // unmeasured sides are checked at the largest they could be: a size read off one photo can be a third out
+  const o = objOf(it.obj), hi = rangeOf(o?.label)[1], side = k => ms === true || ms === k ? 1 : ms ? 1.35 : hi;
+  const f = s.space.kind === 'photo' ? { tone: 'none', text: 'Will it fit? A photo has no measured walls' } : fitVerdict(planFor(s.space), s.items, it.uid, { w: side('w'), d: side('d') });
+  const room = s.space.kind === 'photo' ? 'Enter the room’s size for a yes or no' : s.space.kind === 'plan' ? (s.space.name || 'this plan') : `${s.space.w} × ${s.space.d} m room`;
+  $('fitAct').hidden = s.space.kind !== 'photo';
   $('fitVerdict').textContent = f.text; $('fitBasis').textContent = `${it.name} ${(it.dims.w * it.k).toFixed(2)} × ${(it.dims.d * it.k).toFixed(2)} m${est} · ${room}`; $('fit').dataset.tone = f.tone; $('lightBtn').textContent = it.light ? (it.on ? 'Light off' : 'Light on') : 'Glow'; $('lightBtn').title = it.light ? '' : 'Make it a light'; }
 $('selbar').onclick = e => { const a = e.target.closest('button')?.dataset.a, it = state().items.find(i => i.uid === selUid); if (!a || !it) return;
   const ops = { rotL: { op: 'rotate', uid: it.uid, by: 15 }, rotR: { op: 'rotate', uid: it.uid, by: -15 }, smaller: { op: 'scale', uid: it.uid, by: 1 / 1.05 }, bigger: { op: 'scale', uid: it.uid, by: 1.05 },

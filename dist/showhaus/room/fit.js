@@ -13,6 +13,16 @@ export function footprint(it) {
 
 const cm = v => v < 1 ? `${Math.round(v * 100)} cm` : `${v.toFixed(2)} m`;
 
+/** The verdict a mover can trust: checked at the guessed size AND at the largest the unmeasured sides could be.
+ *  worst = { w, d } multipliers for the sides nobody measured (1 = measured). → { tone, text, unsure? } */
+export function fitVerdict(plan, items, uid, worst = { w: 1, d: 1 }) {
+  const guess = fitLine(plan, items, uid); if (!guess || guess.tone === 'no' || (worst.w <= 1 && worst.d <= 1)) return guess;
+  const big = items.map(i => i.uid === uid ? { ...i, dims: { ...i.dims, w: i.dims.w * worst.w, d: i.dims.d * worst.d } } : i);
+  if (fitLine(plan, big, uid).tone !== 'no') return guess;
+  const side = worst.w > 1 && worst.d > 1 ? 'width and depth' : worst.w > 1 ? 'width' : 'depth';
+  return { tone: 'tight', unsure: side, text: `Probably fits. Measure its ${side} to be sure` };
+}
+
 /** → { tone: 'ok' | 'tight' | 'no', text } */
 export function fitLine(plan, items, uid) {
   const it = items.find(i => i.uid === uid); if (!it) return null;

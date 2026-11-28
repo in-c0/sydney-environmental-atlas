@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Will your sofa fit in your next home? · SHOWHAUS</title>
-<meta name="description" content="Photograph your sofa, lamp or table. Your phone cuts it out, sizes it and turns it into a 3D object, then you place it in a room photo or floor plan by saying what to change. Runs on your device; no sign-up.">
-<meta property="og:title" content="Scan your furniture into the new place · SHOWHAUS">
-<meta property="og:description" content="Photo → cut-out → size → 3D object → place it in your next home. On your phone, no sign-up.">
+<title>Will your sofa fit in your next living room? · SHOWHAUS</title>
+<meta name="description" content="Photograph your sofa, measure one side, enter the room’s size: SHOWHAUS says whether it fits, with the gap to walk past in centimetres. Runs on your phone; no sign-up.">
+<meta property="og:title" content="Will your sofa fit in your next living room? · SHOWHAUS">
+<meta property="og:description" content="Photo, one measurement, the room’s size: fits, tight or doesn’t fit, in centimetres. On your phone, no sign-up.">
 <meta name="theme-color" content="#12161c">
 <link rel="stylesheet" href="./room.css">
 <script type="importmap">{"imports":{"three":"../walk/three.module.js"}}</script>
@@ -23,8 +23,8 @@
 <!-- ① scan -->
 <main id="scan">
   <section id="drop" class="drop">
-    <h1>Will your sofa fit in your next home?</h1>
-    <p class="lead">A photo of it, one measurement, the room’s size: a yes or no in centimetres. No sign-up; the photo stays on this phone.</p>
+    <h1>Will your sofa fit in your next living room?</h1>
+    <p class="lead">Photograph it, measure one side, enter the room’s size. You get fits, tight or doesn’t fit, with the gap in centimetres. No sign-up; the photo stays on this phone.</p>
     <div class="go">
       <label class="btn"><input id="cam" type="file" accept="image/*" capture="environment" hidden>Photograph my sofa</label>
       <label class="btn ghost"><input id="file" type="file" accept="image/*" hidden>Choose a photo</label>
@@ -81,6 +81,8 @@
 
   <section id="view" class="view" hidden>
     <div id="host" class="host"><img id="roomImg" alt=""><canvas id="tint"></canvas></div>
+    <div class="topstack">
+    <div class="fit" id="fit" hidden><b id="fitVerdict"></b><span id="fitBasis"></span><button class="btn sm" id="fitAct" type="button" hidden>Enter the room’s size</button></div>
     <form id="say" class="say" autocomplete="off">
       <input id="sayIn" placeholder="Say what to change: “sofa 30cm left”, “walls sage stripes”, “lights off”" enterkeyhint="send" aria-label="Tell the room what to change">
       <button class="btn sm" aria-label="Apply">↵</button>
@@ -90,8 +92,8 @@
       <button data-say="night">☾ Night</button><button data-say="day">☀ Day</button><button data-say="warmer">Warmer</button><button data-say="lights off">Lights off</button>
       <button id="viewBtn" data-v="above">Eye level</button><button id="horizonBtn" hidden>Match floor</button><button id="newSpace">Change space</button>
     </div>
+    </div>
     <input id="horizon" type="range" min="-0.2" max="0.6" step="0.005" hidden aria-label="Floor angle">
-    <div class="fit" id="fit" hidden><b id="fitVerdict"></b><span id="fitBasis"></span></div>
     <div class="selbar" id="selbar" hidden>
       <b id="selName"></b>
       <button data-a="rotL" aria-label="Turn left">⟲</button><button data-a="rotR" aria-label="Turn right">⟳</button>

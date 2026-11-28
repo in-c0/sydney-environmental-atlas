@@ -47,7 +47,7 @@ test('sizes: everyday things have real sizes, unknown things ask instead of inve
   assert.equal(shapeOf('couch'), 'sofa'); assert.equal(shapeOf('cat'), null);
 });
 
-import { fitLine, footprint } from '../dist/showhaus/room/fit.js';
+import { fitLine, fitVerdict, footprint } from '../dist/showhaus/room/fit.js';
 import { roomPlan } from '../dist/showhaus/walk/plan-core.js';
 test('fit: says whether a thing fits where it stands, and when a walkway is too narrow', () => {
   const plan = roomPlan(4.2, 3.6), sofa = (x, y, r = 0) => ({ uid: 's', name: 'Sofa', x, y, r, k: 1, dims: { w: 2.2, d: 1.0, h: 0.9 } });
@@ -59,4 +59,13 @@ test('fit: says whether a thing fits where it stands, and when a walkway is too 
   const bed = { uid: 'b', name: 'Bed', x: cx, y: cy, r: 0, k: 1, dims: { w: 1.6, d: 2.0, h: 1 } };
   assert.equal(fitLine(plan, [sofa(cx, cy), bed], 's').text, 'Overlaps the bed');
   assert.ok(Math.abs(footprint(sofa(0, 0, 90)).w - 1.0) < 1e-9);                               // turned 90°: footprint swaps
+});
+test('fit verdict: an unmeasured side is checked at the largest it could be', () => {
+  const plan = roomPlan(4.2, 3.6), b = plan.outline.reduce((a, [x, y]) => [Math.min(a[0], x), Math.min(a[1], y), Math.max(a[2], x), Math.max(a[3], y)], [9, 9, -9, -9]);
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2, at = (w, d) => [{ uid: 's', name: 'Sofa', x: cx, y: cy, r: 0, k: 1, dims: { w, d, h: 0.9 } }];
+  assert.equal(fitVerdict(plan, at(2.2, 1.0), 's', { w: 1, d: 1 }).tone, 'ok');                // all measured: the plain verdict
+  const v = fitVerdict(plan, at(4.0, 1.0), 's', { w: 1.35, d: 1 });                            // 4.0 m fits a 4.2 m wall, 5.4 m does not
+  assert.equal(v.tone, 'tight'); assert.match(v.text, /Measure its width to be sure/);
+  assert.equal(fitVerdict(plan, at(2.2, 1.0), 's', { w: 1, d: 1.35 }).unsure, undefined);       // deeper still fits: no hedge
+  assert.equal(fitVerdict(plan, at(5.0, 1.0), 's', { w: 1.35, d: 1 }).tone, 'no');              // too big at the guess stays a no
 });
